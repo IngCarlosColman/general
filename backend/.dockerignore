@@ -1,0 +1,30 @@
+# Ignorar dependencias locales
+node_modules
+
+# Archivos sensibles
+.env
+
+# Logs y cachés
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de pruebas
+tests/
+__tests__/
+coverage/
+
+# Configuración local
+.vscode/
+.idea/
+*.swp
+
+# Evitar copiar archivos innecesarios
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile*

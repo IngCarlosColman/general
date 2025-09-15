@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - node_modules:/app/node_modules
+    env_file:
+      - ./.env
+    command: npm run dev
+    depends_on:
+      - db
+
+  db:
+    # Cambiamos la imagen de 'postgres:17.5' a una versión de PostGIS estable
+    image: postgis/postgis:16-3.4
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    shm_size: 12288mb
+
+volumes:
+  pgdata:
+  node_modules:

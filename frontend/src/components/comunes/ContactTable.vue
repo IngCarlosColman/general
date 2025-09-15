@@ -1,0 +1,160 @@
+<template>
+  <v-card-text class="pa-0">
+    <v-data-table-server
+      :headers="headers"
+      :items="items"
+      :items-length="itemsLength"
+      :loading="loading"
+      :search="search"
+      @update:options="$emit('update:options', $event)"
+      loading-text="Cargando datos..."
+      no-data-text="No se encontraron resultados. Realice una búsqueda."
+      :items-per-page-options="[
+        { value: 10, title: '10' },
+        { value: 25, title: '25' },
+        { value: 50, title: '50' },
+        { value: 100, title: '100' }
+      ]"
+    >
+      <template v-slot:item.telefonos="{ item }">
+        <v-chip-group>
+          <v-chip v-for="tel in item.telefonos" :key="tel" size="small">
+            {{ tel }}
+          </v-chip>
+        </v-chip-group>
+      </template>
+
+      <template v-slot:item.actions="{ item }">
+        <v-tooltip :text="isAddedToPrivateAgenda(item.cedula) ? 'Eliminar de mi agenda' : 'Añadir a mi agenda'" location="top">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              size="small"
+              class="me-2"
+              @click="$emit('toggle-private-agenda', item)"
+              :color="isAddedToPrivateAgenda(item.cedula) ? 'orange' : 'grey'"
+              v-bind="props"
+            >
+              {{ isAddedToPrivateAgenda(item.cedula) ? 'mdi-star' : 'mdi-star-outline' }}
+            </v-icon>
+          </template>
+        </v-tooltip>
+
+        <v-tooltip text="Compartir contacto" location="top" v-if="item.telefonos?.length">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              size="small"
+              class="me-2"
+              @click="$emit('share-contact', item)"
+              color="teal"
+              v-bind="props"
+            >
+              mdi-share-variant
+            </v-icon>
+          </template>
+        </v-tooltip>
+
+        <v-tooltip text="Enviar mensaje de WhatsApp" location="top" v-if="item.telefonos?.length">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              size="small"
+              class="me-2"
+              @click="$emit('open-whatsapp', item)"
+              color="green-lighten-1"
+              v-bind="props"
+            >
+              mdi-whatsapp
+            </v-icon>
+          </template>
+        </v-tooltip>
+
+        <v-tooltip text="Descargar vCard" location="top" v-if="item.telefonos?.length">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              size="small"
+              class="me-2"
+              @click="$emit('download-vcard', item)"
+              color="purple"
+              v-bind="props"
+            >
+              mdi-card-account-details-outline
+            </v-icon>
+          </template>
+        </v-tooltip>
+
+        <v-tooltip text="Editar" location="top">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              size="small"
+              class="me-2"
+              @click="$emit('edit', item)"
+              color="blue"
+              v-bind="props"
+            >
+              mdi-pencil
+            </v-icon>
+          </template>
+        </v-tooltip>
+
+        <v-tooltip text="Eliminar" location="top">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              size="small"
+              @click="$emit('delete', item)"
+              color="red"
+              v-bind="props"
+            >
+              mdi-delete
+            </v-icon>
+          </template>
+        </v-tooltip>
+      </template>
+    </v-data-table-server>
+  </v-card-text>
+</template>
+
+<script setup>
+const props = defineProps({
+  headers: {
+    type: Array,
+    required: true,
+  },
+  items: {
+    type: Array,
+    required: true,
+  },
+  itemsLength: {
+    type: Number,
+    required: true,
+  },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  search: {
+    type: String,
+    default: '',
+  },
+  sortBy: {
+    type: Array,
+    default: () => [],
+  },
+  privateAgendaCedulas: {
+    type: Array,
+    default: () => [],
+  },
+});
+
+defineEmits([
+  'update:options',
+  'toggle-private-agenda',
+  'share-contact',
+  'open-whatsapp',
+  'download-vcard',
+  'edit',
+  'delete',
+]);
+
+const isAddedToPrivateAgenda = (cedula) => {
+  return props.privateAgendaCedulas.includes(cedula);
+};
+</script>

@@ -1,0 +1,19 @@
+# finalv2/backend/Dockerfile.dev
+FROM node:20-bullseye
+
+WORKDIR /app
+
+# Copiamos solo los archivos necesarios para instalar dependencias
+COPY package*.json ./
+
+# Instalamos dependencias
+RUN npm install
+
+# Copiamos el resto del código fuente
+COPY . .
+
+# Exponemos el puerto
+EXPOSE 8000
+
+# Comando de desarrollo
+CMD ["npm", "run", "dev"]

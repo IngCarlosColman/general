@@ -1,0 +1,19 @@
+# Archivos y directorios generados por Node
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+.env
+
+# Archivos de caché del sistema operativo o editores de código
+.DS_Store
+.vscode/
+*.swp
+
+# Archivos de configuración local o de entorno
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+.git-credentials
