@@ -27,9 +27,11 @@ const getPropruralesData = async (req, res) => {
         }
         const limit = Math.min(parseInt(itemsPerPage), 100);
         const offset = (parseInt(page) - 1) * limit;
+
         let whereClauses = [];
         const queryParams = [];
         let paramIndex = 1;
+
         if (departamento) {
             whereClauses.push(`pr.cod_dep = $${paramIndex++}`);
             queryParams.push(departamento);
@@ -50,15 +52,14 @@ const getPropruralesData = async (req, res) => {
             whereClauses.push(`pr.has <= $${paramIndex++}`);
             queryParams.push(parseFloat(has_max));
         }
+
         if (search) {
-            whereClauses.push(`
-                (pr.padron ILIKE $${paramIndex} OR
-                g.search_vector @@ to_tsquery('spanish', $${paramIndex + 1}))
-            `);
+            const searchTerms = search.split(/\s+/).filter(term => term).map(t => `${t}:*`).join(' & ');
+            whereClauses.push(`(pr.padron::text ILIKE $${paramIndex++} OR g.search_vector @@ to_tsquery('spanish', $${paramIndex++}))`);
             queryParams.push(`%${search}%`);
-            queryParams.push(search.split(/\s+/).filter(term => term).map(t => `${t}:*`).join(' & '));
-            paramIndex += 2;
+            queryParams.push(searchTerms);
         }
+
         const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
         let orderByClause = 'ORDER BY pr.padron ASC';
         if (sortBy.length) {
@@ -72,17 +73,19 @@ const getPropruralesData = async (req, res) => {
                 'has': 'pr.has',
                 'mts2': 'pr.mts2',
                 'cedula_propietario': 'pp.cedula_propietario',
-                'propietario_completo': 'g.completo'
+                'propietario_completo': 'propietario_completo'
             };
             if (validSortFields[sortKey]) {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
         }
+
         const joinClause = `
             LEFT JOIN propiedades_propietarios pp ON pr.cod_dep = pp.cod_dep AND pr.cod_ciu = pp.cod_ciu AND pr.padron = pp.padron_ccc AND pp.tipo_propiedad = 'rural'
             LEFT JOIN general g ON pp.cedula_propietario = g.cedula
             LEFT JOIN telefonos t ON g.cedula = t.cedula_persona
         `;
+
         const countQuery = `
             SELECT COUNT(DISTINCT pr.id) FROM proprurales pr
             ${joinClause}
@@ -90,6 +93,7 @@ const getPropruralesData = async (req, res) => {
         `;
         const countResult = await pool.query(countQuery, queryParams);
         const totalItems = parseInt(countResult.rows[0].count);
+
         const dataQuery = `
             SELECT
                 pr.id,
@@ -111,13 +115,22 @@ const getPropruralesData = async (req, res) => {
             ${orderByClause}
             LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
         `;
+        
         const dataParams = [...queryParams, limit, offset];
+
         const dataResult = await pool.query(dataQuery, dataParams);
-        const items = dataResult.rows;
+        
+        // === CORRECCIÓN CLAVE: Mapea los resultados para unir los teléfonos en una cadena ===
+        const items = dataResult.rows.map(row => ({
+            ...row,
+            telefonos: row.telefonos ? row.telefonos.join(', ') : null // Cambia a null si no hay teléfonos
+        }));
+
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
         res.json({ items, totalItems });
+
     } catch (err) {
         console.error('Error al obtener datos de la tabla de propiedades rurales:', err);
         res.status(500).json({ error: 'Error del servidor' });

@@ -26,6 +26,7 @@ const prourbanasRoutes = require('./routes/prourbanas.routes');
 const propiedadesPropietariosRoutes = require('./routes/propro.routes');
 const privateAgendaRoutes = require('./routes/privateAgenda.routes');
 const followupRoutes = require('./routes/followup.routes');
+const telefonosRouter = require('./routes/telefonos.router');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -65,6 +66,7 @@ app.use('/api', catastroRoutes); // <-- ¡Agrega esta línea para el proxy de Ca
 
 app.use('/api/private-agenda', privateAgendaRoutes); 
 app.use('/api/private-agenda/events', followupRoutes);
+app.use('/api', telefonosRouter);
 
 // Iniciar el servidor
 app.listen(PORT, () => {

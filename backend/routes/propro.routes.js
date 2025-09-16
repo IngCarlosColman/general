@@ -15,7 +15,6 @@ router.use(authenticateJWT);
 
 // Rutas protegidas con validación de roles
 router.get('/propiedades_propietarios', checkRoles(allowedRoles), proproController.getPropiedadesPropietariosData);
-router.post('/propiedades_propietarios', checkRoles(allowedRoles), proproController.createPropiedadPropietario);
 
 // --- La nueva ruta para el endpoint _batch ---
 // CORREGIDO: Ahora esta ruta llama a la nueva función del controlador

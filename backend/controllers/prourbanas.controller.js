@@ -3,7 +3,6 @@ const { pool } = require('../db/db');
 /**
  * Obtiene los datos de la tabla de propiedades urbanas con paginación, búsqueda,
  * ordenamiento y filtros.
- * La validación de permisos ahora se realiza en el middleware.
  */
 const getProurbanasData = async (req, res) => {
     try {
@@ -13,7 +12,7 @@ const getProurbanasData = async (req, res) => {
             search = '',
             departamento,
             ciudad,
-            padron_ccc, // <-- Ahora recibimos padron_ccc
+            padron_ccc,
             mts2_min,
             mts2_max
         } = req.query;
@@ -40,8 +39,7 @@ const getProurbanasData = async (req, res) => {
             queryParams.push(ciudad);
         }
 
-        // === LÓGICA DE FILTRADO PARA padron_ccc ===
-        // Reemplaza las cláusulas individuales de zona, manzana y lote.
+        // === LÓGICA DE FILTRADO PARA padron_ccc (MANTENIDA) ===
         if (padron_ccc) {
             const formattedCcc = padron_ccc.trim().toLowerCase();
             whereClauses.push(`(pu.zona || '-' || pu.manzana || '-' || pu.lote) LIKE $${paramIndex++}`);
@@ -58,11 +56,10 @@ const getProurbanasData = async (req, res) => {
         }
         
         if (search) {
-            whereClauses.push(`
-                (g.search_vector @@ to_tsquery('spanish', $${paramIndex}))
-            `);
-            queryParams.push(search.split(/\s+/).filter(term => term).map(t => `${t}:*`).join(' & '));
-            paramIndex += 1;
+            const searchTerms = search.split(/\s+/).filter(term => term).map(t => `${t}:*`).join(' & ');
+            // Se combinan las búsquedas de texto completo en un solo WHERE
+            whereClauses.push(`(g.search_vector @@ to_tsquery('spanish', $${paramIndex++}) OR pp.padron_ccc ILIKE $${paramIndex++})`);
+            queryParams.push(searchTerms, `%${search}%`);
         }
 
         const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -82,7 +79,7 @@ const getProurbanasData = async (req, res) => {
                 'salon': 'pu.salon',
                 'mts2': 'pu.mts2',
                 'cedula_propietario': 'pp.cedula_propietario',
-                'propietario_completo': 'g.completo'
+                'propietario_completo': 'propietario_completo'
             };
             if (validSortFields[sortKey]) {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;

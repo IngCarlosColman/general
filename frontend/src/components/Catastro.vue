@@ -402,6 +402,7 @@ const handleSearchCadastre = async (item) => {
   const isRural = form.tipoPropiedad === 'Rural';
   const result = await store.searchCadastre(item, form.tipoPropiedad, isRural);
   showSnackbar(result.message, result.success ? 'success' : 'error');
+
 };
 
 const editItem = (item) => {

@@ -18,9 +18,15 @@ async function upsertTelefonos(client, cedula_persona, telefonos, id_usuario) {
     }
 }
 
-// *** Esta es la nueva función que necesitas agregar
-// a tu general.controller.js para manejar el upsert de datos.
+// Esta es la versión final y corregida de la función upsertGeneral.
 const upsertGeneral = async (cedula, nombre, tel, id_usuario, client) => {
+    // === ÚNICA CORRECCIÓN ===
+    // Si la cédula no se proporciona, no hay nada que hacer en la tabla general.
+    if (!cedula) {
+        return; // Termina la ejecución de la función aquí.
+    }
+    // ========================
+
     try {
         const checkQuery = 'SELECT COUNT(*) FROM general WHERE cedula = $1';
         const checkResult = await client.query(checkQuery, [cedula]);
