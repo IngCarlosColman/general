@@ -11,7 +11,7 @@
       style="margin-left: 80px;"
     >
       <div class="text-center mb-6">
-        <v-icon size="64" color="white" class="mb-2">mdi-alpha-t-circle-outline</v-icon>
+        <img src="@/assets/favicon.svg" height="150px" width="150px"> </img>
         <h2 class="text-h5 font-weight-bold text-white">Iniciar Sesión</h2>
       </div>
 

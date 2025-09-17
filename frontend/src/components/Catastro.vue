@@ -1,200 +1,215 @@
 <template>
-  <v-container class="pa-4">
+  <v-container fluid class="pa-4">
     <v-card class="pa-6 rounded-xl shadow-lg">
-      <v-card-title class="text-h5 text-center font-weight-bold mb-4">
-        Búsqueda Avanzada de Propiedades
-      </v-card-title>
-      <v-card-text>
-        <v-form ref="formRef" v-model="isFormValid" @keydown.enter.prevent="handleSearch">
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="form.tipoPropiedad"
-                :items="tiposPropiedad"
-                label="Tipo de Propiedad"
-                hint="Selecciona si buscas propiedades rurales o urbanas."
-                persistent-hint
-                clearable
-                @update:model-value="handleTipoPropiedadChange"
-              ></v-select>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="form.departamento"
-                :items="departamentos"
-                item-title="depart"
-                item-value="cod_dep"
-                label="Departamento"
-                hint="Selecciona un departamento para filtrar las propiedades."
-                persistent-hint
-                clearable
-              ></v-select>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="form.ciudadValue"
-                :items="ciudades"
-                item-title="ciudad"
-                item-value="value"
-                label="Ciudad"
-                :disabled="!form.departamento"
-                :loading="loadingCities"
-                hint="Selecciona la ciudad dentro del departamento."
-                persistent-hint
-                clearable
-              ></v-select>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="form.padron_ccc"
-                :label="form.tipoPropiedad === 'Rural' ? 'Padrón' : 'CCC'"
-                prepend-inner-icon="mdi-map-marker-outline"
-                clearable
-              >
-                <v-tooltip activator="parent" location="top">
-                  <span>Padrón: <strong>5234</strong> (Rural)<br />CCC:
-                    <strong>26-15470-18</strong> (Urbano)</span>
-                </v-tooltip>
-              </v-text-field>
-            </v-col>
-          </v-row>
-          <v-row v-if="form.tipoPropiedad === 'Rural'">
-            <v-col cols="12" md="6">
-              <v-row>
-                <v-col cols="6">
-                  <v-text-field
-                    v-model="form.has_min"
-                    label="Hectáreas Mínimas"
-                    type="number"
-                    clearable
-                    hint="Ej: 5 a 23 has"
-                    persistent-hint
-                  ></v-text-field>
-                </v-col>
-                <v-col cols="6">
-                  <v-text-field
-                    v-model="form.has_max"
-                    label="Hectáreas Máximas"
-                    type="number"
-                    clearable
-                    hint="Ej: 5 a 23 has"
-                    persistent-hint
-                  ></v-text-field>
-                </v-col>
-              </v-row>
-            </v-col>
-          </v-row>
-          <v-row v-if="form.tipoPropiedad === 'Urbana'">
-            <v-col cols="12" md="6">
-              <v-row>
-                <v-col cols="6">
-                  <v-text-field
-                    v-model="form.m2_min"
-                    label="m² Mínimos"
-                    type="number"
-                    clearable
-                    hint="Ej: 360 a 5000 m²"
-                    persistent-hint
-                  ></v-text-field>
-                </v-col>
-                <v-col cols="6">
-                  <v-text-field
-                    v-model="form.m2_max"
-                    label="m² Máximos"
-                    type="number"
-                    clearable
-                    hint="Ej: 360 a 5000 m²"
-                    persistent-hint
-                  ></v-text-field>
-                </v-col>
-              </v-row>
-            </v-col>
-          </v-row>
-        </v-form>
-      </v-card-text>
-
-      <v-card-actions class="justify-center mt-4">
+      <div class="d-flex align-center justify-space-between">
+        <v-card-title class="text-h5 font-weight-bold mb-0">
+          Búsqueda Avanzada de Propiedades
+        </v-card-title>
         <v-btn
+          :icon="isFormCollapsed ? 'mdi-plus' : 'mdi-close'"
           color="primary"
-          class="ma-2 rounded-pill font-weight-bold"
-          size="large"
-          @click="handleSearch"
-          :disabled="!form.departamento || isLoading"
-        >
-          <v-icon left>mdi-magnify</v-icon>
-          Buscar Propiedades
-        </v-btn>
-        <v-btn
-          color="grey-darken-2"
-          class="ma-2 rounded-pill font-weight-bold"
-          size="large"
-          variant="outlined"
-          @click="clearForm"
-          :disabled="isLoading"
-        >
-          <v-icon left>mdi-close</v-icon>
-          Limpiar
-        </v-btn>
-        <v-btn
-          color="teal-darken-2"
-          class="ma-2 rounded-pill font-weight-bold"
-          size="large"
-          variant="elevated"
-          @click="toggleMapVisibility"
-          :disabled="mapProperties.length === 0"
-        >
-          <v-icon left>{{ showMap ? 'mdi-map-marker-off' : 'mdi-map-marker-radius' }}</v-icon>
-          {{ showMap ? 'Ocultar Mapa' : 'Ver Mapa' }}
-        </v-btn>
-      </v-card-actions>
+          variant="flat"
+          size="small"
+          @click="toggleFormVisibility"
+        ></v-btn>
+      </div>
 
-      <v-card-text class="mt-8">
-        <v-data-table-server
-          :headers="headers"
-          :items="propiedades"
-          :items-length="totalPropiedades"
-          :loading="isLoading"
-          item-value="id"
-          @update:options="handleTableUpdate"
-        >
-          <template #loading>
-            <v-progress-linear color="primary" indeterminate></v-progress-linear>
-          </template>
-          <template #no-data>
-            <div class="pa-4 text-center text-subtitle-1">Sin Datos</div>
-          </template>
+      <v-expand-transition>
+        <div v-if="!isFormCollapsed">
+          <v-card-text>
+            <v-form ref="formRef" v-model="isFormValid" @keydown.enter.prevent="handleSearch">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-select
+                    v-model="form.tipoPropiedad"
+                    :items="tiposPropiedad"
+                    label="Tipo de Propiedad"
+                    hint="Selecciona si buscas propiedades rurales o urbanas."
+                    persistent-hint
+                    clearable
+                    @update:model-value="handleTipoPropiedadChange"
+                  ></v-select>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-select
+                    v-model="form.departamento"
+                    :items="departamentos"
+                    item-title="depart"
+                    item-value="cod_dep"
+                    label="Departamento"
+                    hint="Selecciona un departamento para filtrar las propiedades."
+                    persistent-hint
+                    clearable
+                  ></v-select>
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-select
+                    v-model="form.ciudadValue"
+                    :items="ciudades"
+                    item-title="ciudad"
+                    item-value="value"
+                    label="Ciudad"
+                    :disabled="!form.departamento"
+                    :loading="loadingCities"
+                    hint="Selecciona la ciudad dentro del departamento."
+                    persistent-hint
+                    clearable
+                  ></v-select>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="form.padron_ccc"
+                    :label="form.tipoPropiedad === 'Rural' ? 'Padrón' : 'CCC'"
+                    prepend-inner-icon="mdi-map-marker-outline"
+                    clearable
+                  >
+                    <v-tooltip activator="parent" location="top">
+                      <span>Padrón: <strong>5234</strong> (Rural)<br />CCC:
+                        <strong>26-15470-18</strong> (Urbano)</span>
+                    </v-tooltip>
+                  </v-text-field>
+                </v-col>
+              </v-row>
+              <v-row v-if="form.tipoPropiedad === 'Rural'">
+                <v-col cols="12" md="6">
+                  <v-row>
+                    <v-col cols="6">
+                      <v-text-field
+                        v-model="form.has_min"
+                        label="Hectáreas Mínimas"
+                        type="number"
+                        clearable
+                        hint="Ej: 5 a 23 has"
+                        persistent-hint
+                      ></v-text-field>
+                    </v-col>
+                    <v-col cols="6">
+                      <v-text-field
+                        v-model="form.has_max"
+                        label="Hectáreas Máximas"
+                        type="number"
+                        clearable
+                        hint="Ej: 5 a 23 has"
+                        persistent-hint
+                      ></v-text-field>
+                    </v-col>
+                  </v-row>
+                </v-col>
+              </v-row>
+              <v-row v-if="form.tipoPropiedad === 'Urbana'">
+                <v-col cols="12" md="6">
+                  <v-row>
+                    <v-col cols="6">
+                      <v-text-field
+                        v-model="form.m2_min"
+                        label="m² Mínimos"
+                        type="number"
+                        clearable
+                        hint="Ej: 360 a 5000 m²"
+                        persistent-hint
+                      ></v-text-field>
+                    </v-col>
+                    <v-col cols="6">
+                      <v-text-field
+                        v-model="form.m2_max"
+                        label="m² Máximos"
+                        type="number"
+                        clearable
+                        hint="Ej: 360 a 5000 m²"
+                        persistent-hint
+                      ></v-text-field>
+                    </v-col>
+                  </v-row>
+                </v-col>
+              </v-row>
+            </v-form>
+          </v-card-text>
 
-          <template #item.acciones="{ item, index }">
-            <div class="d-flex align-center justify-center">
-              <v-btn
-                color="blue-darken-2"
-                class="ma-1 rounded-pill"
-                size="small"
-                @click="handleSearchCadastre(item, index)"
-                :loading="loadingCadastre[item.id]"
-                :disabled="loadingCadastre[item.id]"
-                prepend-icon="mdi-database-search"
-              >
-                Buscar
-              </v-btn>
-              <v-btn
-                v-if="canEdit"
-                color="green-darken-2"
-                class="ma-1 rounded-pill"
-                size="small"
-                @click="editItem(item)"
-                :disabled="!item.cedula_propietario || item.cedula_propietario.includes(',')"
-                prepend-icon="mdi-pencil"
-              >
-                Editar
-              </v-btn>
-            </div>
-          </template>
-        </v-data-table-server>
-      </v-card-text>
+          <v-card-actions class="justify-center mt-4">
+            <v-btn
+              color="primary"
+              class="ma-2 font-weight-bold"
+              size="large"
+              variant="elevated"
+              @click="handleSearch"
+              :disabled="!form.departamento || isLoading"
+            >
+              <v-icon start>mdi-magnify</v-icon>
+              Buscar Propiedades
+            </v-btn>
+            <v-btn
+              color="grey-darken-2"
+              class="ma-2 font-weight-bold"
+              size="large"
+              variant="outlined"
+              @click="clearForm"
+              :disabled="isLoading"
+            >
+              <v-icon start>mdi-close</v-icon>
+              Limpiar
+            </v-btn>
+            <v-btn
+              color="teal-darken-2"
+              class="ma-2 font-weight-bold"
+              size="large"
+              variant="tonal"
+              @click="toggleMapVisibility"
+              :disabled="mapProperties.length === 0"
+            >
+              <v-icon start>{{ showMap ? 'mdi-map-marker-off' : 'mdi-map-marker-radius' }}</v-icon>
+              {{ showMap ? 'Ocultar Mapa' : 'Ver Mapa' }}
+            </v-btn>
+          </v-card-actions>
+        </div>
+      </v-expand-transition>
     </v-card>
+
+    <v-card-text class="mt-8">
+      <v-data-table-server
+        :headers="headers"
+        :items="propiedades"
+        :items-length="totalPropiedades"
+        :loading="isLoading"
+        item-value="id"
+        @update:options="handleTableUpdate"
+      >
+        <template #loading>
+          <v-progress-linear color="primary" indeterminate></v-progress-linear>
+        </template>
+        <template #no-data>
+          <div class="pa-4 text-center text-subtitle-1">Sin Datos</div>
+        </template>
+
+        <template #item.acciones="{ item, index }">
+          <div class="d-flex align-center justify-center">
+            <v-btn
+              color="blue-darken-2"
+              class="ma-1"
+              size="small"
+              @click="handleSearchCadastre(item, index)"
+              :loading="loadingCadastre[item.id]"
+              :disabled="loadingCadastre[item.id]"
+              prepend-icon="mdi-database-search"
+            >
+              Buscar
+            </v-btn>
+            <v-btn
+              v-if="canEdit"
+              color="green-darken-2"
+              class="ma-1"
+              size="small"
+              @click="editItem(item)"
+              :disabled="!item.cedula_propietario || item.cedula_propietario.includes(',')"
+              prepend-icon="mdi-pencil"
+            >
+              Editar
+            </v-btn>
+          </div>
+        </template>
+      </v-data-table-server>
+    </v-card-text>
 
     <v-card v-if="showMap" class="pa-6 rounded-xl shadow-lg mt-8">
       <v-card-title class="text-h6 text-center font-weight-bold mb-4">
@@ -284,6 +299,9 @@ const {
 } = storeToRefs(store);
 
 // === ESTADO LOCAL DEL COMPONENTE ===
+// AÑADIDO: Estado para controlar si el formulario está colapsado
+const isFormCollapsed = ref(false);
+
 const form = reactive({
   tipoPropiedad: 'Rural',
   departamento: null,
@@ -296,7 +314,6 @@ const form = reactive({
   m2_max: null,
 });
 
-// AÑADIDO: Declaración de la variable isFormValid
 const isFormValid = ref(false);
 
 const tiposPropiedad = ref(['Rural', 'Urbana']);
@@ -353,6 +370,11 @@ const showSnackbar = (message, color = 'info') => {
   snackbar.show = true;
 };
 
+// NUEVA FUNCIÓN: Alterna la visibilidad del formulario
+const toggleFormVisibility = () => {
+  isFormCollapsed.value = !isFormCollapsed.value;
+};
+
 const handleTipoPropiedadChange = () => {
   headers.value = form.tipoPropiedad === 'Rural' ? ruralHeaders : urbanaHeaders;
   if (form.tipoPropiedad === 'Rural') {
@@ -366,6 +388,8 @@ const handleTipoPropiedadChange = () => {
 
 const handleSearch = () => {
   store.searchProperties(form, { page: 1, itemsPerPage: 10, sortBy: [] });
+  // NUEVO: Ocultar el formulario después de la búsqueda
+  isFormCollapsed.value = true;
 };
 
 const handleTableUpdate = (options) => {
@@ -391,6 +415,8 @@ const clearForm = () => {
   store.propiedades = [];
   store.totalPropiedades = 0;
   showMap.value = false;
+  // NUEVO: Mostrar el formulario al limpiar
+  isFormCollapsed.value = false;
 };
 
 const toggleMapVisibility = () => {
@@ -402,7 +428,6 @@ const handleSearchCadastre = async (item) => {
   const isRural = form.tipoPropiedad === 'Rural';
   const result = await store.searchCadastre(item, form.tipoPropiedad, isRural);
   showSnackbar(result.message, result.success ? 'success' : 'error');
-
 };
 
 const editItem = (item) => {
@@ -445,7 +470,6 @@ watch(() => form.ciudadValue, (newValue) => {
   }
 });
 
-// Watcher para el mapa.
 watch(propiedades, (newPropiedades) => {
   mapProperties.value = newPropiedades
     .filter(item => item.lat && item.lng)
@@ -466,9 +490,6 @@ onMounted(() => {
 /* Estilos para una apariencia más moderna y unificada */
 .rounded-xl {
   border-radius: 20px;
-}
-.rounded-pill {
-  border-radius: 9999px;
 }
 .shadow-lg {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
