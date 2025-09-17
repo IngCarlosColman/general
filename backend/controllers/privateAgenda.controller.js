@@ -175,35 +175,65 @@ const updateContactDetails = async (req, res) => {
 
 /**
  * Elimina un contacto de la agenda privada de un usuario.
+ * También limpia los detalles del contacto si ya no está en la agenda de ningún otro usuario.
  */
 const deleteContactFromAgenda = async (req, res) => {
     const { contactCedula } = req.params;
     const { id: userId } = req.user;
 
+    const client = await pool.connect();
     try {
-        const query = `
+        await client.query('BEGIN');
+
+        // Paso 1: Eliminar el contacto de la agenda privada del usuario
+        const deleteAgendaQuery = `
             DELETE FROM user_agendas
             WHERE user_id = $1 AND contact_cedula = $2
             RETURNING *;
         `;
-        const result = await pool.query(query, [userId, contactCedula]);
+        const result = await client.query(deleteAgendaQuery, [userId, contactCedula]);
 
         if (result.rowCount === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'El contacto no se encontró en tu agenda privada.' });
         }
 
+        // Paso 2: Verificar si el contacto aún existe en la agenda de otro usuario
+        const checkOthersQuery = `
+            SELECT 1
+            FROM user_agendas
+            WHERE contact_cedula = $1
+            LIMIT 1;
+        `;
+        const othersResult = await client.query(checkOthersQuery, [contactCedula]);
+
+        // Si no se encontraron otros registros, es seguro eliminar los detalles del contacto
+        if (othersResult.rowCount === 0) {
+            const deleteDetailsQuery = `
+                DELETE FROM contact_details
+                WHERE cedula = $1
+                RETURNING *;
+            `;
+            await client.query(deleteDetailsQuery, [contactCedula]);
+            console.log(`Detalles del contacto ${contactCedula} eliminados porque ya no está en la agenda de ningún usuario.`);
+        }
+        
+        await client.query('COMMIT');
         res.json({ message: 'Contacto eliminado de la agenda exitosamente.', deletedRecord: result.rows[0] });
 
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error('Error al eliminar contacto de la agenda:', err);
         res.status(500).json({ error: 'Error del servidor', details: err.detail });
+    } finally {
+        client.release();
     }
 };
 
 module.exports = {
     addContactToAgenda,
     getPrivateAgenda,
-    getPrivateAgendaCedulas, // NUEVO: Exportamos la nueva función
+    getPrivateAgendaCedulas,
     updateContactDetails,
     deleteContactFromAgenda,
 };

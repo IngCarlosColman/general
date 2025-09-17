@@ -1,5 +1,4 @@
-// followup.controller.js
-const { pool } = require('../db/db'); // Usando tu pool de conexiones
+const { pool } = require('../db/db');
 
 /**
  * GET - Obtener todos los eventos de seguimiento para el usuario actual.
@@ -13,7 +12,7 @@ const getAllEvents = async (req, res) => {
     }
 
     try {
-        const result = await pool.query('SELECT * FROM follow_up_events WHERE user_id = $1 ORDER BY date ASC', [id_usuario]);
+        const result = await pool.query('SELECT id, user_id, event_key, title, description, date, color, icon FROM follow_up_events WHERE user_id = $1 ORDER BY date ASC', [id_usuario]);
         res.status(200).json(result.rows);
     } catch (error) {
         console.error('Error al obtener los eventos de seguimiento:', error);
@@ -30,17 +29,18 @@ const createEvent = async (req, res) => {
         return res.status(403).json({ error: 'Acceso denegado. No tienes permiso para crear registros.' });
     }
 
-    const { title, description, date, color, icon } = req.body;
+    // CORRECCIÓN: Destructuramos `id` del cuerpo de la solicitud para usarlo como `event_key`
+    const { id, title, description, date, color, icon } = req.body;
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN'); // Inicia la transacción
 
         const result = await client.query(
-            `INSERT INTO follow_up_events (user_id, title, description, date, color, icon)
-             VALUES ($1, $2, $3, $4, $5, $6)
+            `INSERT INTO follow_up_events (user_id, event_key, title, description, date, color, icon)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING *`,
-            [id_usuario, title, description, date, color, icon]
+            [id_usuario, id, title, description, date, color, icon]
         );
         
         await client.query('COMMIT'); // Confirma la transacción
@@ -58,7 +58,7 @@ const createEvent = async (req, res) => {
  * PUT - Actualizar un evento de seguimiento.
  */
 const updateEvent = async (req, res) => {
-    const { id: event_id } = req.params;
+    const { id: event_id_str } = req.params;
     const { id: id_usuario } = req.user;
     const { title, description, date, color, icon } = req.body;
     const client = await pool.connect();
@@ -69,9 +69,9 @@ const updateEvent = async (req, res) => {
         const result = await client.query(
             `UPDATE follow_up_events
              SET title = $1, description = $2, date = $3, color = $4, icon = $5, updated_at = CURRENT_TIMESTAMP
-             WHERE id = $6 AND user_id = $7
+             WHERE event_key = $6 AND user_id = $7
              RETURNING *`,
-            [title, description, date, color, icon, event_id, id_usuario]
+            [title, description, date, color, icon, event_id_str, id_usuario]
         );
 
         if (result.rowCount === 0) {
@@ -94,8 +94,10 @@ const updateEvent = async (req, res) => {
  * DELETE - Eliminar un evento de seguimiento.
  */
 const deleteEvent = async (req, res) => {
-    const { id: event_id } = req.params;
+    const { id: event_id_str } = req.params;
     const { id: id_usuario } = req.user;
+
+    // Ya no es necesario el parseInt. Ahora buscamos por el ID de cadena
     const client = await pool.connect();
 
     try {
@@ -103,9 +105,9 @@ const deleteEvent = async (req, res) => {
 
         const result = await client.query(
             `DELETE FROM follow_up_events
-             WHERE id = $1 AND user_id = $2
-             RETURNING id`,
-            [event_id, id_usuario]
+             WHERE event_key = $1 AND user_id = $2
+             RETURNING event_key`,
+            [event_id_str, id_usuario]
         );
 
         if (result.rowCount === 0) {
@@ -114,7 +116,7 @@ const deleteEvent = async (req, res) => {
         }
 
         await client.query('COMMIT');
-        res.status(200).json({ message: 'Evento eliminado exitosamente', deletedId: event_id });
+        res.status(200).json({ message: 'Evento eliminado exitosamente', deletedEventKey: event_id_str });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al eliminar el evento de seguimiento:', err);

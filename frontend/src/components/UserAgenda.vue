@@ -267,12 +267,10 @@ import apiClient from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import { useSnackbar } from '@/composables/useSnackbar';
 import { debounce } from 'lodash';
-// Importa el nuevo store que creaste en el paso 1
 import { useCalendarEventsStore } from '@/stores/calendarEvents';
 
 const { showSnackbar } = useSnackbar();
 const authStore = useAuthStore();
-// Crea una instancia del store de eventos
 const calendarEventsStore = useCalendarEventsStore();
 
 const agendaData = ref([]);
@@ -297,7 +295,7 @@ const generalHeaders = [
 
 const detailsDialog = ref(false);
 const editedItem = ref({});
-const originalDateOfBirth = ref(''); 
+const originalItem = ref({}); // <-- Nueva variable para almacenar el estado original
 const defaultItem = {
   cedula: '',
   nombres: '',
@@ -380,7 +378,9 @@ const isAlreadyAdded = (cedula) => {
 };
 
 const loadGeneralItems = async (options) => {
-  if (!options.search || options.search.trim() === '') {
+  const searchTerm = addSearch.value;
+
+  if (!searchTerm || searchTerm.trim() === '') {
     generalContacts.value = [];
     generalTotalItems.value = 0;
     return;
@@ -388,12 +388,12 @@ const loadGeneralItems = async (options) => {
   
   generalLoading.value = true;
   try {
-    const { page, itemsPerPage, search: generalSearch = '' } = options;
+    const { page, itemsPerPage } = options;
     const response = await apiClient.get('/general', {
       params: {
         page: page,
         itemsPerPage: itemsPerPage,
-        search: generalSearch,
+        search: searchTerm,
       },
     });
     generalContacts.value = response.data.items;
@@ -422,27 +422,38 @@ const addContactToAgenda = async (contact) => {
 };
 
 const showDetails = (item) => {
+  // Captura el estado original del item antes de editarlo.
+  originalItem.value = JSON.parse(JSON.stringify(item));
   editedItem.value = Object.assign({}, defaultItem, item);
   
-  // Convertir el formato ISO 8601 a YYYY-MM-DD para el input type="date"
   if (editedItem.value.fecha_nacimiento) {
     editedItem.value.fecha_nacimiento = editedItem.value.fecha_nacimiento.split('T')[0];
   }
   
-  // Almacenar la fecha original para comparación
-  originalDateOfBirth.value = editedItem.value.fecha_nacimiento;
-
   detailsDialog.value = true;
 };
 
 const closeDetailsDialog = () => {
   detailsDialog.value = false;
   editedItem.value = Object.assign({}, defaultItem);
-  originalDateOfBirth.value = '';
+  originalItem.value = {}; // Limpia el original para evitar efectos secundarios
+};
+
+// Función auxiliar para calcular el tercer domingo de junio
+const getThirdSundayInJune = (year) => {
+  const juneFirst = new Date(year, 5, 1);
+  const dayOfWeek = juneFirst.getDay();
+  const firstSunday = dayOfWeek === 0 ? 1 : 1 + (7 - dayOfWeek);
+  return new Date(year, 5, firstSunday + 14);
 };
 
 const saveDetails = async () => {
   try {
+    // Almacenar el estado original de los campos para la comparación
+    const originalDateOfBirth = originalItem.value.fecha_nacimiento?.split('T')[0] || '';
+    const originalIsFather = originalItem.value.es_padre || false;
+    const originalIsMother = originalItem.value.es_madre || false;
+    
     const updatedData = {
       cargo: editedItem.value.cargo,
       empresa: editedItem.value.empresa,
@@ -452,22 +463,25 @@ const saveDetails = async () => {
       esMadre: editedItem.value.es_madre,
     };
     
-    // Verificar si la fecha de nacimiento cambió antes de hacer la solicitud PUT
-    let hasDateChanged = editedItem.value.fecha_nacimiento !== originalDateOfBirth.value;
+    const hasDateChanged = editedItem.value.fecha_nacimiento !== originalDateOfBirth;
+    const hasFatherChanged = editedItem.value.es_padre !== originalIsFather;
+    const hasMotherChanged = editedItem.value.es_madre !== originalIsMother;
 
+    // Primero, guardar los detalles del contacto
     const response = await apiClient.put(`/private-agenda/${editedItem.value.cedula}`, updatedData);
+    
     if (response.status === 200) {
       showSnackbar('Detalles actualizados con éxito.', 'success');
       closeDetailsDialog();
       await loadItems({ page: 1, itemsPerPage: 10, sortBy: [] });
 
-      // Sincronizar el aniversario SOLO si la fecha de nacimiento ha cambiado
+      // --- Sincronizar Aniversarios (si hubo cambios) ---
       if (editedItem.value.fecha_nacimiento && hasDateChanged) {
         const [year, month, day] = editedItem.value.fecha_nacimiento.split('-');
         const currentYear = new Date().getFullYear();
         const birthdayDate = `${currentYear}-${month}-${day}T00:00:00.000Z`;
         const birthdayTitle = `Cumpleaños de ${editedItem.value.nombres} ${editedItem.value.apellidos}`;
-        const eventId = `birthday-${editedItem.value.cedula}-${year}-${month}-${day}`;
+        const eventId = `birthday-${editedItem.value.cedula}`;
 
         const eventData = {
           id: eventId,
@@ -479,16 +493,87 @@ const saveDetails = async () => {
         };
 
         try {
-          await apiClient.put('/private-agenda/events', eventData);
-          showSnackbar('Aniversario agregado al calendario.', 'info');
-          
-          // Llama a la acción del store para recargar los eventos
-          await calendarEventsStore.fetchEvents();
-
+          await apiClient.put('/private-agenda/events', eventData); 
+          showSnackbar('Aniversario sincronizado con el calendario.', 'info');
         } catch (eventError) {
           console.error('Error al sincronizar el aniversario con el calendario:', eventError);
         }
+      } else if (!editedItem.value.fecha_nacimiento && originalDateOfBirth) {
+        const eventId = `birthday-${editedItem.value.cedula}`;
+        try {
+          await apiClient.delete(`/private-agenda/events/${eventId}`);
+        } catch (eventError) {
+          if (eventError.response && eventError.response.status === 404) {
+            console.warn(`Intento de eliminar un evento no existente: ${eventId}`);
+          } else {
+            console.error('Error al intentar eliminar el evento de cumpleaños:', eventError);
+          }
+        }
       }
+
+      // --- Sincronizar Día de la Madre (si hubo cambios) ---
+      if (editedItem.value.es_madre && hasMotherChanged) {
+        const motherDayEvent = {
+          id: `mother-day-${editedItem.value.cedula}`,
+          title: `Día de la Madre de ${editedItem.value.nombres} ${editedItem.value.apellidos}`,
+          description: `Recordatorio del Día de la Madre para ${editedItem.value.nombres} ${editedItem.value.apellidos}.`,
+          date: `${new Date().getFullYear()}-05-15T00:00:00.000Z`,
+          color: 'pink',
+          icon: 'mdi-flower'
+        };
+        try {
+          await apiClient.put('/private-agenda/events', motherDayEvent);
+          showSnackbar('Evento del Día de la Madre agregado.', 'info');
+        } catch (eventError) {
+          console.error('Error al sincronizar el Día de la Madre:', eventError);
+        }
+      } else if (!editedItem.value.es_madre && originalIsMother) {
+        const eventId = `mother-day-${editedItem.value.cedula}`;
+        try {
+          await apiClient.delete(`/private-agenda/events/${eventId}`);
+        } catch (eventError) {
+          if (eventError.response && eventError.response.status === 404) {
+            console.warn(`Intento de eliminar un evento no existente: ${eventId}`);
+          } else {
+            console.error('Error al intentar eliminar el evento del Día de la Madre:', eventError);
+          }
+        }
+      }
+
+      // --- Sincronizar Día del Padre (si hubo cambios) ---
+      if (editedItem.value.es_padre && hasFatherChanged) {
+        const fatherDayDate = getThirdSundayInJune(new Date().getFullYear());
+        const formattedDate = fatherDayDate.toISOString();
+        
+        const fatherDayEvent = {
+          id: `father-day-${editedItem.value.cedula}`,
+          title: `Día del Padre de ${editedItem.value.nombres} ${editedItem.value.apellidos}`,
+          description: `Recordatorio del Día del Padre para ${editedItem.value.nombres} ${editedItem.value.apellidos}.`,
+          date: formattedDate,
+          color: 'blue',
+          icon: 'mdi-account-tie'
+        };
+        try {
+          await apiClient.put('/private-agenda/events', fatherDayEvent);
+          showSnackbar('Evento del Día del Padre agregado.', 'info');
+        } catch (eventError) {
+          console.error('Error al sincronizar el Día del Padre:', eventError);
+        }
+      } else if (!editedItem.value.es_padre && originalIsFather) {
+        const eventId = `father-day-${editedItem.value.cedula}`;
+        try {
+          await apiClient.delete(`/private-agenda/events/${eventId}`);
+        } catch (eventError) {
+          if (eventError.response && eventError.response.status === 404) {
+            console.warn(`Intento de eliminar un evento no existente: ${eventId}`);
+          } else {
+            console.error('Error al intentar eliminar el evento del Día del Padre:', eventError);
+          }
+        }
+      }
+      
+      // Finalmente, recargar todos los eventos del calendario
+      await calendarEventsStore.fetchEvents();
     }
   } catch (error) {
     console.error('Error al guardar los detalles:', error);
@@ -503,25 +588,50 @@ const confirmDelete = (item) => {
 
 const closeDeleteDialog = () => {
   deleteDialog.value = false;
-  itemToDelete.value = null;
+  // Solo se restablece después de que la eliminación esté completa.
+  // itemToDelete.value = null; <-- Esto se ha movido
 };
 
 const deleteConfirmed = async () => {
-  if (!itemToDelete.value) return;
+  const contactToDelete = itemToDelete.value;
+  if (!contactToDelete) {
+    return;
+  }
+  
   try {
-    const response = await apiClient.delete(`/private-agenda/${itemToDelete.value.cedula}`);
+    const response = await apiClient.delete(`/private-agenda/${contactToDelete.cedula}`);
     if (response.status === 200) {
       showSnackbar('Contacto eliminado de tu agenda.', 'success');
-      closeDeleteDialog();
-      await fetchAgendaCedulas();
-      await loadItems({ page: 1, itemsPerPage: 10, sortBy: [] });
       
-      // Llama a la acción del store después de eliminar un contacto para mantener la consistencia
-      await calendarEventsStore.fetchEvents();
+      const eventIdsToDelete = [
+        `birthday-${contactToDelete.cedula}`,
+        `mother-day-${contactToDelete.cedula}`,
+        `father-day-${contactToDelete.cedula}`
+      ];
+      
+      await Promise.all(eventIdsToDelete.map(async (eventId) => {
+        try {
+          await apiClient.delete(`/private-agenda/events/${eventId}`);
+        } catch (error) {
+          if (error.response && error.response.status === 404) {
+            console.warn(`No se pudo eliminar el evento ${eventId}, puede que ya no exista.`);
+          } else {
+            console.error(`Error al intentar eliminar el evento ${eventId}:`, error);
+          }
+        }
+      }));
+      
+      await Promise.all([
+        loadItems({ page: 1, itemsPerPage: 10, sortBy: [] }),
+        calendarEventsStore.fetchEvents()
+      ]);
     }
   } catch (error) {
     console.error('Error al eliminar el contacto:', error);
     showSnackbar('Error al eliminar el contacto de la agenda.', 'error');
+  } finally {
+    closeDeleteDialog();
+    itemToDelete.value = null;
   }
 };
 

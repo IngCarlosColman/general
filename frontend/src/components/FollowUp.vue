@@ -8,6 +8,15 @@
             <v-spacer></v-spacer>
             <v-btn
               color="primary"
+              variant="outlined"
+              prepend-icon="mdi-refresh"
+              @click="refreshEvents"
+              class="me-2"
+            >
+              Ver Notas
+            </v-btn>
+            <v-btn
+              color="primary"
               variant="flat"
               prepend-icon="mdi-plus"
               @click="openEventDialog({})"
@@ -134,7 +143,7 @@
           ></v-textarea>
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn v-if="isEditing" color="red-darken-3" variant="text" @click="deleteEvent">
+          <v-btn v-if="isEditing" color="red-darken-3" variant="text" @click="confirmDeleteEvent">
             Eliminar
           </v-btn>
           <v-spacer></v-spacer>
@@ -143,11 +152,30 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="confirmDialog" max-width="400px">
+      <v-card>
+        <v-toolbar color="red-darken-3" flat density="compact">
+          <v-toolbar-title class="text-white">Confirmar Eliminación</v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-btn icon @click="confirmDialog = false" color="white">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-toolbar>
+        <v-card-text class="py-4 text-center">
+          ¿Estás seguro de que deseas eliminar este evento? Esta acción no se puede deshacer.
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn color="grey-darken-2" @click="confirmDialog = false">Cancelar</v-btn>
+          <v-btn color="red-darken-3" variant="flat" @click="deleteEvent">Eliminar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import apiClient from '@/services/api';
 import { useSnackbar } from '@/composables/useSnackbar';
 import FullCalendar from '@fullcalendar/vue3';
@@ -166,37 +194,67 @@ const { events: customEvents } = storeToRefs(calendarEventsStore);
 const calendarEvents = ref([]);
 
 const eventDialog = ref(false);
+const confirmDialog = ref(false);
 const editedEvent = ref({ id: null, title: '', date: '', time: '', description: '', color: 'blue', icon: 'mdi-pencil' });
 const defaultEvent = { id: null, title: '', date: '', time: '', description: '', color: 'blue', icon: 'mdi-pencil' };
 const isEditing = computed(() => !!editedEvent.value.id);
+
+// **NUEVA FUNCIÓN: Forzamos la recarga imperativa del calendario**
+const refreshEvents = async () => {
+  try {
+    await calendarEventsStore.fetchEvents();
+    await fetchContacts();
+    generateAllEvents();
+    
+    if (fullCalendarRef.value) {
+      const calendarApi = fullCalendarRef.value.getApi();
+      calendarApi.removeAllEvents();
+      calendarApi.addEventSource(calendarEvents.value);
+    }
+
+    showSnackbar('Eventos recargados con éxito.', 'success');
+  } catch (error) {
+    showSnackbar('Error al recargar los eventos.', 'error');
+  }
+};
 
 const openEventDialog = (event) => {
   if (!event.id && !event.extendedProps) {
     editedEvent.value = Object.assign({}, defaultEvent, event);
   } else {
-    const eventId = event.extendedProps.id || event.id;
+    const eventId = event.extendedProps?.id || event.id;
 
     if (typeof eventId === 'number') {
-      let localDate = new Date(event.startStr);
-      const hours = String(localDate.getHours()).padStart(2, '0');
-      const minutes = String(localDate.getMinutes()).padStart(2, '0');
+      let localDate;
+      let time;
+
+      if (event.start) {
+        localDate = new Date(event.start);
+        const hours = String(localDate.getHours()).padStart(2, '0');
+        const minutes = String(localDate.getMinutes()).padStart(2, '0');
+        time = `${hours}:${minutes}`;
+      } else {
+        localDate = new Date(event.startStr);
+        time = '';
+      }
 
       editedEvent.value = {
         id: eventId,
         title: event.title,
-        date: event.startStr.split('T')[0],
-        time: event.allDay ? '' : `${hours}:${minutes}`,
-        description: event.extendedProps.description,
-        color: event.extendedProps.color,
-        icon: event.extendedProps.icon,
+        date: localDate.toISOString().split('T')[0],
+        time: event.allDay ? '' : time,
+        description: event.extendedProps?.description,
+        color: event.extendedProps?.color,
+        icon: event.extendedProps?.icon,
       };
     } else {
       showSnackbar('No puedes editar o eliminar días festivos o cumpleaños.', 'info');
       return;
     }
   }
-  
+
   eventDialog.value = true;
+  
 };
 
 const closeEventDialog = () => {
@@ -215,7 +273,7 @@ const saveEvent = async () => {
     const localDate = new Date(`${editedEvent.value.date}T${editedEvent.value.time}:00`);
     fullDateString = localDate.toISOString();
   } else {
-    fullDateString = editedEvent.value.date;
+    fullDateString = new Date(editedEvent.value.date).toISOString().split('T')[0] + 'T00:00:00.000Z';
   }
 
   const eventData = {
@@ -231,12 +289,12 @@ const saveEvent = async () => {
       await apiClient.put(`/private-agenda/events/${editedEvent.value.id}`, eventData);
       showSnackbar('Evento actualizado con éxito.', 'success');
     } else {
-      const response = await apiClient.post('/private-agenda/events', eventData);
-      editedEvent.value.id = response.data.id;
+      await apiClient.post('/private-agenda/events', eventData);
       showSnackbar('Evento agregado con éxito.', 'success');
     }
 
-    await calendarEventsStore.fetchEvents();
+    // Usamos el nuevo método para recargar el calendario
+    await refreshEvents();
     closeEventDialog();
   } catch (error) {
     console.error('Error al guardar el evento:', error);
@@ -244,13 +302,24 @@ const saveEvent = async () => {
   }
 };
 
+const confirmDeleteEvent = () => {
+  if (typeof editedEvent.value.id !== 'number') {
+    showSnackbar('No puedes eliminar días festivos o cumpleaños.', 'info');
+    closeEventDialog();
+    return;
+  }
+  confirmDialog.value = true;
+};
+
 const deleteEvent = async () => {
   try {
     await apiClient.delete(`/private-agenda/events/${editedEvent.value.id}`);
     showSnackbar('Evento eliminado con éxito.', 'success');
     
-    await calendarEventsStore.fetchEvents();
+    // Usamos el nuevo método para recargar el calendario
+    await refreshEvents();
     closeEventDialog();
+    confirmDialog.value = false;
   } catch (error) {
     console.error('Error al eliminar el evento:', error);
     showSnackbar('Error al eliminar el evento.', 'error');
@@ -302,7 +371,7 @@ const generateAllEvents = () => {
   const events = [];
   const today = new Date();
   const currentYear = today.getFullYear();
-  
+
   const fixedHolidays = [
       { month: 0, day: 1, title: 'Año Nuevo' },
       { month: 1, day: 14, title: 'Día de los Enamorados' },
@@ -312,60 +381,51 @@ const generateAllEvents = () => {
       { month: 4, day: 15, title: 'Independencia del Paraguay' },
       { month: 11, day: 25, title: 'Navidad' },
   ];
-  fixedHolidays.forEach(holiday => {
-    events.push({
-      title: holiday.title,
-      date: new Date(currentYear, holiday.month, holiday.day).toISOString(),
-      color: 'red',
-      icon: 'mdi-flag',
-      allDay: true
+  for (let year = currentYear - 1; year <= currentYear + 1; year++) {
+    fixedHolidays.forEach(holiday => {
+      events.push({
+        title: holiday.title,
+        date: new Date(year, holiday.month, holiday.day).toISOString(),
+        color: 'red',
+        icon: 'mdi-flag',
+        allDay: true
+      });
     });
-  });
 
-  const variableHolidays = getVariableHolidays(currentYear);
-  variableHolidays.forEach(holiday => {
-    events.push({
-      title: holiday.title,
-      date: holiday.date.toISOString(),
-      color: 'red',
-      icon: 'mdi-flag',
-      allDay: true
+    const variableHolidays = getVariableHolidays(year);
+    variableHolidays.forEach(holiday => {
+      events.push({
+        title: holiday.title,
+        date: holiday.date.toISOString(),
+        color: 'red',
+        icon: 'mdi-flag',
+        allDay: true
+      });
     });
-  });
 
-  if (allContacts.value && Array.isArray(allContacts.value)) {
-    allContacts.value.forEach(contact => {
-      if (contact.fecha_nacimiento) {
-        // CORRECCIÓN: Se crea la fecha de nacimiento como local para evitar la conversión UTC
-        const birthDateString = contact.fecha_nacimiento.split('T')[0];
-        const [year, month, day] = birthDateString.split('-');
-        const birthDate = new Date(currentYear, month - 1, day);
-        
-        events.push({
-          title: `Cumpleaños de ${contact.nombres} ${contact.apellidos}`,
-          date: birthDate.toISOString(),
-          color: 'green',
-          icon: 'mdi-cake-variant',
-          allDay: true
-        });
-
-        // Genera el evento para el próximo año para que siempre esté visible
-        const nextYear = currentYear + 1;
-        const birthdayNextYear = new Date(nextYear, month - 1, day);
-        events.push({
-          title: `Cumpleaños de ${contact.nombres} ${contact.apellidos}`,
-          date: birthdayNextYear.toISOString(),
-          color: 'green',
-          icon: 'mdi-cake-variant',
-          allDay: true
-        });
-      }
-    });
+    if (allContacts.value && Array.isArray(allContacts.value)) {
+      allContacts.value.forEach(contact => {
+        if (contact.fecha_nacimiento) {
+          const birthDateString = contact.fecha_nacimiento.split('T')[0];
+          const [birthYear, month, day] = birthDateString.split('-');
+          const birthDate = new Date(year, month - 1, day);
+          
+          events.push({
+            id: `birthday-${contact.cedula}-${year}`,
+            title: `Cumpleaños de ${contact.nombres} ${contact.apellidos}`,
+            date: birthDate.toISOString(),
+            color: 'green',
+            icon: 'mdi-cake-variant',
+            allDay: true
+          });
+        }
+      });
+    }
   }
 
   if (customEvents.value && Array.isArray(customEvents.value)) {
     customEvents.value.forEach(event => {
-      const isAllDay = event.date.endsWith('T00:00:00.000Z');
+      const isAllDay = event.date.endsWith('T00:00:00.000Z') || !event.date.includes('T');
       events.push({
         id: event.id,
         title: event.title,
@@ -399,13 +459,13 @@ const calendarOptions = ref({
     right: 'dayGridMonth,dayGridWeek,dayGridDay'
   },
   locale: esLocale,
+  // Ya no usamos una propiedad computada, ahora los eventos se cargan de forma imperativa.
   events: calendarEvents,
   eventDisplay: 'block',
   editable: true,
   eventStartEditable: true,
   eventResizableFromStart: false,
   eventDurationEditable: false,
-  // CORRECCIÓN: Agrega la opción para usar la zona horaria local
   timeZone: 'local',
   
   dateClick: (info) => {
@@ -417,24 +477,24 @@ const calendarOptions = ref({
   eventDrop: async (info) => {
     try {
       if (typeof info.event.extendedProps.id !== 'number') {
-         info.revert();
-         showSnackbar('No puedes mover los días festivos o cumpleaños.', 'error');
-         return;
+        info.revert();
+        showSnackbar('No puedes mover los días festivos, cumpleaños o fechas especiales.', 'error');
+        return;
       }
 
       const eventId = info.event.extendedProps.id;
       let newDateString;
       if (info.event.allDay) {
-        newDateString = info.event.startStr;
+        newDateString = new Date(info.event.startStr).toISOString();
       } else {
-        const localDate = new Date(info.event.start);
-        newDateString = localDate.toISOString();
+        newDateString = info.event.start.toISOString();
       }
 
       await apiClient.put(`/private-agenda/events/${eventId}`, { date: newDateString });
       showSnackbar('Fecha del evento actualizada.', 'success');
       
-      await calendarEventsStore.fetchEvents();
+      // Recargamos el calendario para reflejar los cambios
+      await refreshEvents();
       
     } catch (error) {
       console.error('Error al actualizar fecha del evento:', error);
@@ -452,7 +512,7 @@ const calendarOptions = ref({
   
   eventContent: function(arg) {
     let titleEl = document.createElement('div');
-    const iconClass = arg.event.extendedProps.icon || 'mdi-calendar';
+    const iconClass = arg.event.extendedProps?.icon || 'mdi-calendar';
     titleEl.innerHTML = `<i class="mdi ${iconClass} me-1"></i>${arg.event.title}`;
     return { domNodes: [titleEl] };
   },
@@ -475,10 +535,16 @@ const dailyReminder = computed(() => {
   const today = new Date().toISOString().split('T')[0];
   const eventToday = calendarEvents.value.find(event => {
     const eventDateWithoutTime = new Date(event.date).toISOString().split('T')[0];
-    return eventDateWithoutTime === today && event.color === 'green' && event.title.startsWith('Cumpleaños de');
+    return eventDateWithoutTime === today && (event.color === 'green' || event.color === 'orange' || event.color === 'purple');
   });
   if (eventToday) {
-    return `¡Hoy es cumpleaños de ${eventToday.title.replace('Cumpleaños de ', '')}!`;
+    if (eventToday.color === 'green') {
+      return `¡Hoy es cumpleaños de ${eventToday.title.replace('Cumpleaños de ', '')}!`;
+    } else if (eventToday.color === 'orange') {
+      return `¡Hoy es el Día del Padre de: ${eventToday.title.replace('Día del Padre: ', '')}!`;
+    } else if (eventToday.color === 'purple') {
+      return `¡Hoy es el Día de la Madre de: ${eventToday.title.replace('Día de la Madre: ', '')}!`;
+    }
   }
   return null;
 });
@@ -508,13 +574,9 @@ const parentalNotification = computed(() => {
   return null;
 });
 
-watch([customEvents, allContacts], () => {
-  generateAllEvents();
-});
-
 onMounted(() => {
-  calendarEventsStore.fetchEvents();
-  fetchContacts();
+  // Llama a la función de recarga en el onMounted
+  refreshEvents();
   nextTick(() => {
     if (fullCalendarRef.value) {
       fullCalendarRef.value.getApi().updateSize();

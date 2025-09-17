@@ -21,7 +21,6 @@ export const useCalendarEventsStore = defineStore('calendarEvents', {
     },
     async addEvent(eventData) {
       try {
-        // Asumiendo que tu backend ya tiene un endpoint para esto.
         // La llamada a la API la haces en UserAgenda.vue
         // Aquí solo actualizamos el store
         // this.events.push(eventData); // Esto puede causar duplicados si el componente no recarga
