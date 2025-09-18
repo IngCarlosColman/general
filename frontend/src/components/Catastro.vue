@@ -155,11 +155,10 @@
               class="ma-2 font-weight-bold"
               size="large"
               variant="tonal"
-              @click="toggleMapVisibility"
-              :disabled="mapProperties.length === 0"
+              @click="showMap = true"
             >
-              <v-icon start>{{ showMap ? 'mdi-map-marker-off' : 'mdi-map-marker-radius' }}</v-icon>
-              {{ showMap ? 'Ocultar Mapa' : 'Ver Mapa' }}
+              <v-icon start>mdi-map-marker-radius</v-icon>
+              Ver Mapa
             </v-btn>
           </v-card-actions>
         </div>
@@ -211,14 +210,19 @@
       </v-data-table-server>
     </v-card-text>
 
-    <v-card v-if="showMap" class="pa-6 rounded-xl shadow-lg mt-8">
-      <v-card-title class="text-h6 text-center font-weight-bold mb-4">
-        Mapa de Propiedades
-      </v-card-title>
-      <v-card-text>
-        <MapComponent :properties="mapProperties" />
-      </v-card-text>
-    </v-card>
+    <v-dialog v-model="showMap" max-width="1200px" fullscreen>
+      <v-card class="d-flex flex-column pa-4 rounded-xl" style="height: 100%;">
+        <v-card-title class="d-flex justify-space-between align-center">
+          <div class="text-h6 font-weight-bold">Mapa de Propiedades</div>
+          <v-btn icon @click="showMap = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text class="pa-0 flex-grow-1">
+          <Mapa :properties="mapProperties" /> </v-card-text>
+      </v-card>
+    </v-dialog>
+
 
     <v-dialog v-model="dialog" max-width="500px">
       <v-card class="pa-4 rounded-xl">
@@ -275,7 +279,7 @@
 import { ref, reactive, onMounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCatastroStore } from '../stores/catastro';
-import MapComponent from './PropertyMap.vue';
+import Mapa from './Mapa.vue';
 
 // === PROPS ===
 const props = defineProps({
@@ -299,7 +303,6 @@ const {
 } = storeToRefs(store);
 
 // === ESTADO LOCAL DEL COMPONENTE ===
-// AÑADIDO: Estado para controlar si el formulario está colapsado
 const isFormCollapsed = ref(false);
 
 const form = reactive({
@@ -370,7 +373,6 @@ const showSnackbar = (message, color = 'info') => {
   snackbar.show = true;
 };
 
-// NUEVA FUNCIÓN: Alterna la visibilidad del formulario
 const toggleFormVisibility = () => {
   isFormCollapsed.value = !isFormCollapsed.value;
 };
@@ -388,7 +390,6 @@ const handleTipoPropiedadChange = () => {
 
 const handleSearch = () => {
   store.searchProperties(form, { page: 1, itemsPerPage: 10, sortBy: [] });
-  // NUEVO: Ocultar el formulario después de la búsqueda
   isFormCollapsed.value = true;
 };
 
@@ -415,13 +416,11 @@ const clearForm = () => {
   store.propiedades = [];
   store.totalPropiedades = 0;
   showMap.value = false;
-  // NUEVO: Mostrar el formulario al limpiar
   isFormCollapsed.value = false;
 };
 
-const toggleMapVisibility = () => {
-  showMap.value = !showMap.value;
-};
+// Se eliminó la función toggleMapVisibility, ahora el botón cambia showMap directamente
+// y el modal lo maneja
 
 const handleSearchCadastre = async (item) => {
   showSnackbar('Consultando API de Catastro...', 'info');

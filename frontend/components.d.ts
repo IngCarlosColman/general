@@ -23,6 +23,7 @@ declare module 'vue' {
     General: typeof import('./src/components/General.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
     HomeView: typeof import('./src/components/HomeView.vue')['default']
+    Mapa: typeof import('./src/components/Mapa.vue')['default']
     PropertyMap: typeof import('./src/components/PropertyMap.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

@@ -1,0 +1,1336 @@
+<!doctype html>
+
+<html lang="en">
+
+    <head>
+
+        <meta charset="utf-8"/>
+
+        <link rel="shortcut icon" href="/favicon.ico"/>
+
+        <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"/>
+
+        <meta name="theme-color" content="#000000"/>
+
+        <link rel="manifest" href="/manifest.json"/>
+
+        <title>Visor - SNC</title>
+
+        <link href="/static/css/1.2ee7c064.chunk.css" rel="stylesheet">
+
+        <link href="/static/css/main.199e6d81.chunk.css" rel="stylesheet">
+
+    </head>
+
+    <body>
+
+        <noscript>You need to enable JavaScript to run this app.</noscript>
+
+        <div id="root"></div>
+
+        <script>
+
+            !function(l) {
+
+                function e(e) {
+
+                    for (var r, t, n = e[0], o = e[1], u = e[2], f = 0, i = []; f < n.length; f++)
+
+                        t = n[f],
+
+                        p[t] && i.push(p[t][0]),
+
+                        p[t] = 0;
+
+                    for (r in o)
+
+                        Object.prototype.hasOwnProperty.call(o, r) && (l[r] = o[r]);
+
+                    for (s && s(e); i.length; )
+
+                        i.shift()();
+
+                    return c.push.apply(c, u || []),
+
+                    a()
+
+                }
+
+                function a() {
+
+                    for (var e, r = 0; r < c.length; r++) {
+
+                        for (var t = c[r], n = !0, o = 1; o < t.length; o++) {
+
+                            var u = t[o];
+
+                            0 !== p[u] && (n = !1)
+
+                        }
+
+                        n && (c.splice(r--, 1),
+
+                        e = f(f.s = t[0]))
+
+                    }
+
+                    return e
+
+                }
+
+                var t = {}
+
+                  , p = {
+
+                    2: 0
+
+                }
+
+                  , c = [];
+
+                function f(e) {
+
+                    if (t[e])
+
+                        return t[e].exports;
+
+                    var r = t[e] = {
+
+                        i: e,
+
+                        l: !1,
+
+                        exports: {}
+
+                    };
+
+                    return l[e].call(r.exports, r, r.exports, f),
+
+                    r.l = !0,
+
+                    r.exports
+
+                }
+
+                f.m = l,
+
+                f.c = t,
+
+                f.d = function(e, r, t) {
+
+                    f.o(e, r) || Object.defineProperty(e, r, {
+
+                        enumerable: !0,
+
+                        get: t
+
+                    })
+
+                }
+
+                ,
+
+                f.r = function(e) {
+
+                    "undefined" != typeof Symbol && Symbol.toStringTag && Object.defineProperty(e, Symbol.toStringTag, {
+
+                        value: "Module"
+
+                    }),
+
+                    Object.defineProperty(e, "__esModule", {
+
+                        value: !0
+
+                    })
+
+                }
+
+                ,
+
+                f.t = function(r, e) {
+
+                    if (1 & e && (r = f(r)),
+
+                    8 & e)
+
+                        return r;
+
+                    if (4 & e && "object" == typeof r && r && r.__esModule)
+
+                        return r;
+
+                    var t = Object.create(null);
+
+                    if (f.r(t),
+
+                    Object.defineProperty(t, "default", {
+
+                        enumerable: !0,
+
+                        value: r
+
+                    }),
+
+                    2 & e && "string" != typeof r)
+
+                        for (var n in r)
+
+                            f.d(t, n, function(e) {
+
+                                return r[e]
+
+                            }
+
+                            .bind(null, n));
+
+                    return t
+
+                }
+
+                ,
+
+                f.n = function(e) {
+
+                    var r = e && e.__esModule ? function() {
+
+                        return e.default
+
+                    }
+
+                    : function() {
+
+                        return e
+
+                    }
+
+                    ;
+
+                    return f.d(r, "a", r),
+
+                    r
+
+                }
+
+                ,
+
+                f.o = function(e, r) {
+
+                    return Object.prototype.hasOwnProperty.call(e, r)
+
+                }
+
+                ,
+
+                f.p = "/";
+
+                var r = window.webpackJsonp = window.webpackJsonp || []
+
+                  , n = r.push.bind(r);
+
+                r.push = e,
+
+                r = r.slice();
+
+                for (var o = 0; o < r.length; o++)
+
+                    e(r[o]);
+
+                var s = n;
+
+                a()
+
+            }([])
+
+        </script>
+
+        <script src="/static/js/1.a1c5ff4b.chunk.js"></script>
+
+        <script src="/static/js/main.d187d166.chunk.js"></script>
+
+    </body>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" media="none" onload='"all"!=media&&(media="all")'/>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129605830-1"></script>
+
+    <script>
+
+        function gtag() {
+
+            dataLayer.push(arguments)
+
+        }
+
+        window.dataLayer = window.dataLayer || [],
+
+        gtag("js", new Date),
+
+        gtag("config", "UA-129605830-1")
+
+    </script>
+
+</html>
+
+----
+
+Solicitud de URL
+
+https://www.catastro.gov.py:8080/auth/realms/kbpm/protocol/openid-connect/login-status-iframe.htmlMétodo de solicitud
+
+GETCódigo de estado
+
+200 OK (de la memoria caché del disco)Dirección remota
+
+190.52.161.79:8080Política del referente
+
+strict-origin-when-cross-origin
+
+----
+
+<!--
+
+  ~ Copyright 2016 Red Hat, Inc. and/or its affiliates
+
+  ~ and other contributors as indicated by the @author tags.
+
+  ~
+
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+
+  ~ you may not use this file except in compliance with the License.
+
+  ~ You may obtain a copy of the License at
+
+  ~
+
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+
+  ~
+
+  ~ Unless required by applicable law or agreed to in writing, software
+
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+  ~ See the License for the specific language governing permissions and
+
+  ~ limitations under the License.
+
+  -->
+
+
+
+<html>
+
+<body>
+
+<script>
+
+    var init;
+
+
+
+    function checkState(clientId, origin, sessionState, callback) {
+
+        var cookie = getCookie();
+
+
+
+        if (!cookie) {
+
+            callback('changed');
+
+        } else  if (!init) {
+
+            var req = new XMLHttpRequest();
+
+
+
+            var url = location.href + "/init";
+
+            url += "?client_id=" + encodeURIComponent(clientId);
+
+            url += "&origin=" + encodeURIComponent(origin);
+
+
+
+            req.open('GET', url, true);
+
+
+
+            req.onreadystatechange = function () {
+
+                if (req.readyState === 4) {
+
+                    if (req.status === 204) {
+
+                        init = {
+
+                            clientId: clientId,
+
+                            origin: origin
+
+                        }
+
+                        callback('unchanged');
+
+                    } else if (req.status === 404) {
+
+                        callback('changed');
+
+                    } else {
+
+                        callback('error');
+
+                    }
+
+                }
+
+            };
+
+
+
+            req.send();
+
+        } else {
+
+            if (clientId === init.clientId && origin === init.origin) {
+
+                var c = cookie.split('/');
+
+                if (sessionState === c[2]) {
+
+                    callback('unchanged');
+
+                } else {
+
+                    callback('changed');
+
+                }
+
+            } else {
+
+                callback('error');
+
+            }
+
+        }
+
+    }
+
+
+
+    function getCookie()
+
+    {
+
+        var name = 'KEYCLOAK_SESSION=';
+
+        var ca = document.cookie.split(';');
+
+        for(var i=0; i<ca.length; i++)
+
+        {
+
+            var c = ca[i].trim();
+
+            if (c.indexOf(name)===0) return c.substring(name.length,c.length);
+
+        }
+
+        return null;
+
+    }
+
+
+
+    function receiveMessage(event)
+
+    {
+
+        var origin = event.origin;
+
+        var data = event.data.split(' ');
+
+        if (data.length != 2) {
+
+            return;
+
+        }
+
+
+
+        var clientId = data[0];
+
+        var sessionState = data[1];
+
+
+
+        checkState(clientId, event.origin, sessionState, function(result) {
+
+            event.source.postMessage(result, origin);
+
+        });
+
+    }
+
+
+
+    window.addEventListener("message", receiveMessage, false);
+
+</script>
+
+</body>
+
+</html>
+
+---
+
+Solicitud de URL
+
+https://www.catastro.gov.py/geoserver/gwc/service/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true&LAYERS=snc%3Aparcelas_activas&TILED=true&SRS=EPSG%3A32721&WIDTH=256&HEIGHT=256&STYLES=&BBOX=-81999.515%2C6947871.076%2C377088.7112499998%2C7406959.30225Método de solicitud
+
+GETCódigo de estado
+
+200 OK (desde la caché de la memoria)Dirección remota
+
+190.52.161.79:443Política del referente
+
+strict-origin-when-cross-origin
+
+----
+
+SERVICE
+
+WMS
+
+VERSION
+
+1.1.1
+
+REQUEST
+
+GetMap
+
+FORMAT
+
+image/png
+
+TRANSPARENT
+
+true
+
+LAYERS
+
+snc:parcelas_activas
+
+TILED
+
+true
+
+SRS
+
+EPSG:32721
+
+WIDTH
+
+256
+
+HEIGHT
+
+256
+
+STYLES
+
+BBOX
+
+-81999.515,6947871.076,377088.7112499998,7406959.30225
+
+----
+
+Solicitud de URL
+
+https://www.google-analytics.com/g/collect?v=2&tid=G-X5V8L2938R&gtm=45je59g0v9115784040za200&_p=1758146361917&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=439899222.1758104814&ul=es-es&sr=1600x900&ir=1&uaa=x86&uab=64&uafvl=Chromium%3B140.0.7339.128%7CNot%253DA%253FBrand%3B24.0.0.0%7CGoogle%2520Chrome%3B140.0.7339.128&uamb=0&uam=&uap=Windows&uapv=19.0.0&uaw=0&are=1&frm=0&pscdl=noapi&_eu=EAAIAAQ&_s=1&tag_exp=101509157~103116026~103200004~103233427~104527906~104528500~104630779~104630781~104684208~104684211~104948813~105367987~105367989~105426769~105426771~115480709~115616986~115688283~115688285&sid=1758146339&sct=3&seg=1&dl=https%3A%2F%2Fwww.catastro.gov.py%2Fvisor%2F%3Fsnc%3Dgeo&dr=https%3A%2F%2Fwww.catastro.gov.py%2F&dt=Visor%20-%20SNC&en=page_view&tfd=5657Método de solicitud
+
+POSTCódigo de estado
+
+204 No ContentDirección remota
+
+[2001:4860:4802:32::178]:443Política del referente
+
+strict-origin-when-cross-origin
+
+----
+
+v
+
+2
+
+tid
+
+G-X5V8L2938R
+
+gtm
+
+45je59g0v9115784040za200
+
+_p
+
+1758146361917
+
+gcd
+
+13l3l3l3l1l1
+
+npa
+
+0
+
+dma
+
+0
+
+cid
+
+439899222.1758104814
+
+ul
+
+es-es
+
+sr
+
+1600x900
+
+ir
+
+1
+
+uaa
+
+x86
+
+uab
+
+64
+
+uafvl
+
+Chromium;140.0.7339.128|Not%3DA%3FBrand;24.0.0.0|Google%20Chrome;140.0.7339.128
+
+uamb
+
+0
+
+uam
+
+uap
+
+Windows
+
+uapv
+
+19.0.0
+
+uaw
+
+0
+
+are
+
+1
+
+frm
+
+0
+
+pscdl
+
+noapi
+
+_eu
+
+EAAIAAQ
+
+_s
+
+1
+
+tag_exp
+
+101509157~103116026~103200004~103233427~104527906~104528500~104630779~104630781~104684208~104684211~104948813~105367987~105367989~105426769~105426771~115480709~115616986~115688283~115688285
+
+sid
+
+1758146339
+
+sct
+
+3
+
+seg
+
+1
+
+dl
+
+https://www.catastro.gov.py/visor/?snc=geo
+
+dr
+
+https://www.catastro.gov.py/
+
+dt
+
+Visor - SNC
+
+en
+
+page_view
+
+tfd
+
+5657
+
+----
+
+Solicitud de URL
+
+https://www.catastro.gov.py/api/v1/public/cuentas?dpto=K&dist=4&zona=26&manzana=758&lote=5Método de solicitud
+
+GETCódigo de estado
+
+200 OKDirección remota
+
+190.52.161.79:443Política del referente
+
+strict-origin-when-cross-origin
+
+---
+
+dpto
+
+K
+
+dist
+
+4
+
+zona
+
+26
+
+manzana
+
+758
+
+lote
+
+5
+
+---
+
+
+
+{distrito: "CIUDAD DEL ESTE", zona: 26, manzana: 758, lote: 5, pisoNivel: "00", dptoSalon: "000",…}
+
+distrito
+
+:
+
+"CIUDAD DEL ESTE"
+
+dptoSalon
+
+:
+
+"000"
+
+fechaInscripcion
+
+:
+
+"2008-03-06T00:00:00.000Z"
+
+finca
+
+:
+
+null
+
+lote
+
+:
+
+5
+
+loteoLote
+
+:
+
+"5"
+
+loteoManzana
+
+:
+
+"XIII"
+
+manzana
+
+:
+
+758
+
+numeroMatricula
+
+:
+
+null
+
+pisoNivel
+
+:
+
+"00"
+
+situacion
+
+:
+
+"A"
+
+supeficieEdificadaM2
+
+:
+
+"0.00"
+
+superficieM2
+
+:
+
+"481.00"
+
+valorEdificacion
+
+:
+
+"0"
+
+valorTierra
+
+:
+
+"9481953"
+
+zona
+
+:
+
+26
+
+---
+
+Solicitud de URL
+
+https://www.catastro.gov.py/geoserver/ows?service=WFS&version=1.1.0&request=GetFeature&outputFormat=application/json&srsname=EPSG:32721&typename=snc:parcelas_activas&CQL_FILTER=dist=4%20AND%20dpto=%27K%27%20AND%20zona=%2726%27%20AND%20mz=%27758%27%20AND%20lote=%275%27&Método de solicitud
+
+GETCódigo de estado
+
+200 OKDirección remota
+
+190.52.161.79:443Política del referente
+
+strict-origin-when-cross-origin
+
+----
+
+service
+
+WFS
+
+version
+
+1.1.0
+
+request
+
+GetFeature
+
+outputFormat
+
+application/json
+
+srsname
+
+EPSG:32721
+
+typename
+
+snc:parcelas_activas
+
+CQL_FILTER
+
+dist=4 AND dpto='K' AND zona='26' AND mz='758' AND lote='5'
+
+(vacío)
+
+---
+
+{
+
+    "type": "FeatureCollection",
+
+    "features": [
+
+        {
+
+            "type": "Feature",
+
+            "id": "parcelas_activas.1865471",
+
+            "geometry": {
+
+                "type": "Polygon",
+
+                "coordinates": [
+
+                    [
+
+                        [
+
+                            734286.9115,
+
+                            7175232.9715
+
+                        ],
+
+                        [
+
+                            734262.629,
+
+                            7175242.2635
+
+                        ],
+
+                        [
+
+                            734256.017,
+
+                            7175224.9855
+
+                        ],
+
+                        [
+
+                            734280.3,
+
+                            7175215.693
+
+                        ],
+
+                        [
+
+                            734286.9115,
+
+                            7175232.9715
+
+                        ]
+
+                    ]
+
+                ]
+
+            },
+
+            "geometry_name": "tmp_shape",
+
+            "properties": {
+
+                "id": 1865471,
+
+                "objectid": 1550987,
+
+                "id_parcela": null,
+
+                "dpto": "K",
+
+                "dist": 4,
+
+                "padron": null,
+
+                "zona": 26,
+
+                "mz": 758,
+
+                "lote": 5,
+
+                "finca": null,
+
+                "nro_matricula": null,
+
+                "ccatastral": null,
+
+                "obs": null,
+
+                "mz_agr": "XIII",
+
+                "lote_agr": "5",
+
+                "tipo_pavim": null,
+
+                "tipo_cuenta": 1,
+
+                "hectareas": null,
+
+                "superficie_tierra": 0,
+
+                "superficie_edificado": 0,
+
+                "valor_tierra": 0,
+
+                "valor_edificado": 0,
+
+                "shape": {
+
+                    "type": "MultiPolygon",
+
+                    "coordinates": [
+
+                        [
+
+                            [
+
+                                [
+
+                                    734286.9115,
+
+                                    7175232.9715
+
+                                ],
+
+                                [
+
+                                    734262.629,
+
+                                    7175242.2635
+
+                                ],
+
+                                [
+
+                                    734256.017,
+
+                                    7175224.9855
+
+                                ],
+
+                                [
+
+                                    734280.3,
+
+                                    7175215.693
+
+                                ],
+
+                                [
+
+                                    734286.9115,
+
+                                    7175232.9715
+
+                                ]
+
+                            ]
+
+                        ]
+
+                    ]
+
+                },
+
+                "tipo": null,
+
+                "referencia": 1
+
+            },
+
+            "bbox": [
+
+                734256.017,
+
+                7175215.693,
+
+                734286.9115,
+
+                7175242.2635
+
+            ]
+
+        }
+
+    ],
+
+    "totalFeatures": 1,
+
+    "numberMatched": 1,
+
+    "numberReturned": 1,
+
+    "timeStamp": "2025-09-17T22:02:14.157Z",
+
+    "crs": {
+
+        "type": "name",
+
+        "properties": {
+
+            "name": "urn:ogc:def:crs:EPSG::32721"
+
+        }
+
+    },
+
+    "bbox": [
+
+        734256.017,
+
+        7175215.693,
+
+        734286.9115,
+
+        7175242.2635
+
+    ]
+
+}
+
+----
+
+Solicitud de URL
+
+https://www.catastro.gov.py/api/v1/public/cuentas?dpto=K&dist=1&zona=26&manzana=758&lote=5&padron=13Método de solicitud
+
+GETCódigo de estado
+
+200 OKDirección remota
+
+190.52.161.79:443Política del referente
+
+strict-origin-when-cross-origin
+
+---
+
+dpto
+
+K
+
+dist
+
+1
+
+zona
+
+26
+
+manzana
+
+758
+
+lote
+
+5
+
+padron
+
+13
+
+---
+
+{
+
+    "departamento": "ALTO PARANA",
+
+    "distrito": "HERNANDARIAS",
+
+    "padron": 13,
+
+    "finca": 0,
+
+    "fechaInscripcion": "1970-01-02T00:00:00.000Z",
+
+    "situacion": "I",
+
+    "hectareas": 0,
+
+    "metrosCuadrados": 0,
+
+    "valorOficial": "0",
+
+    "numeroManzana": null,
+
+    "numeroLote": null,
+
+    "numeroMatricula": "0"
+
+}
+
+---
+
+{
+
+    "departamento": "ALTO PARANA",
+
+    "distrito": "HERNANDARIAS",
+
+    "padron": 13,
+
+    "finca": 0,
+
+    "fechaInscripcion": "1970-01-02T00:00:00.000Z",
+
+    "situacion": "I",
+
+    "hectareas": 0,
+
+    "metrosCuadrados": 0,
+
+    "valorOficial": "0",
+
+    "numeroManzana": null,
+
+    "numeroLote": null,
+
+    "numeroMatricula": "0"
+
+}
+
+----
+
+hazme una auditoria.... de toda esta información recopilada...
+
+---- y un resumen de llamados, endpoints, asociados, consultas, y respuestas...
+
+que archivos estuvieron involucrados.. y un analisis de la estructura de la api..; teconologías, tipo de mapa, layers informaciones todo... de forma única..
+----
+---
+📝 Resumen y Auditoría de la Información
+Archivos Involucrados
+Los fragmentos de código y las solicitudes de red revelan que tu aplicación es un SPA (Single-Page Application), probablemente construida con React o Vue.js, y empaquetada con Webpack.
+
+index.html: Este es el archivo principal que carga la aplicación. Se observa que está cargando dos archivos de CSS (1.2ee7c064.chunk.css y main.199e6d81.chunk.css) y dos de JavaScript (1.a1c5ff4b.chunk.js y main.d187d166.chunk.js), lo cual es un patrón común en aplicaciones modernas compiladas. También incluye la etiqueta <div id="root"></div>, un punto de montaje estándar para frameworks como React.
+
+login-status-iframe.html: Este archivo, servido desde el dominio auth/realms/kbpm/, es un componente de autenticación. El código JavaScript que contiene (checkState, getCookie, receiveMessage) indica que se utiliza el protocolo OpenID Connect a través de Keycloak para manejar el estado de la sesión del usuario.
+
+Archivos de tu aplicación (Catastro.vue, Mapa.vue, App.vue): Estos archivos, aunque no proporcionados en su totalidad, se infieren de las conversaciones anteriores. Catastro.vue contiene la lógica para la búsqueda y visualización de datos, mientras que Mapa.vue se encarga de la lógica de renderizado del mapa. App.vue es el componente raíz que define la estructura principal de la aplicación.
+
+Análisis de Solicitudes y Endpoints
+Se han identificado múltiples llamadas a la API de Catastro y al servidor de mapas, mostrando un flujo de trabajo claro.
+
+Endpoint de Autenticación:
+
+Llamada: https://www.catastro.gov.py:8080/auth/realms/kbpm/protocol/openid-connect/login-status-iframe.html
+
+Propósito: Verificación del estado de inicio de sesión del usuario. El uso de un iframe y los parámetros de client_id y origin son característicos de Keycloak para el Single Sign-On (SSO) y la validación de la sesión.
+
+Respuesta: 200 OK (de la memoria caché del disco). Esto sugiere que la sesión del usuario es válida y está activa.
+
+Endpoint de la API de Propiedades (Cuentas):
+
+Llamada 1: https://www.catastro.gov.py/api/v1/public/cuentas?dpto=K&dist=4&zona=26&manzana=758&lote=5
+
+Propósito: Buscar una propiedad urbana específica (dpto=K, dist=4, zona=26, manzana=758, lote=5).
+
+Respuesta: 200 OK. La API devuelve un objeto JSON con detalles de la propiedad, incluyendo distrito, superficieM2, manzana, lote, etc.
+
+Llamada 2: https://www.catastro.gov.py/api/v1/public/cuentas?dpto=K&dist=1&zona=26&manzana=758&lote=5&padron=13
+
+Propósito: Realizar una segunda consulta, esta vez con parámetros que sugieren una búsqueda rural o con un padrón específico. La mezcla de parámetros (zona, manzana, lote con padron) indica la flexibilidad del endpoint.
+
+Respuesta: 200 OK. Se obtiene un objeto JSON con detalles de una propiedad rural, como departamento, distrito, padron y hectareas.
+
+Endpoints de Mapas (Geoserver):
+
+Llamada a WMS: https://www.catastro.gov.py/geoserver/gwc/service/wms?...
+
+Propósito: Cargar un mapa base o una capa de fondo (snc:parcelas_activas). El SERVICE=WMS indica un servicio de mapas web.
+
+Respuesta: 200 OK (desde la caché de la memoria). Se obtiene la imagen del mapa en formato image/png. La presencia de gwc en la URL indica el uso de GeoWebCache, un servicio para optimizar y acelerar la entrega de las imágenes del mapa, lo que mejora el rendimiento.
+
+Llamada a WFS: https://www.catastro.gov.py/geoserver/ows?service=WFS&...
+
+Propósito: Obtener la geometría vectorial de una propiedad específica. El request=GetFeature y el outputFormat=application/json confirman que se está pidiendo los datos geográficos en formato GeoJSON. El CQL_FILTER se utiliza para filtrar la búsqueda por los parámetros de la propiedad (departamento, distrito, etc.).
+
+Respuesta: 200 OK. Se recibe un objeto GeoJSON que contiene las coordenadas de un polígono, la información de la propiedad y un CRS (Coordinate Reference System) de tipo EPSG:32721.
+
+🗺️ Análisis de Tecnologías y Estructura
+Tecnologías Utilizadas
+Frontend: Se utiliza un framework de JavaScript moderno (Vue.js, por el nombre de los archivos que mencionaste) para construir la interfaz de usuario.
+
+Backend (API): La API REST parece estar bien estructurada, con versiones (v1) y endpoints públicos. Los nombres de los parámetros (dpto, dist, zona, manzana) son claros y consistentes.
+
+Autenticación: Se utiliza Keycloak, una solución de código abierto de Red Hat, que implementa el protocolo OpenID Connect para gestionar la autenticación y autorización.
+
+Servicio de Mapas: Se usa GeoServer para servir las capas de datos geográficos. La presencia de gwc (geowebcache) indica una optimización importante para el rendimiento del mapa.
+
+Motor de Base de Datos Espacial: El uso de GeoServer y WFS/WMS sugiere que los datos se almacenan en una base de datos espacial como PostGIS (extensión para PostgreSQL), que es el estándar de facto para este tipo de aplicaciones.
+
+Tipo de Mapa y Capas
+La aplicación no usa un solo tipo de mapa, sino que combina dos tipos de datos geográficos:
+
+Mapas de Raster (WMS): La llamada a GetMap devuelve una imagen (.png). Esta es una capa de mapa de fondo, optimizada para la visualización rápida, pero no permite la interacción con entidades individuales (no puedes hacer clic en una parcela y obtener sus datos directamente de esta capa).
+
+Mapas de Vector (WFS): La llamada a GetFeature devuelve un archivo GeoJSON que contiene las coordenadas del polígono de la parcela. Este es el componente clave que permite la interactividad. La aplicación toma estas coordenadas y las dibuja sobre la capa de fondo, lo que permite al usuario interactuar con la parcela específica, como hacerle zoom o cambiar su estilo.
+
+Conclusión
+La arquitectura de la aplicación es robusta y estándar para aplicaciones GIS (Sistemas de Información Geográfica) en la web. Combina una API REST para los datos de propiedades con un servicio de mapas especializado (GeoServer) para los datos geográficos. La autenticación está manejada de forma segura con Keycloak. Tu lógica de frontend está diseñada para hacer una búsqueda en la API de datos, y luego, usando los identificadores de la propiedad, buscar la geometría correspondiente en el servidor de mapas. La razón por la que el mapa no se visualiza no es un problema de instalación, sino un problema de estilo CSS en el contenedor del mapa, ya que todas las solicitudes a los servicios de mapas se están resolviendo correctamente.
+
+-----
+🏡 Petición para un Inmueble Urbano
+La petición para el inmueble urbano utiliza los parámetros de la primera consulta que mostraste. El filtro se construye con el departamento (dpto), el distrito (dist), la zona, la manzana (mz) y el lote.
+
+URL de la Petición:
+
+https://www.catastro.gov.py/geoserver/ows?service=WFS&version=1.1.0&request=GetFeature&outputFormat=application/json&srsname=EPSG:32721&typename=snc:parcelas_activas&CQL_FILTER=dist=4%20AND%20dpto=%27K%27%20AND%20zona=%2726%27%20AND%20mz=%27758%27%20AND%20lote=%275%27
+Detalles del filtro (CQL_FILTER):
+
+dist=4 (distrito)
+
+dpto='K' (departamento)
+
+zona='26' (zona)
+
+mz='758' (manzana)
+
+lote='5' (lote)
+
+🌳 Petición para un Inmueble Rural
+Para el inmueble rural, se usa la segunda consulta que proporcionaste. La clave en este caso es el padron, que identifica de forma única la propiedad. Se combinan los parámetros de departamento, distrito, y padrón para el filtro.
+
+URL de la Petición:
+
+https://www.catastro.gov.py/geoserver/ows?service=WFS&version=1.1.0&request=GetFeature&outputFormat=application/json&srsname=EPSG:32721&typename=snc:parcelas_activas&CQL_FILTER=dist=1%20AND%20dpto=%27K%27%20AND%20padron=%2713%27
+Detalles del filtro (CQL_FILTER):
+
+dist=1 (distrito)
+
+dpto='K' (departamento)
+
+padron='13' (padrón)
+
+🗺️ Cómo Usar las Respuestas
+Ambas peticiones devuelven un objeto GeoJSON que contiene la geometría de la parcela. Tu frontend (el componente <Mapa>) debe procesar esta respuesta para:
+
+Extraer las coordenadas del geometry del GeoJSON.
+
+Utilizar esas coordenadas para dibujar un polígono sobre el mapa base de OpenLayers.
+
+Centrar la vista del mapa en el bbox (bounding box) proporcionado en la respuesta GeoJSON, para que la parcela sea visible.
+
+Estas peticiones son la forma estándar de obtener datos geográficos de un servicio WFS para la visualización en un mapa.
+
+----
+    

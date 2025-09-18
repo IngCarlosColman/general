@@ -8,3 +8,9 @@
 // @use 'vuetify/settings' with (
 //   $color-pack: false
 // );
+html, body, #app, .v-application {
+  height: 100% !important;
+  width: 100% !important;
+  margin: 0;
+  padding: 0;
+}
