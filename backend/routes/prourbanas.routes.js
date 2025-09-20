@@ -4,8 +4,8 @@ const prourbanasController = require('../controllers/prourbanas.controller');
 
 // Importamos todos los middlewares necesarios
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
-// Importa los middlewares específicos para editar y eliminar
-const { canEditRecord, canDeleteRecord } = require('../middlewares/permissions.middleware');
+// Importa el nuevo middleware unificado para permisos
+const { canAccessRecord } = require('../middlewares/permissions.middleware');
 
 // Definimos los roles que tienen permiso para acceder a estas rutas
 const allowedRoles = ['administrador', 'editor'];
@@ -18,21 +18,19 @@ router.get('/prourbanas', checkRoles(allowedRoles), prourbanasController.getProu
 router.post('/prourbanas', checkRoles(allowedRoles), prourbanasController.createProurbana);
 
 // Rutas protegidas con validación de roles y de propiedad del registro
-// La ruta PUT usa el middleware canEditRecord, que permite la edición
-// a todos los roles.
+// La ruta PUT usa el middleware canAccessRecord con la acción 'edit'
 router.put(
     '/prourbanas/:id',
     checkRoles(allowedRoles),
-    canEditRecord('prourbanas'),
+    canAccessRecord('prourbanas', 'id', 'edit'),
     prourbanasController.updateProurbana
 );
 
-// La ruta DELETE usa el middleware canDeleteRecord, que se encarga
-// de que solo el creador o un administrador pueda eliminar el registro.
+// La ruta DELETE usa el middleware canAccessRecord con la acción 'delete'
 router.delete(
     '/prourbanas/:id',
     checkRoles(allowedRoles),
-    canDeleteRecord('prourbanas'),
+    canAccessRecord('prourbanas', 'id', 'delete'),
     prourbanasController.deleteProurbana
 );
 

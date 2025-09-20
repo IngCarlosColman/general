@@ -64,7 +64,11 @@ const createTelefono = async (req, res) => {
             RETURNING *;
         `;
         const result = await pool.query(insertQuery, [cedula_persona, numero, tipo || 'Principal', id_usuario]);
+        
+        // No refrescamos la vista materializada aquí. El cron job se encargará de esto.
+        
         res.status(201).json(result.rows[0]);
+
     } catch (err) {
         console.error('Error al insertar el teléfono:', err);
         if (err.code === '23505') {
@@ -75,7 +79,8 @@ const createTelefono = async (req, res) => {
     }
 };
 
+
 module.exports = {
     getTelefonosByCedulas,
-    createTelefono
+    createTelefono,
 };

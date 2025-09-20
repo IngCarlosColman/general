@@ -1,60 +1,51 @@
 const { pool } = require('../db/db');
 
 /**
- * Middleware para verificar si el usuario puede editar un registro.
- * Permite a los administradores editar cualquier registro.
- * Permite a los editores (y otros roles) editar cualquier registro,
- * ya que la lógica de restricción de propiedad solo se aplica a la eliminación.
+ * Middleware para verificar si el usuario tiene permiso sobre un registro.
+ * La lógica es la misma para editar y eliminar, ya que los administradores
+ * siempre tienen permiso y los demás roles pueden tener restricciones de propiedad.
  * @param {string} mainTable - La tabla principal del registro.
+ * @param {string} [idField='id'] - El campo ID del registro.
+ * @param {string} [permissionType='edit'] - El tipo de permiso a verificar ('edit' o 'delete').
+ * @param {string} [creatorField='created_by'] - El nombre de la columna que almacena el ID del creador.
+ * @param {string|null} [joinTable=null] - La tabla para JOIN si es necesario.
+ * @param {string|null} [joinIdField=null] - El campo de unión entre tablas.
  * @returns {function} Middleware de Express.
  */
-const canEditRecord = (mainTable) => (req, res, next) => {
-    const { rol: rol_usuario } = req.user;
-
-    // Si el usuario es administrador, tiene control total.
-    if (rol_usuario === 'administrador') {
-        return next();
-    }
-
-    // Para todos los demás roles (como 'editor'), la edición está permitida
-    // en cualquier registro. La restricción de propiedad es solo para la eliminación.
-    next();
-};
-
-/**
- * Middleware para verificar si el usuario puede eliminar un registro.
- * Solo permite a los administradores o al creador del registro eliminarlo.
- * @param {string} mainTable - La tabla principal del registro.
- * @param {string} idField - El campo ID del registro.
- * @param {string|null} joinTable - La tabla para JOIN si es necesario.
- * @param {string|null} joinIdField - El campo de unión entre tablas.
- * @returns {function} Middleware de Express.
- */
-const canDeleteRecord = (mainTable, idField = 'id', joinTable = null, joinIdField = null) => async (req, res, next) => {
+const canAccessRecord = (mainTable, idField = 'id', permissionType = 'edit', creatorField = 'created_by', joinTable = null, joinIdField = null) => async (req, res, next) => {
     const { id: id_usuario, rol: rol_usuario } = req.user;
     const { id } = req.params;
 
-    // Los administradores tienen permiso para eliminar cualquier registro.
+    // Los administradores tienen permiso total.
     if (rol_usuario === 'administrador') {
         return next();
     }
 
+    // Si el permiso es solo de edición y el usuario es un editor,
+    // se le permite continuar sin verificar propiedad.
+    if (permissionType === 'edit' && rol_usuario === 'editor') {
+        return next();
+    }
+    
+    // Si el usuario no es un administrador, verificamos la propiedad del registro.
+    // Solo permitimos que los 'editores' (o cualquier otro rol)
+    // modifiquen/eliminen sus propios registros.
     try {
         let query;
         let queryParams;
 
         if (joinTable && joinIdField) {
-            // Caso para tablas con JOIN (como abogados que se une a general)
+            // Caso para tablas con JOIN
             query = `
-                SELECT T2.created_by
+                SELECT T2.${creatorField}
                 FROM ${mainTable} AS T1
                 JOIN ${joinTable} AS T2 ON T1.${joinIdField} = T2.${joinIdField}
                 WHERE T1.${idField} = $1;
             `;
             queryParams = [id];
         } else {
-            // Caso simple para una sola tabla
-            query = `SELECT created_by FROM ${mainTable} WHERE ${idField} = $1;`;
+            // Caso para una sola tabla
+            query = `SELECT ${creatorField} FROM ${mainTable} WHERE ${idField} = $1;`;
             queryParams = [id];
         }
 
@@ -64,12 +55,14 @@ const canDeleteRecord = (mainTable, idField = 'id', joinTable = null, joinIdFiel
             return res.status(404).json({ error: 'Registro no encontrado.' });
         }
 
-        const recordOwnerId = result.rows[0].created_by;
+        const recordOwnerId = result.rows[0][creatorField];
         if (recordOwnerId !== id_usuario) {
-            return res.status(403).json({ error: 'No tienes permiso para eliminar este registro.' });
+            return res.status(403).json({ error: 'No tienes permiso para ' + (permissionType === 'delete' ? 'eliminar este registro.' : 'modificar este registro.') });
         }
-
+        
+        // El usuario es el creador del registro, se le permite continuar.
         next();
+
     } catch (err) {
         console.error(`Error en el middleware de permisos para la tabla ${mainTable}:`, err);
         return res.status(500).json({ error: 'Error del servidor al verificar permisos.' });
@@ -77,6 +70,5 @@ const canDeleteRecord = (mainTable, idField = 'id', joinTable = null, joinIdFiel
 };
 
 module.exports = {
-    canEditRecord,
-    canDeleteRecord,
+    canAccessRecord,
 };

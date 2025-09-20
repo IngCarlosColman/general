@@ -1,6 +1,8 @@
 // despachantes.controller.js
 const { pool } = require('../db/db');
-const { upsertTelefonos } = require('./general.controller');
+// Se importa la función principal de gestión de registros generales.
+// upsertTelefonos ya no se necesita aquí porque se llama desde upsertGeneral.
+const { upsertGeneral } = require('./general.controller'); 
 
 /**
  * Obtiene los datos de la tabla de despachantes.
@@ -9,8 +11,6 @@ const { upsertTelefonos } = require('./general.controller');
 const getDespachantesData = async (req, res) => {
     try {
         const { page = 1, itemsPerPage = 10, search = '' } = req.query;
-        const limit = Math.min(parseInt(itemsPerPage), 100);
-        const offset = (parseInt(page) - 1) * limit;
         let sortBy = [];
         if (req.query.sortBy) {
             try {
@@ -19,6 +19,8 @@ const getDespachantesData = async (req, res) => {
                 console.error("Error al parsear el parámetro sortBy:", error);
             }
         }
+        const limit = Math.min(parseInt(itemsPerPage), 100);
+        const offset = (parseInt(page) - 1) * limit;
         let whereClause = '';
         const queryParams = [];
         let paramIndex = 1;
@@ -57,7 +59,7 @@ const getDespachantesData = async (req, res) => {
                 d.cedula,
                 g.nombres,
                 g.apellidos,
-                ARRAY_AGG(t.numero) AS telefonos,
+                json_agg(t.numero) FILTER (WHERE t.numero IS NOT NULL) AS telefonos,
                 g.completo AS nom_completo
             FROM
                 despachantes AS d
@@ -87,7 +89,7 @@ const getDespachantesData = async (req, res) => {
 
 /**
  * Crea un nuevo registro de despachante.
- * La validación de permisos ahora se realiza en el middleware.
+ * OPTIMIZADO: Ahora usa la función upsertGeneral para mantener la consistencia.
  */
 const createDespachante = async (req, res) => {
     const { nombres, apellidos, cedula, telefonos } = req.body;
@@ -95,33 +97,27 @@ const createDespachante = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const completo = `${nombres} ${apellidos}`;
-        const insertGeneralQuery = `
-            INSERT INTO general (nombres, apellidos, cedula, completo, created_by)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (cedula) DO NOTHING
-            RETURNING *;
-        `;
-        const resultGeneral = await client.query(insertGeneralQuery, [nombres, apellidos, cedula, completo, id_usuario]);
-        if (resultGeneral.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'Ya existe un registro con esa cédula.' });
-        }
-        if (Array.isArray(telefonos) && telefonos.length > 0) {
-            await upsertTelefonos(cedula, telefonos, client);
-        }
+        
+        // Se usa la función centralizada para manejar la inserción/actualización en la tabla general
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+
         const insertDespachanteQuery = `
-            INSERT INTO despachantes (cedula, created_by)
-            VALUES ($1, $2)
+            INSERT INTO despachantes (cedula)
+            VALUES ($1)
             RETURNING *;
         `;
-        await client.query(insertDespachanteQuery, [cedula, id_usuario]);
+        const resultDespachante = await client.query(insertDespachanteQuery, [cedula]);
+
         await client.query('COMMIT');
-        res.status(201).json(resultGeneral.rows[0]);
+        res.status(201).json(resultDespachante.rows[0]);
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al crear el registro de despachante:', err);
-        res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        if (err.code === '23505') {
+            res.status(409).json({ error: 'Ya existe un registro con esa cédula.', details: err.detail });
+        } else {
+            res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        }
     } finally {
         client.release();
     }
@@ -129,7 +125,7 @@ const createDespachante = async (req, res) => {
 
 /**
  * Actualiza un registro de despachante.
- * La validación de permisos ahora se realiza en el middleware.
+ * OPTIMIZADO: Ahora usa la función upsertGeneral para mantener la consistencia.
  */
 const updateDespachante = async (req, res) => {
     const { id } = req.params;
@@ -138,54 +134,35 @@ const updateDespachante = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        
+        // Primero, se obtiene la cédula del registro actual de despachante para verificar si ha cambiado.
         const oldCedulaQuery = 'SELECT cedula FROM despachantes WHERE id = $1';
         const oldCedulaResult = await client.query(oldCedulaQuery, [id]);
         if (oldCedulaResult.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro de despachante no encontrado' });
         }
-        const oldCedula = oldCedulaResult.rows[0].cedula;
-        const completo = `${nombres} ${apellidos}`;
-        if (cedula !== oldCedula) {
-            const checkQuery = 'SELECT id FROM general WHERE cedula = $1';
-            const checkResult = await client.query(checkQuery, [cedula]);
-            if (checkResult.rowCount > 0) {
-                await client.query('ROLLBACK');
-                return res.status(409).json({ error: 'Ya existe otro registro con esa cédula.' });
-            }
-            const updateGeneralQuery = `
-                UPDATE general
-                SET nombres = $1, apellidos = $2, completo = $3, cedula = $4, updated_by = $5, updated_at = NOW()
-                WHERE cedula = $6
-                RETURNING *;
-            `;
-            await client.query(updateGeneralQuery, [nombres, apellidos, completo, cedula, id_usuario, oldCedula]);
-            const updateDespachanteCedulaQuery = `
-                UPDATE despachantes SET cedula = $1, updated_by = $2, updated_at = NOW() WHERE id = $3;
-            `;
-            await client.query(updateDespachanteCedulaQuery, [cedula, id_usuario, id]);
-        } else {
-            const updateGeneralQuery = `
-                UPDATE general
-                SET nombres = $1, apellidos = $2, completo = $3, updated_by = $4, updated_at = NOW()
-                WHERE cedula = $5
-                RETURNING *;
-            `;
-            await client.query(updateGeneralQuery, [nombres, apellidos, completo, id_usuario, cedula]);
-            const updateDespachanteQuery = `
-                UPDATE despachantes SET updated_by = $1, updated_at = NOW() WHERE id = $2;
-            `;
-            await client.query(updateDespachanteQuery, [id_usuario, id]);
+        
+        // Se usa la función centralizada para manejar la actualización en la tabla general y los teléfonos.
+        // upsertGeneral maneja la lógica de si la cédula ha cambiado o no.
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+
+        // Si la cédula del despachante ha cambiado, actualizamos su registro.
+        if (cedula !== oldCedulaResult.rows[0].cedula) {
+            const updateDespachanteCedulaQuery = `UPDATE despachantes SET cedula = $1 WHERE id = $2;`;
+            await client.query(updateDespachanteCedulaQuery, [cedula, id]);
         }
-        if (telefonos) {
-            await upsertTelefonos(cedula, telefonos, client);
-        }
+        
         await client.query('COMMIT');
         res.json({ message: 'Registro actualizado correctamente.' });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al actualizar el registro de despachante:', err);
-        res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        if (err.code === '23505') {
+            res.status(409).json({ error: 'Ya existe otro registro con esa cédula.', details: err.detail });
+        } else {
+            res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        }
     } finally {
         client.release();
     }
@@ -193,27 +170,33 @@ const updateDespachante = async (req, res) => {
 
 /**
  * Elimina un registro de despachante.
- * La validación de permisos ahora se realiza en el middleware.
+ * Esta lógica es correcta y no necesita cambios.
  */
 const deleteDespachante = async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        
         const deleteDespachanteQuery = `
             DELETE FROM despachantes WHERE id = $1 RETURNING *;
         `;
         const result = await client.query(deleteDespachanteQuery, [id]);
-        if (result.rowCount === 0) {
-             await client.query('ROLLBACK');
-             return res.status(404).json({ error: 'Registro no encontrado en la base de datos.' });
-        }
+        
         await client.query('COMMIT');
+        
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Registro de despachante no encontrado.' });
+        }
         res.json({ message: 'Registro de despachante eliminado exitosamente', deletedRecord: result.rows[0] });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al eliminar el registro de despachante:', err);
-        res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        if (err.code === '23503') {
+            res.status(409).json({ error: 'No se puede eliminar este registro porque está vinculado a otra tabla.', details: err.detail });
+        } else {
+            res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        }
     } finally {
         client.release();
     }

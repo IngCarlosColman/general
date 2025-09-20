@@ -1,16 +1,13 @@
-// docentes.controller.js
+// docentes.controller.js (Versión Mejorada)
 const { pool } = require('../db/db');
-const { upsertTelefonos } = require('./general.controller');
+const { upsertGeneral } = require('./general.controller');
 
 /**
  * Obtiene los datos de la tabla de docentes.
- * La validación de permisos ahora se realiza en el middleware.
  */
 const getDocentesData = async (req, res) => {
     try {
         const { page = 1, itemsPerPage = 10, search = '' } = req.query;
-        const limit = Math.min(parseInt(itemsPerPage), 100);
-        const offset = (parseInt(page) - 1) * limit;
         let sortBy = [];
         if (req.query.sortBy) {
             try {
@@ -19,6 +16,8 @@ const getDocentesData = async (req, res) => {
                 console.error("Error al parsear el parámetro sortBy:", error);
             }
         }
+        const limit = Math.min(parseInt(itemsPerPage), 100);
+        const offset = (parseInt(page) - 1) * limit;
         let whereClause = '';
         const queryParams = [];
         let paramIndex = 1;
@@ -30,7 +29,7 @@ const getDocentesData = async (req, res) => {
                 paramIndex++;
             }
         }
-        let orderByClause = '';
+        let orderByClause = 'ORDER BY g.nombres ASC';
         if (sortBy.length) {
             const sortKey = sortBy[0].key;
             const sortOrder = sortBy[0].order === 'desc' ? 'DESC' : 'ASC';
@@ -43,8 +42,6 @@ const getDocentesData = async (req, res) => {
             if (validSortFields[sortKey]) {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
-        } else {
-            orderByClause = `ORDER BY g.completo ASC`;
         }
         const countQuery = `
             SELECT COUNT(*) 
@@ -58,11 +55,11 @@ const getDocentesData = async (req, res) => {
             SELECT
                 d.id,
                 d.cedula,
-                COALESCE(g.nombres, g.completo) AS nombres,
-                COALESCE(g.apellidos, '') AS apellidos,
+                g.nombres,
+                g.apellidos,
                 f.salario,
-                ARRAY_AGG(t.numero) AS telefonos,
-                g.completo
+                json_agg(t.numero) FILTER (WHERE t.numero IS NOT NULL) AS telefonos,
+                g.completo AS nom_completo
             FROM
                 docentes AS d
             JOIN
@@ -90,54 +87,43 @@ const getDocentesData = async (req, res) => {
 
 /**
  * Crea un nuevo registro de docente.
- * La validación de permisos ahora se realiza en el middleware.
+ * Se ha mejorado la validación para ser más precisa.
  */
 const createDocente = async (req, res) => {
     const { cedula, nombres, apellidos, salario, telefonos } = req.body;
     const { id: id_usuario } = req.user;
-    if (!cedula || !nombres || !apellidos || !salario) {
-        return res.status(400).json({ error: 'Todos los campos son obligatorios.' });
+    if (!cedula || !nombres || !apellidos || salario === undefined) {
+        return res.status(400).json({ error: 'Faltan campos obligatorios para crear un docente.' });
     }
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const completo = `${nombres} ${apellidos}`.trim();
-        const generalQuery = `
-            INSERT INTO general (cedula, nombres, apellidos, completo, created_by) 
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (cedula) DO NOTHING
-            RETURNING id;
-        `;
-        const generalResult = await client.query(generalQuery, [cedula, nombres, apellidos, completo, id_usuario]);
-        if (generalResult.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'Ya existe un registro con esa cédula.' });
-        }
-        if (Array.isArray(telefonos) && telefonos.length > 0) {
-            await upsertTelefonos(cedula, telefonos, client);
-        }
+        
+        // Se usa la función centralizada para manejar la inserción/actualización en la tabla general
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+
         const funcpublicQuery = `
             INSERT INTO funcpublic (cedula, salario, created_by) 
-            VALUES ($1, $2, $3) 
+            VALUES ($1, $2, $3)
+            ON CONFLICT (cedula) DO UPDATE SET salario = EXCLUDED.salario, updated_by = $3, updated_at = NOW()
             RETURNING id;
         `;
         await client.query(funcpublicQuery, [cedula, salario, id_usuario]);
+
         const docentesQuery = `
-            INSERT INTO docentes (cedula, created_by) 
-            VALUES ($1, $2) 
+            INSERT INTO docentes (cedula) 
+            VALUES ($1) 
+            ON CONFLICT (cedula) DO NOTHING
             RETURNING *;
         `;
-        const docentesResult = await client.query(docentesQuery, [cedula, id_usuario]);
+        const docentesResult = await client.query(docentesQuery, [cedula]);
+
         await client.query('COMMIT');
-        res.status(201).json({ message: 'Docente creado correctamente.', newRecord: docentesResult.rows[0] });
+        res.status(201).json({ message: 'Docente creado o actualizado correctamente.', newRecord: docentesResult.rows[0] });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al crear el registro de docente:', err);
-        if (err.code === '23505') {
-            res.status(409).json({ error: 'Ya existe un registro con esa cédula.', details: err.detail });
-        } else {
-            res.status(500).json({ error: 'Error del servidor', details: err.detail });
-        }
+        res.status(500).json({ error: 'Error del servidor', details: err.detail });
     } finally {
         client.release();
     }
@@ -145,51 +131,41 @@ const createDocente = async (req, res) => {
 
 /**
  * Actualiza un registro de docente.
- * La validación de permisos ahora se realiza en el middleware.
+ * La cédula ahora debe venir en el cuerpo de la solicitud para evitar una consulta innecesaria.
  */
 const updateDocente = async (req, res) => {
     const { id } = req.params;
-    const { nombres, apellidos, salario, telefonos } = req.body;
+    // Se espera que la cedula venga en el cuerpo de la solicitud para mayor eficiencia
+    const { cedula, nombres, apellidos, salario, telefonos } = req.body;
     const { id: id_usuario } = req.user;
-    if (!nombres || !apellidos || !salario) {
-        return res.status(400).json({ error: 'Nombres, apellidos y salario son requeridos.' });
+    
+    // Se verifica que todos los campos requeridos estén presentes
+    if (!cedula || !nombres || !apellidos || salario === undefined) {
+        return res.status(400).json({ error: 'Faltan campos obligatorios para actualizar un docente.' });
     }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const cedulaQuery = 'SELECT cedula FROM docentes WHERE id = $1;';
-        const cedulaResult = await client.query(cedulaQuery, [id]);
-        if (cedulaResult.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Registro de docente no encontrado.' });
-        }
-        const cedula = cedulaResult.rows[0].cedula;
-        const updateGeneralQuery = `
-            UPDATE general
-            SET nombres = $1, apellidos = $2, completo = $3, updated_by = $4, updated_at = NOW()
-            WHERE cedula = $5
-            RETURNING *;
-        `;
-        const completo = `${nombres} ${apellidos}`.trim();
-        const resultGeneral = await client.query(updateGeneralQuery, [nombres, apellidos, completo, id_usuario, cedula]);
-        if (telefonos) {
-            await upsertTelefonos(cedula, telefonos, client);
-        }
+        
+        // Se usa la función centralizada para manejar la actualización en la tabla general y los teléfonos.
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+
         const updateFuncPublicQuery = `
             UPDATE funcpublic
             SET salario = $1, updated_by = $2, updated_at = NOW()
             WHERE cedula = $3
             RETURNING *;
         `;
-        const resultFuncPublic = await client.query(updateFuncPublicQuery, [salario, id_usuario, cedula]);
-        const updateDocentesQuery = `
-            UPDATE docentes
-            SET updated_by = $1, updated_at = NOW()
-            WHERE id = $2;
-        `;
-        await client.query(updateDocentesQuery, [id_usuario, id]);
+        await client.query(updateFuncPublicQuery, [salario, id_usuario, cedula]);
+        
+        // Opcional: Si el ID de la tabla 'docentes' no coincide con la nueva cédula, se actualiza
+        // Esto solo sería necesario si se permite cambiar la cédula
+        const updateDocenteCedulaQuery = 'UPDATE docentes SET cedula = $1 WHERE id = $2;';
+        await client.query(updateDocenteCedulaQuery, [cedula, id]);
+        
         await client.query('COMMIT');
-        res.status(200).json({ message: 'Registro de docente actualizado correctamente.', updatedRecord: resultGeneral.rows[0] });
+        res.status(200).json({ message: 'Registro de docente actualizado correctamente.' });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al actualizar el registro de docente:', err);
@@ -201,16 +177,18 @@ const updateDocente = async (req, res) => {
 
 /**
  * Elimina un registro de docente.
- * La validación de permisos ahora se realiza en el middleware.
  */
 const deleteDocente = async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        
         const deleteDocenteQuery = 'DELETE FROM docentes WHERE id = $1 RETURNING *;';
         const result = await client.query(deleteDocenteQuery, [id]);
+        
         await client.query('COMMIT');
+        
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Registro no encontrado en la base de datos.' });
         }
@@ -218,7 +196,11 @@ const deleteDocente = async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al eliminar el registro de docente:', err);
-        res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        if (err.code === '23503') {
+            res.status(409).json({ error: 'No se puede eliminar este registro porque está vinculado a otra tabla.', details: err.detail });
+        } else {
+            res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        }
     } finally {
         client.release();
     }

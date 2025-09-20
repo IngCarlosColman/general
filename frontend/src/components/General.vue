@@ -3,24 +3,22 @@
     <v-card class="elevation-2">
       <SearchAndActionsToolbar
         title="Guía Telefónica"
-        v-model:search="tempSearch"
-        @search="performSearch"
+        :categories="categories"
+        v-model:selected-category="selectedCategory"
+        v-model:search="searchTerm"
         @add="openDialog('create')"
-      />
-
+        @search="handleSearch" />
       <v-divider></v-divider>
-
       <ContactTable
         :headers="headers"
-        :items="generalData"
+        :items="items"
         :items-length="totalItems"
-        :loading="loading"
-        :search="search"
-        :sort-by="sortBy"
-        :private-agenda-cedulas="privateAgendaCedulas"
-        @update:options="loadItems"
+        :loading="isLoading"
+        :private-agenda-cedulas="agendaStore.privateAgendaCedulas"
+        :options="options"
+        @update:options="newOptions => Object.assign(options, newOptions)"
         @edit="openDialog('edit', $event)"
-        @delete="deleteItem($event)"
+        @delete="confirmDeleteItem($event)"
         @toggle-private-agenda="togglePrivateAgenda"
         @share-contact="shareContact"
         @open-whatsapp="openWhatsApp"
@@ -29,272 +27,257 @@
     </v-card>
 
     <ContactFormDialog
-      v-model="dialog"
+      v-model:model-value="dialog"
       :edited-item="editedItem"
       :is-editing="isEditing"
-      :saving="saving"
-      :server-error="serverError"
+      :saving="isSaving"
       @close="closeDialog"
       @save="saveItem"
     />
 
     <ConfirmDeleteDialog
-      v-model="deleteDialog"
-      :name="nombreCompletoToDelete"
-      :deleting="deleting"
+      v-model:model-value="deleteDialog"
+      :name="itemToDelete?.nombreCompleto"
+      :deleting="isDeleting"
       @close="closeDeleteDialog"
-      @confirm="confirmDelete"
+      @confirm="deleteItem"
     />
 
     <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      :timeout="snackbar.timeout"
+      v-model="snackbarState.snackbar"
+      :color="snackbarState.color"
+      :timeout="3000"
+      class="centered-snackbar"
     >
-      {{ snackbar.message }}
+      {{ snackbarState.text }}
       <template v-slot:actions>
-        <v-btn
-          color="white"
-          variant="text"
-          @click="snackbar.show = false"
-        >
-          Cerrar
-        </v-btn>
+        <v-btn color="white" variant="text" @click="closeSnackbar">Cerrar</v-btn>
       </template>
     </v-snackbar>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import apiClient from '@/services/api';
+import { ref, computed, watch, onMounted } from 'vue';
 import SearchAndActionsToolbar from '@/components/comunes/SearchAndActionsToolbar.vue';
 import ContactTable from '@/components/comunes/ContactTable.vue';
 import ContactFormDialog from '@/components/comunes/ContactFormDialog.vue';
 import ConfirmDeleteDialog from '@/components/comunes/ConfirmDeleteDialog.vue';
+import { useCrudTable } from '@/composables/useCrudTable';
+import { useSnackbar } from '@/composables/useSnackbar';
+import { useAgendaStore } from '@/stores/useAgendaStore';
+import { useContactUtilities } from '@/composables/useContactUtilities';
 
-const generalData = ref([]);
-const totalItems = ref(0);
-const loading = ref(false);
-const sortBy = ref([]);
-
-const tempSearch = ref('');
-const search = ref('');
-
-const dialog = ref(false);
-const deleteDialog = ref(false);
-const editedItem = ref({});
+// === STATE AND OPTIONS ===
 const defaultItem = {
   nombres: '',
   apellidos: '',
   cedula: '',
   telefonos: [],
+  salario: 0,
 };
-const itemToDelete = ref(null);
-const serverError = ref('');
-const isEditing = ref(false);
-const saving = ref(false);
-const deleting = ref(false);
 
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: 'success',
-  timeout: 3000,
-});
-
-const privateAgendaCedulas = ref([]);
-
-const headers = computed(() => [
-  { title: 'Cédula', key: 'cedula' },
-  { title: 'Nombres', key: 'nombres' },
-  { title: 'Apellidos', key: 'apellidos' },
-  { title: 'Nombre Completo', key: 'completo' },
-  { title: 'Teléfonos', key: 'telefonos', sortable: false },
-  { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+const selectedCategory = ref('general');
+const categories = ref([
+  {
+    title: 'Guía General',
+    value: 'general',
+    icon: 'mdi-book-multiple',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Nombre Completo', key: 'completo' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Abogados',
+    value: 'abogados',
+    icon: 'mdi-scale-balance',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Despachantes',
+    value: 'despachantes',
+    icon: 'mdi-ferry',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Docentes',
+    value: 'docentes',
+    icon: 'mdi-school',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Funcionarios BNF',
+    value: 'funcbnf',
+    icon: 'mdi-bank',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Funcionarios Públicos',
+    value: 'funcpublic',
+    icon: 'mdi-account-group',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Itaipu',
+    value: 'itaipu',
+    icon: 'mdi-transmission-tower',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Ubicación', key: 'ubicacion' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Yacyreta',
+    value: 'yacyreta',
+    icon: 'mdi-transmission-tower',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
 ]);
 
-const nombreCompletoToDelete = computed(() => {
-  if (itemToDelete.value && (itemToDelete.value.nombres || itemToDelete.value.apellidos)) {
-    return `${itemToDelete.value.nombres || ''} ${itemToDelete.value.apellidos || ''}`.trim();
-  }
-  return '';
-});
-const fetchPrivateAgendaCedulas = async () => {
-  try {
-    const response = await apiClient.get('/private-agenda/cedulas');
-    privateAgendaCedulas.value = response.data;
-  } catch (error) {
-    console.error('Error al cargar la agenda privada del usuario:', error);
-  }
-};
+// === COMPOSABLES ===
+const apiPath = computed(() => `/${selectedCategory.value}`);
+const {
+  items,
+  totalItems,
+  isLoading,
+  isSaving,
+  isDeleting,
+  dialog,
+  deleteDialog,
+  editedItem,
+  isEditing,
+  itemToDelete,
+  options,
+  searchTerm,
+  loadItems,
+  openDialog,
+  closeDialog,
+  saveItem,
+  confirmDeleteItem,
+  closeDeleteDialog,
+  deleteItem,
+} = useCrudTable(apiPath, defaultItem);
 
+const { snackbarState, closeSnackbar, showSnackbar } = useSnackbar();
+const agendaStore = useAgendaStore();
+const { openWhatsApp, downloadVCard, shareContact } = useContactUtilities();
+
+// === LÓGICA DE LA AGENDA PERSONAL ===
 const togglePrivateAgenda = async (item) => {
-  try {
-    if (privateAgendaCedulas.value.includes(item.cedula)) {
-      await apiClient.delete(`/private-agenda/${item.cedula}`);
+  const cedula = item.cedula;
+  const isCurrentlyInAgenda = agendaStore.privateAgendaCedulas.includes(cedula);
+
+  let success = false;
+  if (isCurrentlyInAgenda) {
+    success = await agendaStore.removeContactFromAgenda(cedula);
+    if (success) {
       showSnackbar('Contacto eliminado de tu agenda.', 'success');
-    } else {
-      await apiClient.post(`/private-agenda`, { contactCedula: item.cedula });
-      showSnackbar('Contacto añadido a tu agenda con éxito.', 'success');
-    }
-    await fetchPrivateAgendaCedulas();
-  } catch (error) {
-    console.error('Error al actualizar la agenda privada:', error);
-    showSnackbar('Error al actualizar tu agenda privada.', 'error');
-  }
-};
-
-const performSearch = () => {
-  search.value = tempSearch.value;
-  loadItems({ page: 1, itemsPerPage: 10, sortBy: [] });
-};
-
-const loadItems = async ({ page, itemsPerPage, sortBy: vuetifySortBy }) => {
-  if (!search.value || search.value.trim() === '') {
-    generalData.value = [];
-    totalItems.value = 0;
-    return;
-  }
-
-  loading.value = true;
-  try {
-    const params = {
-      page,
-      itemsPerPage,
-      sortBy: JSON.stringify(vuetifySortBy),
-      search: search.value,
-    };
-
-    const response = await apiClient.get('/general', { params });
-
-    generalData.value = response.data.items;
-    totalItems.value = response.data.totalItems ?? 0;
-  } catch (error) {
-    console.error("Error al cargar los datos:", error);
-    showSnackbar('Error al cargar los datos.', 'error');
-    totalItems.value = 0;
-  } finally {
-    loading.value = false;
-  }
-};
-
-const openDialog = (mode, item = null) => {
-  isEditing.value = mode === 'edit';
-  editedItem.value = isEditing.value && item ? { ...item } : { ...defaultItem };
-  dialog.value = true;
-  serverError.value = '';
-};
-
-const closeDialog = () => {
-  dialog.value = false;
-  editedItem.value = { ...defaultItem };
-  isEditing.value = false;
-  serverError.value = '';
-};
-
-const saveItem = async (itemToSave) => {
-  saving.value = true;
-  try {
-    if (isEditing.value) {
-      await apiClient.put(`/general/${itemToSave.id}`, itemToSave);
-      showSnackbar('Registro actualizado correctamente.');
-    } else {
-      await apiClient.post('/general', itemToSave);
-      showSnackbar('Registro creado correctamente.');
-    }
-    closeDialog();
-    loadItems({ page: 1, itemsPerPage: 10, sortBy: [] });
-  } catch (error) {
-    console.error("Error al guardar el registro:", error);
-    serverError.value = error.response?.data?.error || 'Ocurrió un error inesperado al guardar el registro.';
-    showSnackbar('Error al guardar el registro.', 'error');
-  } finally {
-    saving.value = false;
-  }
-};
-
-const deleteItem = (item) => {
-  itemToDelete.value = item;
-  deleteDialog.value = true;
-};
-
-const closeDeleteDialog = () => {
-  deleteDialog.value = false;
-  itemToDelete.value = null;
-};
-
-const confirmDelete = async () => {
-  deleting.value = true;
-  const id = itemToDelete.value.id;
-  try {
-    await apiClient.delete(`/general/${id}`);
-    showSnackbar('Registro eliminado correctamente.');
-    closeDeleteDialog();
-    loadItems({ page: 1, itemsPerPage: 10, sortBy: [] });
-  } catch (error) {
-    console.error("Error al eliminar el registro:", error);
-    showSnackbar(error.response?.data?.error || 'Ocurrió un error al intentar eliminar el registro.', 'error');
-  } finally {
-    deleting.value = false;
-  }
-};
-
-const showSnackbar = (message, color = 'success') => {
-  snackbar.value.message = message;
-  snackbar.value.color = color;
-  snackbar.value.show = true;
-};
-
-const openWhatsApp = (item) => {
-  if (item.telefonos?.length) {
-    const phoneNumber = item.telefonos[0].replace(/\D/g, '');
-    const fullNumber = `595${phoneNumber}`;
-    window.open(`https://wa.me/${fullNumber}`, '_blank');
-  }
-};
-
-const downloadVCard = (item) => {
-  const vcardContent = `BEGIN:VCARD
-VERSION:3.0
-N:;${item.nombres};${item.apellidos};;
-FN:${item.completo}
-UID:${item.cedula}
-${item.telefonos.map(tel => `TEL;TYPE=CELL:${tel}`).join('\n')}
-END:VCARD`;
-
-  const blob = new Blob([vcardContent], { type: 'text/vcard' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${item.completo}.vcf`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
-
-const shareContact = async (item) => {
-  if (navigator.share) {
-    try {
-      const shareData = {
-        title: `Contacto de ${item.nombres}`,
-        text: `Nombre: ${item.completo}\nCédula: ${item.cedula}\nTeléfonos: ${item.telefonos?.join(', ') ?? 'No disponibles'}`,
-      };
-      await navigator.share(shareData);
-      showSnackbar('Contacto compartido correctamente.', 'success');
-    } catch (error) {
-      console.error('Error al compartir el contacto:', error);
-      if (error.name !== 'AbortError') {
-        showSnackbar('Error al compartir el contacto.', 'error');
-      }
     }
   } else {
-    showSnackbar('La funcionalidad de compartir no es compatible con tu navegador.', 'warning');
+    success = await agendaStore.addContactToAgenda(cedula);
+    if (success) {
+      showSnackbar('Contacto añadido a tu agenda.', 'success');
+    }
+  }
+
+  if (!success && agendaStore.error) {
+    showSnackbar(agendaStore.error, 'error');
   }
 };
 
+// === COMPUTED PROPERTIES AND WATCHERS ===
+const headers = computed(() => {
+  const category = categories.value.find(c => c.value === selectedCategory.value);
+  return category ? category.headers : [];
+});
+
+watch(selectedCategory, (newValue) => {
+  if (!newValue) {
+    selectedCategory.value = 'general';
+    return;
+  }
+  
+  searchTerm.value = '';
+  Object.assign(options, { page: 1, itemsPerPage: 10, sortBy: [] });
+  // La búsqueda se activa aquí después de un cambio de categoría
+  loadItems();
+});
+
+/**
+ * Función que maneja la acción de búsqueda.
+ * Solo realiza la búsqueda si el término no está vacío.
+ */
+const handleSearch = () => {
+  if (searchTerm.value && searchTerm.value.trim() !== '') {
+    // Restablece la paginación a la página 1 al buscar
+    Object.assign(options, { page: 1, itemsPerPage: 10, sortBy: [] });
+    loadItems();
+  }
+};
+
+// === INITIAL LOAD ===
 onMounted(() => {
-  fetchPrivateAgendaCedulas();
+  agendaStore.fetchAgendaContacts();
+  // Llama a la búsqueda inicial solo cuando el componente se monta
+  loadItems();
 });
 </script>
+
+<style scoped>
+.centered-snackbar {
+  position: fixed !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+</style>

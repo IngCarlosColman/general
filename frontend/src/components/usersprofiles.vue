@@ -111,7 +111,7 @@
 <script setup>
 import { ref, watchEffect } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import api from '@/services/api';
+import api from '@/api/axiosClient';
 
 const authStore = useAuthStore();
 const isModalOpen = ref(false);

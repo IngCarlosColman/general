@@ -1,4 +1,5 @@
 const { pool } = require('../db/db');
+const { upsertGeneral } = require('./general.controller'); 
 
 /**
  * Obtiene los datos del usuario autenticado.

@@ -43,18 +43,18 @@
 
       <v-list density="compact" nav>
         <v-list-item
-          prepend-icon="mdi-home"
+          prepend-icon="mdi-book-multiple"
           title="Guía Telefónica"
           :class="{ 'px-2': !drawer }"
           @click="showComponent('general')"
         ></v-list-item>
-        <v-list-item
-          prepend-icon="mdi-book-account"
-          title="Mi Agenda Privada"
-          :class="{ 'px-2': !drawer }"
-          @click="showComponent('homeAgenda')"
-        ></v-list-item>
         
+        <v-list-item
+          prepend-icon="mdi-briefcase-account"
+          title="Mi Agenda"
+          :class="{ 'px-2': !drawer }"
+          @click="showComponent('agenda')"
+        ></v-list-item>
         <v-list-item
           prepend-icon="mdi-map-marker-radius"
           title="Catastro Dinámico"
@@ -101,9 +101,8 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import General from '@/components/General.vue';
 import UsersProfiles from '@/components/usersprofiles.vue';
-import HomeView from '@/components/HomeView.vue';
-// 1. IMPORTAMOS EL NUEVO COMPONENTE
 import Catastro from '@/components/Catastro.vue';
+import TheAgenda from '@/components/TheAgenda.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -114,9 +113,8 @@ const user = computed(() => authStore.user);
 const components = {
   general: General,
   users: UsersProfiles,
-  homeAgenda: HomeView,
-  // 2. AGREGAMOS EL NUEVO COMPONENTE AL OBJETO
   catastro: Catastro,
+  agenda: TheAgenda,
 };
 
 const currentComponent = ref('general');
@@ -127,10 +125,18 @@ const showComponent = (name) => {
 
 const handleLogout = async () => {
   try {
+    // 1. Llama a la acción de logout del store para limpiar los datos de sesión y la cookie.
     await authStore.logout();
-    router.push('/login');
+
+    // 2. Redirige al usuario a la página de login.
+    await router.push('/login');
+
+    // 3. Después de la redirección, fuerza una recarga de la página.
+    window.location.reload();
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
+    // En caso de error, aún se puede intentar la recarga para limpiar el estado.
+    window.location.reload();
   }
 };
 </script>

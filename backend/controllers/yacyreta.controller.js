@@ -1,9 +1,9 @@
 const { pool } = require('../db/db');
-const { upsertTelefonos } = require('./general.controller');
+const { upsertGeneral } = require('./general.controller');
+
 
 /**
  * Obtiene los datos de la tabla de Yacyreta con paginación, búsqueda y ordenamiento.
- * La validación de permisos ahora se realiza en el middleware.
  */
 const getYacyretaData = async (req, res) => {
     try {
@@ -59,9 +59,8 @@ const getYacyretaData = async (req, res) => {
                 g.cedula,
                 g.nombres,
                 g.apellidos,
-                ARRAY_AGG(DISTINCT t.numero) FILTER (WHERE t.numero IS NOT NULL) AS telefonos,
-                g.completo AS nom_completo,
-                y.created_by
+                json_agg(t.numero) FILTER (WHERE t.numero IS NOT NULL) AS telefonos,
+                g.completo AS nom_completo
             FROM
                 yacyreta AS y
             JOIN
@@ -89,7 +88,7 @@ const getYacyretaData = async (req, res) => {
 
 /**
  * Crea un nuevo registro de Yacyreta.
- * La validación de permisos ahora se realiza en el middleware.
+ * OPTIMIZADO: Ahora usa la función upsertGeneral para mantener la consistencia.
  */
 const createYacyreta = async (req, res) => {
     const { id: id_usuario } = req.user;
@@ -97,17 +96,11 @@ const createYacyreta = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const completo = `${nombres} ${apellidos}`;
-        const insertGeneralQuery = `
-            INSERT INTO general (nombres, apellidos, cedula, completo)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (cedula) DO UPDATE SET nombres = EXCLUDED.nombres, apellidos = EXCLUDED.apellidos, completo = EXCLUDED.completo
-            RETURNING *;
-        `;
-        await client.query(insertGeneralQuery, [nombres, apellidos, cedula, completo]);
-        if (Array.isArray(telefonos) && telefonos.length > 0) {
-            await upsertTelefonos(cedula, telefonos, client);
-        }
+        
+        // Usa la función centralizada para manejar la inserción/actualización de general y telefonos.
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+        
+        // Inserta o actualiza el registro en la tabla yacyreta.
         const insertYacyretaQuery = `
             INSERT INTO yacyreta (cedula, salario, created_by)
             VALUES ($1, $2, $3)
@@ -115,27 +108,18 @@ const createYacyreta = async (req, res) => {
             RETURNING *;
         `;
         const resultYacyreta = await client.query(insertYacyretaQuery, [cedula, salario, id_usuario]);
+        
         if (resultYacyreta.rowCount === 0) {
             await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'Ya existe un registro de Yacyreta con esa cédula.' });
+            return res.status(409).json({ error: 'Ya existe un registro con esa cédula en Yacyreta.' });
         }
+        
         await client.query('COMMIT');
-        const combinedResult = {
-            ...resultYacyreta.rows[0],
-            nombres,
-            apellidos,
-            completo,
-            telefonos: telefonos || []
-        };
-        res.status(201).json(combinedResult);
+        res.status(201).json(resultYacyreta.rows[0]);
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al crear el registro de Yacyreta:', err);
-        if (err.code === '23503') {
-            res.status(409).json({ error: 'La cédula proporcionada no existe en la tabla general.', details: err.detail });
-        } else {
-            res.status(500).json({ error: 'Error del servidor', details: err.detail });
-        }
+        res.status(500).json({ error: 'Error del servidor', details: err.detail });
     } finally {
         client.release();
     }
@@ -143,7 +127,7 @@ const createYacyreta = async (req, res) => {
 
 /**
  * Actualiza un registro de Yacyreta.
- * La validación de permisos ahora se realiza en el middleware.
+ * OPTIMIZADO: Ahora usa la función upsertGeneral para mantener la consistencia.
  */
 const updateYacyreta = async (req, res) => {
     const { id: id_usuario } = req.user;
@@ -155,6 +139,8 @@ const updateYacyreta = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        
+        // Obtenemos la cédula actual para pasársela a upsertGeneral.
         const oldCedulaQuery = 'SELECT cedula FROM yacyreta WHERE id = $1 FOR UPDATE;';
         const oldCedulaResult = await client.query(oldCedulaQuery, [id]);
         if (oldCedulaResult.rowCount === 0) {
@@ -162,55 +148,30 @@ const updateYacyreta = async (req, res) => {
             return res.status(404).json({ error: 'Registro de Yacyreta no encontrado' });
         }
         const oldCedula = oldCedulaResult.rows[0].cedula;
-        const completo = `${nombres} ${apellidos}`;
-        let targetCedula = cedula;
-        if (cedula && cedula !== oldCedula) {
-            const checkQuery = `SELECT 1 FROM general WHERE cedula = $1;`;
-            const checkResult = await client.query(checkQuery, [cedula]);
-            if (checkResult.rowCount > 0) {
-                const updateGeneralQuery = `
-                    UPDATE general SET nombres = $1, apellidos = $2, completo = $3 WHERE cedula = $4;
-                `;
-                await client.query(updateGeneralQuery, [nombres, apellidos, completo, cedula]);
-            } else {
-                const updateGeneralQuery = `
-                    UPDATE general SET nombres = $1, apellidos = $2, completo = $3, cedula = $4 WHERE cedula = $5;
-                `;
-                await client.query(updateGeneralQuery, [nombres, apellidos, completo, cedula, oldCedula]);
-            }
-            const updateYacyretaCedulaQuery = `
-                UPDATE yacyreta SET cedula = $1, updated_by = $2 WHERE id = $3;
-            `;
-            await client.query(updateYacyretaCedulaQuery, [cedula, id_usuario, id]);
-            targetCedula = cedula;
-        } else {
-            const updateGeneralQuery = `
-                UPDATE general SET nombres = $1, apellidos = $2, completo = $3 WHERE cedula = $4;
-            `;
-            await client.query(updateGeneralQuery, [nombres, apellidos, completo, oldCedula]);
-            targetCedula = oldCedula;
-        }
-        if (Array.isArray(telefonos)) {
-            await upsertTelefonos(targetCedula, telefonos, client);
-        }
+        
+        // Usa la función centralizada para manejar la actualización de general y telefonos.
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, oldCedula);
+
         const updateYacyretaQuery = `
             UPDATE yacyreta
-            SET salario = $1, updated_by = $2
-            WHERE id = $3
+            SET cedula = $1, salario = $2, updated_by = $3
+            WHERE id = $4
             RETURNING *;
         `;
-        const resultYacyreta = await client.query(updateYacyretaQuery, [salario, id_usuario, id]);
+        const resultYacyreta = await client.query(updateYacyretaQuery, [cedula, salario, id_usuario, id]);
+        
         if (resultYacyreta.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro no encontrado en la tabla yacyreta.' });
         }
+        
         await client.query('COMMIT');
         res.json({ message: 'Registro actualizado correctamente.', record: resultYacyreta.rows[0] });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al actualizar el registro de Yacyreta:', err);
         if (err.code === '23505') {
-            res.status(409).json({ error: 'Conflicto de unicidad. La nueva cédula ya existe.', details: err.detail });
+            res.status(409).json({ error: 'Conflicto de unicidad. La nueva cédula ya existe en la tabla yacyreta.', details: err.detail });
         } else {
             res.status(500).json({ error: 'Error del servidor', details: err.detail });
         }
@@ -221,7 +182,7 @@ const updateYacyreta = async (req, res) => {
 
 /**
  * Elimina un registro de Yacyreta.
- * La validación de permisos ahora se realiza en el middleware.
+ * OPTIMIZADO: Ahora solo elimina el registro de Yacyreta y no toca la tabla general.
  */
 const deleteYacyreta = async (req, res) => {
     const { id } = req.params;
@@ -231,38 +192,19 @@ const deleteYacyreta = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const oldRecordQuery = 'SELECT cedula FROM yacyreta WHERE id = $1 FOR UPDATE;';
-        const oldRecordResult = await client.query(oldRecordQuery, [id]);
-        if (oldRecordResult.rowCount === 0) {
+        
+        const deleteYacyretaQuery = 'DELETE FROM yacyreta WHERE id = $1 RETURNING *;';
+        const resultYacyreta = await client.query(deleteYacyretaQuery, [id]);
+        
+        if (resultYacyreta.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro de Yacyreta no encontrado' });
         }
-        const oldCedula = oldRecordResult.rows[0].cedula;
-        const checkOtherTablesQuery = `
-            SELECT 1 FROM propiedades_propietarios WHERE cedula_propietario = $1 LIMIT 1;
-        `;
-        const checkOtherTablesResult = await client.query(checkOtherTablesQuery, [oldCedula]);
-        if (checkOtherTablesResult.rowCount > 0) {
-            await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'No se puede eliminar este registro. La cédula está asociada a otra propiedad.' });
-        }
-        const deleteYacyretaQuery = 'DELETE FROM yacyreta WHERE id = $1 RETURNING *;';
-        const resultYacyreta = await client.query(deleteYacyretaQuery, [id]);
-        const deleteGeneralQuery = `
-            DELETE FROM general WHERE cedula = $1 RETURNING *;
-        `;
-        const resultGeneral = await client.query(deleteGeneralQuery, [oldCedula]);
-        if (resultGeneral.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Registro no encontrado en la tabla general.' });
-        }
+        
         await client.query('COMMIT');
         res.json({
             message: 'Registro de Yacyreta eliminado exitosamente',
-            deletedRecord: {
-                ...resultYacyreta.rows[0],
-                ...resultGeneral.rows[0]
-            }
+            deletedRecord: resultYacyreta.rows[0]
         });
     } catch (err) {
         await client.query('ROLLBACK');

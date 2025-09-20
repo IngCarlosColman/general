@@ -4,35 +4,34 @@ const abogadosController = require('../controllers/abogados.controller');
 
 // Importamos todos los middlewares necesarios
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
-// Importa los middlewares específicos para editar y eliminar
-const { canEditRecord, canDeleteRecord } = require('../middlewares/permissions.middleware'); 
+// Importa el nuevo middleware unificado para permisos
+const { canAccessRecord } = require('../middlewares/permissions.middleware');
 
 // Definimos los roles que tienen permiso para acceder a estas rutas
 const allowedRoles = ['administrador', 'editor'];
 
-// Aplicamos el middleware de autenticación a todas las rutas
+// Aplicamos el middleware de autenticación a todas las rutas del router
 router.use(authenticateJWT);
 
 // Rutas protegidas con validación de roles
 router.get('/abogados', checkRoles(allowedRoles), abogadosController.getAbogadosData);
+// La función createAbogado ahora usa el nombre correcto
 router.post('/abogados', checkRoles(allowedRoles), abogadosController.createAbogado);
 
 // Rutas protegidas con validación de roles y de propiedad del registro
-// La ruta PUT usa el middleware canEditRecord, que permite la edición
-// a todos los roles.
+// La ruta PUT usa el middleware canAccessRecord con la acción 'edit'
 router.put(
     '/abogados/:id',
     checkRoles(allowedRoles),
-    canEditRecord('abogados', 'id', 'general', 'cedula'),
+    canAccessRecord('abogados', 'id', 'general', 'cedula', 'edit'),
     abogadosController.updateAbogado
 );
 
-// La ruta DELETE usa el middleware canDeleteRecord, que se encarga
-// de que solo el creador o un administrador pueda eliminar el registro.
+// La ruta DELETE usa el middleware canAccessRecord con la acción 'delete'
 router.delete(
     '/abogados/:id',
     checkRoles(allowedRoles),
-    canDeleteRecord('abogados', 'id', 'general', 'cedula'),
+    canAccessRecord('abogados', 'id', 'general', 'cedula', 'delete'),
     abogadosController.deleteAbogado
 );
 

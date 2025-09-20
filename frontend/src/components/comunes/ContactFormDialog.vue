@@ -92,7 +92,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, defineProps, defineEmits } from 'vue';
+import { computed, defineProps, defineEmits } from 'vue';
 
 const props = defineProps({
   modelValue: {
@@ -124,39 +124,39 @@ const emit = defineEmits([
   'save'
 ]);
 
-const form = ref(null);
-const editedItem = ref({});
+// Elimina el 'ref' local para editedItem
+// const editedItem = ref({});
 
-watch(() => props.editedItem, (newVal) => {
-  editedItem.value = JSON.parse(JSON.stringify(newVal));
-}, { immediate: true, deep: true });
+// Y también elimina el 'watch'
+// watch(() => props.editedItem, (newVal) => {
+//   editedItem.value = JSON.parse(JSON.stringify(newVal));
+// }, { immediate: true, deep: true });
 
 const title = computed(() => {
   return props.isEditing ? 'Editar Registro' : 'Nuevo Registro';
 });
 
 const completo = computed(() => {
-  if (editedItem.value.nombres || editedItem.value.apellidos) {
-    return `${editedItem.value.nombres || ''} ${editedItem.value.apellidos || ''}`.trim();
+  if (props.editedItem.nombres || props.editedItem.apellidos) {
+    return `${props.editedItem.nombres || ''} ${props.editedItem.apellidos || ''}`.trim();
   }
   return '';
 });
 
 const addTelefono = () => {
-  if (!editedItem.value.telefonos) {
-    editedItem.value.telefonos = [];
+  // Asegúrate de que telefonos exista
+  if (!props.editedItem.telefonos) {
+    props.editedItem.telefonos = [];
   }
-  editedItem.value.telefonos.push('');
+  props.editedItem.telefonos.push('');
 };
 
 const removeTelefono = (index) => {
-  editedItem.value.telefonos.splice(index, 1);
+  props.editedItem.telefonos.splice(index, 1);
 };
 
 const save = async () => {
-  const { valid } = await form.value.validate();
-  if (valid) {
-    emit('save', editedItem.value);
-  }
+  // Aquí usamos la prop directamente
+  emit('save', props.editedItem);
 };
 </script>

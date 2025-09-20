@@ -1,15 +1,15 @@
 <template>
   <v-app>
     <router-view />
-    
+
     <v-snackbar
-      :model-value="snackbarState.snackbar"
+      v-model="snackbarState.show"
       :color="snackbarState.color"
-      :timeout="3000"
+      :timeout="snackbarState.timeout"
       location="bottom right"
       @update:model-value="closeSnackbar"
     >
-      {{ snackbarState.text }}
+      {{ snackbarState.message }}
       <template v-slot:actions>
         <v-btn
           color="white"

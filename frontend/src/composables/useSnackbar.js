@@ -1,24 +1,28 @@
-import { reactive, readonly } from 'vue';
+// src/composables/useSnackbar.js
 
-const state = reactive({
-  snackbar: false,
-  text: '',
-  color: '',
+import { ref } from 'vue';
+
+const snackbarState = ref({
+  show: false,
+  message: '',
+  color: 'success',
+  timeout: 3000,
 });
 
 export function useSnackbar() {
-  const showSnackbar = (text, color = 'success') => {
-    state.text = text;
-    state.color = color;
-    state.snackbar = true;
+  const showSnackbar = (message, color = 'success', timeout = 3000) => {
+    snackbarState.value.show = true;
+    snackbarState.value.message = message;
+    snackbarState.value.color = color;
+    snackbarState.value.timeout = timeout;
   };
 
   const closeSnackbar = () => {
-    state.snackbar = false;
+    snackbarState.value.show = false;
   };
 
   return {
-    snackbarState: readonly(state),
+    snackbarState,
     showSnackbar,
     closeSnackbar,
   };

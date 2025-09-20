@@ -25,7 +25,13 @@
             </v-btn>
           </v-toolbar>
           <v-card-text class="py-4 px-2">
-            <FullCalendar ref="fullCalendarRef" :options="calendarOptions" />
+            <Calendar
+              :attributes="calendarEvents"
+              is-expanded
+              :locale="esLocale"
+              @dayclick="handleDayClick"
+              @dayhover="handleDayHover"
+            />
           </v-card-text>
         </v-card>
       </v-col>
@@ -176,22 +182,21 @@
 
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue';
-import apiClient from '@/services/api';
+import apiClient from '@/api/axiosClient';
 import { useSnackbar } from '@/composables/useSnackbar';
-import FullCalendar from '@fullcalendar/vue3';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import esLocale from '@fullcalendar/core/locales/es';
+import { Calendar, setupCalendar } from 'v-calendar';
+import 'v-calendar/style.css';
 import { useCalendarEventsStore } from '@/stores/calendarEvents';
 import { storeToRefs } from 'pinia';
 
+setupCalendar({});
+
 const { showSnackbar } = useSnackbar();
 const allContacts = ref([]);
-const fullCalendarRef = ref(null);
+const esLocale = 'es'; 
 
 const calendarEventsStore = useCalendarEventsStore();
 const { events: customEvents } = storeToRefs(calendarEventsStore);
-const calendarEvents = ref([]);
 
 const eventDialog = ref(false);
 const confirmDialog = ref(false);
@@ -199,19 +204,111 @@ const editedEvent = ref({ id: null, title: '', date: '', time: '', description: 
 const defaultEvent = { id: null, title: '', date: '', time: '', description: '', color: 'blue', icon: 'mdi-pencil' };
 const isEditing = computed(() => !!editedEvent.value.id);
 
-// **NUEVA FUNCIÓN: Forzamos la recarga imperativa del calendario**
+const calendarEvents = computed(() => {
+  const events = [];
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const yearsToInclude = [currentYear - 1, currentYear, currentYear + 1];
+
+  // Generar eventos fijos (días festivos)
+  const fixedHolidays = [
+    { month: 0, day: 1, title: 'Año Nuevo' },
+    { month: 1, day: 14, title: 'Día de los Enamorados' },
+    { month: 4, day: 1, title: 'Día del Trabajador' },
+    { month: 4, day: 15, title: 'Día de la Madre' },
+    { month: 4, day: 14, title: 'Independencia del Paraguay' },
+    { month: 4, day: 15, title: 'Independencia del Paraguay' },
+    { month: 11, day: 25, title: 'Navidad' },
+  ];
+  
+  yearsToInclude.forEach(year => {
+    fixedHolidays.forEach(holiday => {
+      events.push({
+        dates: new Date(year, holiday.month, holiday.day),
+        color: 'red',
+        customData: {
+          title: holiday.title,
+          icon: 'mdi-flag',
+          isHoliday: true,
+        },
+      });
+    });
+
+    // Generar eventos variables (Pascua, Día del Padre, etc.)
+    const variableHolidays = getVariableHolidays(year);
+    variableHolidays.forEach(holiday => {
+      events.push({
+        dates: holiday.date,
+        color: 'red',
+        customData: {
+          title: holiday.title,
+          icon: 'mdi-flag',
+          isHoliday: true,
+        },
+      });
+    });
+
+    // Generar eventos de cumpleaños de contactos
+    if (allContacts.value && Array.isArray(allContacts.value)) {
+      allContacts.value.forEach(contact => {
+        if (contact.fecha_nacimiento) {
+          const birthDateString = contact.fecha_nacimiento.split('T')[0];
+          const [birthYear, month, day] = birthDateString.split('-');
+          const birthDate = new Date(year, month - 1, day);
+          
+          events.push({
+            dates: birthDate,
+            color: 'green',
+            customData: {
+              // --- CAMBIO IMPORTANTE: SE ELIMINA EL AÑO DEL ID ---
+              // Esto asegura que la ID de los cumpleaños sea consistente en toda la aplicación.
+              id: `birthday-${contact.cedula}`,
+              title: `Cumpleaños de ${contact.nombres} ${contact.apellidos}`,
+              icon: 'mdi-cake-variant',
+              isBirthday: true,
+            },
+          });
+        }
+      });
+    }
+  });
+
+  // Agregar eventos de la agenda privada del usuario
+  if (customEvents.value && Array.isArray(customEvents.value)) {
+    customEvents.value.forEach(event => {
+      events.push({
+        dates: new Date(event.date),
+        color: event.color,
+        customData: {
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          icon: event.icon,
+        },
+      });
+    });
+  }
+
+  return events;
+});
+
+const handleDayClick = (day) => {
+  openEventDialog({ date: day.id });
+};
+
+const handleDayHover = (day) => {
+  if (day.attributes) {
+    const customEventsOnDay = day.attributes.filter(attr => attr.customData && attr.customData.id && typeof attr.customData.id === 'number');
+    if (customEventsOnDay.length > 0) {
+      openEventDialog({ id: customEventsOnDay[0].customData.id, title: customEventsOnDay[0].customData.title, description: customEventsOnDay[0].customData.description, date: day.id });
+    }
+  }
+};
+
 const refreshEvents = async () => {
   try {
     await calendarEventsStore.fetchEvents();
     await fetchContacts();
-    generateAllEvents();
-    
-    if (fullCalendarRef.value) {
-      const calendarApi = fullCalendarRef.value.getApi();
-      calendarApi.removeAllEvents();
-      calendarApi.addEventSource(calendarEvents.value);
-    }
-
     showSnackbar('Eventos recargados con éxito.', 'success');
   } catch (error) {
     showSnackbar('Error al recargar los eventos.', 'error');
@@ -219,42 +316,28 @@ const refreshEvents = async () => {
 };
 
 const openEventDialog = (event) => {
-  if (!event.id && !event.extendedProps) {
-    editedEvent.value = Object.assign({}, defaultEvent, event);
-  } else {
-    const eventId = event.extendedProps?.id || event.id;
-
-    if (typeof eventId === 'number') {
-      let localDate;
-      let time;
-
-      if (event.start) {
-        localDate = new Date(event.start);
-        const hours = String(localDate.getHours()).padStart(2, '0');
-        const minutes = String(localDate.getMinutes()).padStart(2, '0');
-        time = `${hours}:${minutes}`;
-      } else {
-        localDate = new Date(event.startStr);
-        time = '';
-      }
-
-      editedEvent.value = {
-        id: eventId,
-        title: event.title,
-        date: localDate.toISOString().split('T')[0],
-        time: event.allDay ? '' : time,
-        description: event.extendedProps?.description,
-        color: event.extendedProps?.color,
-        icon: event.extendedProps?.icon,
-      };
-    } else {
-      showSnackbar('No puedes editar o eliminar días festivos o cumpleaños.', 'info');
-      return;
-    }
+  if (event.id && typeof event.id !== 'number') {
+    showSnackbar('No puedes editar o eliminar días festivos o cumpleaños.', 'info');
+    return;
   }
-
-  eventDialog.value = true;
   
+  if (event.id) {
+    const existingEvent = customEvents.value.find(e => e.id === event.id);
+    if (existingEvent) {
+      editedEvent.value = {
+        id: existingEvent.id,
+        title: existingEvent.title,
+        date: existingEvent.date ? existingEvent.date.split('T')[0] : '',
+        time: existingEvent.date && existingEvent.date.includes('T') ? existingEvent.date.split('T')[1].substring(0, 5) : '',
+        description: existingEvent.description,
+        color: existingEvent.color,
+        icon: existingEvent.icon,
+      };
+    }
+  } else {
+    editedEvent.value = Object.assign({}, defaultEvent, event);
+  }
+  eventDialog.value = true;
 };
 
 const closeEventDialog = () => {
@@ -293,7 +376,6 @@ const saveEvent = async () => {
       showSnackbar('Evento agregado con éxito.', 'success');
     }
 
-    // Usamos el nuevo método para recargar el calendario
     await refreshEvents();
     closeEventDialog();
   } catch (error) {
@@ -316,7 +398,6 @@ const deleteEvent = async () => {
     await apiClient.delete(`/private-agenda/events/${editedEvent.value.id}`);
     showSnackbar('Evento eliminado con éxito.', 'success');
     
-    // Usamos el nuevo método para recargar el calendario
     await refreshEvents();
     closeEventDialog();
     confirmDialog.value = false;
@@ -367,80 +448,6 @@ const getVariableHolidays = (year) => {
   return holidays;
 };
 
-const generateAllEvents = () => {
-  const events = [];
-  const today = new Date();
-  const currentYear = today.getFullYear();
-
-  const fixedHolidays = [
-      { month: 0, day: 1, title: 'Año Nuevo' },
-      { month: 1, day: 14, title: 'Día de los Enamorados' },
-      { month: 4, day: 1, title: 'Día del Trabajador' },
-      { month: 4, day: 15, title: 'Día de la Madre' },
-      { month: 4, day: 14, title: 'Independencia del Paraguay' },
-      { month: 4, day: 15, title: 'Independencia del Paraguay' },
-      { month: 11, day: 25, title: 'Navidad' },
-  ];
-  for (let year = currentYear - 1; year <= currentYear + 1; year++) {
-    fixedHolidays.forEach(holiday => {
-      events.push({
-        title: holiday.title,
-        date: new Date(year, holiday.month, holiday.day).toISOString(),
-        color: 'red',
-        icon: 'mdi-flag',
-        allDay: true
-      });
-    });
-
-    const variableHolidays = getVariableHolidays(year);
-    variableHolidays.forEach(holiday => {
-      events.push({
-        title: holiday.title,
-        date: holiday.date.toISOString(),
-        color: 'red',
-        icon: 'mdi-flag',
-        allDay: true
-      });
-    });
-
-    if (allContacts.value && Array.isArray(allContacts.value)) {
-      allContacts.value.forEach(contact => {
-        if (contact.fecha_nacimiento) {
-          const birthDateString = contact.fecha_nacimiento.split('T')[0];
-          const [birthYear, month, day] = birthDateString.split('-');
-          const birthDate = new Date(year, month - 1, day);
-          
-          events.push({
-            id: `birthday-${contact.cedula}-${year}`,
-            title: `Cumpleaños de ${contact.nombres} ${contact.apellidos}`,
-            date: birthDate.toISOString(),
-            color: 'green',
-            icon: 'mdi-cake-variant',
-            allDay: true
-          });
-        }
-      });
-    }
-  }
-
-  if (customEvents.value && Array.isArray(customEvents.value)) {
-    customEvents.value.forEach(event => {
-      const isAllDay = event.date.endsWith('T00:00:00.000Z') || !event.date.includes('T');
-      events.push({
-        id: event.id,
-        title: event.title,
-        description: event.description,
-        color: event.color,
-        icon: event.icon,
-        date: event.date,
-        allDay: isAllDay
-      });
-    });
-  }
-
-  calendarEvents.value = events;
-};
-
 const fetchContacts = async () => {
   try {
     const contactsResponse = await apiClient.get('/private-agenda');
@@ -450,80 +457,12 @@ const fetchContacts = async () => {
   }
 };
 
-const calendarOptions = ref({
-  plugins: [dayGridPlugin, interactionPlugin],
-  initialView: 'dayGridMonth',
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,dayGridWeek,dayGridDay'
-  },
-  locale: esLocale,
-  // Ya no usamos una propiedad computada, ahora los eventos se cargan de forma imperativa.
-  events: calendarEvents,
-  eventDisplay: 'block',
-  editable: true,
-  eventStartEditable: true,
-  eventResizableFromStart: false,
-  eventDurationEditable: false,
-  timeZone: 'local',
-  
-  dateClick: (info) => {
-    openEventDialog({ date: info.dateStr, time: '' });
-  },
-  eventClick: (info) => {
-    openEventDialog(info.event);
-  },
-  eventDrop: async (info) => {
-    try {
-      if (typeof info.event.extendedProps.id !== 'number') {
-        info.revert();
-        showSnackbar('No puedes mover los días festivos, cumpleaños o fechas especiales.', 'error');
-        return;
-      }
-
-      const eventId = info.event.extendedProps.id;
-      let newDateString;
-      if (info.event.allDay) {
-        newDateString = new Date(info.event.startStr).toISOString();
-      } else {
-        newDateString = info.event.start.toISOString();
-      }
-
-      await apiClient.put(`/private-agenda/events/${eventId}`, { date: newDateString });
-      showSnackbar('Fecha del evento actualizada.', 'success');
-      
-      // Recargamos el calendario para reflejar los cambios
-      await refreshEvents();
-      
-    } catch (error) {
-      console.error('Error al actualizar fecha del evento:', error);
-      showSnackbar('Error al actualizar la fecha del evento.', 'error');
-      info.revert();
-    }
-  },
-  
-  eventDidMount: function(info) {
-    if (info.event.extendedProps.description || info.event.title) {
-      const tooltipText = `${info.event.title}${info.event.extendedProps.description ? ': ' + info.event.extendedProps.description : ''}`;
-      info.el.setAttribute('title', tooltipText);
-    }
-  },
-  
-  eventContent: function(arg) {
-    let titleEl = document.createElement('div');
-    const iconClass = arg.event.extendedProps?.icon || 'mdi-calendar';
-    titleEl.innerHTML = `<i class="mdi ${iconClass} me-1"></i>${arg.event.title}`;
-    return { domNodes: [titleEl] };
-  },
-});
-
 const upcomingEvents = computed(() => {
   const today = new Date();
   const next7Days = new Date();
   next7Days.setDate(today.getDate() + 7);
   
-  return calendarEvents.value.filter(event => {
+  return customEvents.value.filter(event => {
     const eventDate = new Date(event.date);
     if (isNaN(eventDate.getTime())) return false; 
     
@@ -533,18 +472,12 @@ const upcomingEvents = computed(() => {
 
 const dailyReminder = computed(() => {
   const today = new Date().toISOString().split('T')[0];
-  const eventToday = calendarEvents.value.find(event => {
-    const eventDateWithoutTime = new Date(event.date).toISOString().split('T')[0];
-    return eventDateWithoutTime === today && (event.color === 'green' || event.color === 'orange' || event.color === 'purple');
+  const eventToday = calendarEvents.value.find(attr => {
+    const eventDateWithoutTime = new Date(attr.dates).toISOString().split('T')[0];
+    return eventDateWithoutTime === today && (attr.customData.isBirthday);
   });
   if (eventToday) {
-    if (eventToday.color === 'green') {
-      return `¡Hoy es cumpleaños de ${eventToday.title.replace('Cumpleaños de ', '')}!`;
-    } else if (eventToday.color === 'orange') {
-      return `¡Hoy es el Día del Padre de: ${eventToday.title.replace('Día del Padre: ', '')}!`;
-    } else if (eventToday.color === 'purple') {
-      return `¡Hoy es el Día de la Madre de: ${eventToday.title.replace('Día de la Madre: ', '')}!`;
-    }
+    return `¡Hoy es cumpleaños de ${eventToday.customData.title.replace('Cumpleaños de ', '')}!`;
   }
   return null;
 });
@@ -575,13 +508,7 @@ const parentalNotification = computed(() => {
 });
 
 onMounted(() => {
-  // Llama a la función de recarga en el onMounted
   refreshEvents();
-  nextTick(() => {
-    if (fullCalendarRef.value) {
-      fullCalendarRef.value.getApi().updateSize();
-    }
-  });
 });
 </script>
 

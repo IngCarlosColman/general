@@ -4,8 +4,8 @@ const funcbnfController = require('../controllers/funcbnf.controller');
 
 // Importamos todos los middlewares necesarios
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
-// Importa los middlewares específicos para editar y eliminar
-const { canEditRecord, canDeleteRecord } = require('../middlewares/permissions.middleware');
+// Importa el nuevo middleware unificado para permisos
+const { canAccessRecord } = require('../middlewares/permissions.middleware');
 
 // Definimos los roles que tienen permiso para acceder a estas rutas
 const allowedRoles = ['administrador', 'editor'];
@@ -18,21 +18,19 @@ router.get('/funcbnf', checkRoles(allowedRoles), funcbnfController.getFuncBnfDat
 router.post('/funcbnf', checkRoles(allowedRoles), funcbnfController.createFuncBnf);
 
 // Rutas protegidas con validación de roles y de propiedad del registro
-// La ruta PUT usa el middleware canEditRecord, que permite la edición
-// a todos los roles.
+// La ruta PUT usa el middleware canAccessRecord con la acción 'edit'
 router.put(
     '/funcbnf/:id',
     checkRoles(allowedRoles),
-    canEditRecord('func_bnf'),
+    canAccessRecord('func_bnf', 'id', 'edit'),
     funcbnfController.updateFuncBnf
 );
 
-// La ruta DELETE usa el middleware canDeleteRecord, que se encarga
-// de que solo el creador o un administrador pueda eliminar el registro.
+// La ruta DELETE usa el middleware canAccessRecord con la acción 'delete'
 router.delete(
     '/funcbnf/:id',
     checkRoles(allowedRoles),
-    canDeleteRecord('func_bnf'),
+    canAccessRecord('func_bnf', 'id', 'delete'),
     funcbnfController.deleteFuncBnf
 );
 

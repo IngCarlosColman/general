@@ -5,8 +5,12 @@
       :items="items"
       :items-length="itemsLength"
       :loading="loading"
-      :search="search"
-      @update:options="$emit('update:options', $event)"
+      :items-per-page="options.itemsPerPage"
+      :page="options.page"
+      :sort-by="options.sortBy"
+      @update:items-per-page="$emit('update:options', { ...options, itemsPerPage: $event })"
+      @update:page="$emit('update:options', { ...options, page: $event })"
+      @update:sort-by="$emit('update:options', { ...options, sortBy: $event })"
       loading-text="Cargando datos..."
       no-data-text="No se encontraron resultados. Realice una búsqueda."
       :items-per-page-options="[
@@ -16,6 +20,10 @@
         { value: 100, title: '100' }
       ]"
     >
+      <template v-slot:item.salario="{ item }">
+        {{ formatCurrencyPy(item.salario) }}
+      </template>
+
       <template v-slot:item.telefonos="{ item }">
         <v-chip-group>
           <v-chip v-for="tel in item.telefonos" :key="tel" size="small">
@@ -113,6 +121,9 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { formatCurrencyPy } from '@/utils/formatters'; // Importación corregida
+
 const props = defineProps({
   headers: {
     type: Array,
@@ -130,13 +141,9 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  search: {
-    type: String,
-    default: '',
-  },
-  sortBy: {
-    type: Array,
-    default: () => [],
+  options: {
+    type: Object,
+    required: true,
   },
   privateAgendaCedulas: {
     type: Array,
@@ -144,7 +151,7 @@ const props = defineProps({
   },
 });
 
-defineEmits([
+const emit = defineEmits([
   'update:options',
   'toggle-private-agenda',
   'share-contact',

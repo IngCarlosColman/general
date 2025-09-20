@@ -836,7 +836,7 @@ zona
 
 Solicitud de URL
 
-https://www.catastro.gov.py/geoserver/ows?service=WFS&version=1.1.0&request=GetFeature&outputFormat=application/json&srsname=EPSG:32721&typename=snc:parcelas_activas&CQL_FILTER=dist=4%20AND%20dpto=%27K%27%20AND%20zona=%2726%27%20AND%20mz=%27758%27%20AND%20lote=%275%27&Método de solicitud
+https://www.catastro.gov.py/geoserver/ows?service=WFS&version=1.1.0&request=GetFeature&outputFormat=application/json&srsname=EPSG:32721&typename=snc:parcelas_activas&CQL_FILTER=dist=4%20AND%20dpto=%27K%27%20AND%20zona=%2726%27%20AND%20mz=%27758%27%20AND%20lote=%275%27
 
 GETCódigo de estado
 
@@ -1246,7 +1246,7 @@ Propósito: Buscar una propiedad urbana específica (dpto=K, dist=4, zona=26, ma
 
 Respuesta: 200 OK. La API devuelve un objeto JSON con detalles de la propiedad, incluyendo distrito, superficieM2, manzana, lote, etc.
 
-Llamada 2: https://www.catastro.gov.py/api/v1/public/cuentas?dpto=K&dist=1&zona=26&manzana=758&lote=5&padron=13
+Llamada 2: https://www.catastro.gov.py/api/v1/public/cuentas?dpto=K&dist=1&padron=13
 
 Propósito: Realizar una segunda consulta, esta vez con parámetros que sugieren una búsqueda rural o con un padrón específico. La mezcla de parámetros (zona, manzana, lote con padron) indica la flexibilidad del endpoint.
 

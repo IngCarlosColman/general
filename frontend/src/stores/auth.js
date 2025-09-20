@@ -36,6 +36,13 @@ export const useAuthStore = defineStore('auth', {
       this.user = userData;
     },
 
+    // 🆕 Esta es la nueva acción que el interceptor necesita
+    setToken(newToken) {
+      this.token = newToken;
+      this.isLoggedIn = true;
+      sessionStorage.setItem('accessToken', newToken);
+    },
+
     async logout() {
       try {
         await authService.logout();
@@ -51,10 +58,8 @@ export const useAuthStore = defineStore('auth', {
     async refreshToken() {
       try {
         const response = await authService.refreshToken();
-        this.token = response.token;
-        this.isLoggedIn = true;
-        // Persistir el nuevo token
-        sessionStorage.setItem('accessToken', response.token);
+        // 🔄 Usamos la nueva acción para actualizar el token de manera consistente
+        this.setToken(response.token);
       } catch (error) {
         console.error('No se pudo refrescar el token:', error);
         this.logout(); // Redirige a login si el refresh falla

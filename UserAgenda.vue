@@ -12,7 +12,6 @@
           density="compact"
           class="me-2"
           prepend-inner-icon="mdi-magnify"
-          @input="performSearch"
         ></v-text-field>
         <v-btn
           color="green"
@@ -262,8 +261,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import apiClient from '@/services/api';
+import { ref, computed, onMounted, watch } from 'vue';
+import apiClient from '@/api/axiosClient';
 import { useAuthStore } from '@/stores/auth';
 import { useSnackbar } from '@/composables/useSnackbar';
 import { debounce } from 'lodash';
@@ -295,7 +294,7 @@ const generalHeaders = [
 
 const detailsDialog = ref(false);
 const editedItem = ref({});
-const originalItem = ref({}); // <-- Nueva variable para almacenar el estado original
+const originalItem = ref({});
 const defaultItem = {
   cedula: '',
   nombres: '',
@@ -323,6 +322,18 @@ const headers = computed(() => {
   ];
 });
 
+const debouncedSearch = debounce(() => {
+  // Cuando el valor de `search` cambia, el VDataTableServer lo detecta
+  // y llama a `loadItems` automáticamente. No se necesita llamar directamente aquí.
+  // El debounce simplemente retrasa la actualización de la variable `search`
+  // para reducir las llamadas a la API.
+}, 500);
+
+// Observador para la variable de búsqueda que usa el debounce
+watch(search, (newVal) => {
+  debouncedSearch(newVal);
+});
+
 const loadItems = async ({ page, itemsPerPage, sortBy: vuetifySortBy }) => {
   loading.value = true;
   try {
@@ -348,15 +359,12 @@ const loadItems = async ({ page, itemsPerPage, sortBy: vuetifySortBy }) => {
   }
 };
 
-const performSearch = debounce(() => {
-  loadItems({ page: 1, itemsPerPage: 10, sortBy: sortBy.value });
-}, 500);
-
 const openAddContactDialog = async () => {
   addContactDialog.value = true;
   await fetchAgendaCedulas();
   generalContacts.value = [];
   generalTotalItems.value = 0;
+  addSearch.value = '';
 };
 
 const closeAddContactDialog = () => {
@@ -422,7 +430,6 @@ const addContactToAgenda = async (contact) => {
 };
 
 const showDetails = (item) => {
-  // Captura el estado original del item antes de editarlo.
   originalItem.value = JSON.parse(JSON.stringify(item));
   editedItem.value = Object.assign({}, defaultItem, item);
   
@@ -436,7 +443,7 @@ const showDetails = (item) => {
 const closeDetailsDialog = () => {
   detailsDialog.value = false;
   editedItem.value = Object.assign({}, defaultItem);
-  originalItem.value = {}; // Limpia el original para evitar efectos secundarios
+  originalItem.value = {};
 };
 
 // Función auxiliar para calcular el tercer domingo de junio
@@ -449,7 +456,6 @@ const getThirdSundayInJune = (year) => {
 
 const saveDetails = async () => {
   try {
-    // Almacenar el estado original de los campos para la comparación
     const originalDateOfBirth = originalItem.value.fecha_nacimiento?.split('T')[0] || '';
     const originalIsFather = originalItem.value.es_padre || false;
     const originalIsMother = originalItem.value.es_madre || false;
@@ -467,31 +473,25 @@ const saveDetails = async () => {
     const hasFatherChanged = editedItem.value.es_padre !== originalIsFather;
     const hasMotherChanged = editedItem.value.es_madre !== originalIsMother;
 
-    // Primero, guardar los detalles del contacto
     const response = await apiClient.put(`/private-agenda/${editedItem.value.cedula}`, updatedData);
     
     if (response.status === 200) {
       showSnackbar('Detalles actualizados con éxito.', 'success');
-      closeDetailsDialog();
-      await loadItems({ page: 1, itemsPerPage: 10, sortBy: [] });
-
-      // --- Sincronizar Aniversarios (si hubo cambios) ---
+      
+      // Sincronizar Aniversario
       if (editedItem.value.fecha_nacimiento && hasDateChanged) {
         const [year, month, day] = editedItem.value.fecha_nacimiento.split('-');
         const currentYear = new Date().getFullYear();
         const birthdayDate = `${currentYear}-${month}-${day}T00:00:00.000Z`;
-        const birthdayTitle = `Cumpleaños de ${editedItem.value.nombres} ${editedItem.value.apellidos}`;
         const eventId = `birthday-${editedItem.value.cedula}`;
-
         const eventData = {
           id: eventId,
-          title: birthdayTitle,
+          title: `Cumpleaños de ${editedItem.value.nombres} ${editedItem.value.apellidos}`,
           description: `Recordatorio de cumpleaños para ${editedItem.value.nombres} ${editedItem.value.apellidos}.`,
           date: birthdayDate,
           color: 'green',
           icon: 'mdi-cake-variant'
         };
-
         try {
           await apiClient.put('/private-agenda/events', eventData); 
           showSnackbar('Aniversario sincronizado con el calendario.', 'info');
@@ -511,7 +511,7 @@ const saveDetails = async () => {
         }
       }
 
-      // --- Sincronizar Día de la Madre (si hubo cambios) ---
+      // Sincronizar Día de la Madre
       if (editedItem.value.es_madre && hasMotherChanged) {
         const motherDayEvent = {
           id: `mother-day-${editedItem.value.cedula}`,
@@ -540,11 +540,10 @@ const saveDetails = async () => {
         }
       }
 
-      // --- Sincronizar Día del Padre (si hubo cambios) ---
+      // Sincronizar Día del Padre
       if (editedItem.value.es_padre && hasFatherChanged) {
         const fatherDayDate = getThirdSundayInJune(new Date().getFullYear());
         const formattedDate = fatherDayDate.toISOString();
-        
         const fatherDayEvent = {
           id: `father-day-${editedItem.value.cedula}`,
           title: `Día del Padre de ${editedItem.value.nombres} ${editedItem.value.apellidos}`,
@@ -572,7 +571,8 @@ const saveDetails = async () => {
         }
       }
       
-      // Finalmente, recargar todos los eventos del calendario
+      closeDetailsDialog();
+      await loadItems({ page: 1, itemsPerPage: 10, sortBy: [] });
       await calendarEventsStore.fetchEvents();
     }
   } catch (error) {
@@ -588,8 +588,7 @@ const confirmDelete = (item) => {
 
 const closeDeleteDialog = () => {
   deleteDialog.value = false;
-  // Solo se restablece después de que la eliminación esté completa.
-  // itemToDelete.value = null; <-- Esto se ha movido
+  itemToDelete.value = null;
 };
 
 const deleteConfirmed = async () => {
@@ -631,7 +630,6 @@ const deleteConfirmed = async () => {
     showSnackbar('Error al eliminar el contacto de la agenda.', 'error');
   } finally {
     closeDeleteDialog();
-    itemToDelete.value = null;
   }
 };
 

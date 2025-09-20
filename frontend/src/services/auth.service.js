@@ -1,4 +1,5 @@
-import api from './api';
+//src/services/auth.service.js
+import api from '../api/axiosClient';
 
 const login = async (email, password) => {
   try {
