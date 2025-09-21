@@ -162,7 +162,7 @@ export function useCrudTable(apiPath, defaultItem) {
 
   // === WATCHERS ===
 
-  // ✅ Solo observa los cambios en apiPath para restablecer los filtros
+  // ✅ Observa los cambios en apiPath para restablecer los filtros
   watch(apiPath, () => {
     Object.assign(options, {
       page: 1,
@@ -170,14 +170,19 @@ export function useCrudTable(apiPath, defaultItem) {
       sortBy: [],
     });
     searchTerm.value = '';
-    loadItems(); // Llama a loadItems después de un cambio de categoría
+    loadItems();
   });
 
-  // ✅ ¡El cambio crucial! Solo observa los cambios en las opciones de la tabla (paginación, ordenación).
-  // Se ha eliminado `searchTerm` de esta lista.
+  // ✅ Observa los cambios en la paginación y ordenación
   watch(() => options.page, loadItems);
   watch(() => options.itemsPerPage, loadItems);
   watch(() => options.sortBy, loadItems, { deep: true });
+
+  // ✅ Observa el término de búsqueda para recargar los datos
+  watch(searchTerm, () => {
+    Object.assign(options, { page: 1, sortBy: [] }); // Restablece la página a 1 al buscar
+    loadItems();
+  });
 
   return {
     items,

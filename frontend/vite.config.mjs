@@ -1,4 +1,4 @@
-// Plugins
+// vite.config.mjs
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import Fonts from 'unplugin-fonts/vite'

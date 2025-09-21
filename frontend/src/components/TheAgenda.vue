@@ -47,25 +47,24 @@
 import { ref, onMounted } from 'vue';
 import { useAgendaStore } from '@/stores/useAgendaStore';
 
-// Importamos los componentes
-import AgendaToolbar from './agendautilities/AgendaToolbar.vue';
-import AgendaTable from './agendautilities/AgendaTable.vue';
-import ContactDetailsModal from './agendautilities/ContactDetailsModal.vue';
-import NewContactModal from './agendautilities/NewContactModal.vue';
-import AgendaCalendar from './agendautilities/AgendaCalendar.vue';
+// === RUTAS CORREGIDAS ===
+// Ahora apuntan a la carpeta 'agendautilities'
+import AgendaToolbar from '@/components/agendautilities/AgendaToolbar.vue';
+import AgendaTable from '@/components/agendautilities/AgendaTable.vue';
+import ContactDetailsModal from '@/components/agendautilities/ContactDetailsModal.vue';
+import NewContactModal from '@/components/agendautilities/NewContactModal.vue';
+import AgendaCalendar from '@/components/agendautilities/AgendaCalendar.vue';
 
-// Estado global de la agenda
+// Estado global de la agenda (nuestro cerebro)
 const agendaStore = useAgendaStore();
-const currentView = ref('table'); // 'table' o 'calendar'
 
-// Estado local del componente para la UI
+// Estado local del componente para manejar la UI
 const searchQuery = ref('');
 const selectedCategoryId = ref(null);
 const allCategories = ref([]);
 const detailsModalOpen = ref(false);
 const newContactModalOpen = ref(false);
 const selectedContact = ref(null);
-
 
 // Lógica para manejar la búsqueda (se emite desde AgendaToolbar)
 const handleSearchUpdate = (newSearchTerm) => {
@@ -95,9 +94,9 @@ const refreshAgenda = () => {
 
 // Cargar datos iniciales al montar el componente
 onMounted(async () => {
-  await agendaStore.fetchAgendaContacts();
-  // Se obtiene la lista de categorías desde el store al iniciar
-  allCategories.value = await agendaStore.fetchAllCategories();
+  await agendaStore.fetchAgendaContacts(); 
+  await agendaStore.fetchAllCategories(); 
+  allCategories.value = agendaStore.allCategories;
 });
 
 </script>

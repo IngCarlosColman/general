@@ -1,6 +1,5 @@
 const { pool } = require('../db/db');
 const { upsertTelefonos } = require('./common.controller'); // Asegúrate de que la ruta sea correcta
-
 /**
  * Función auxiliar para actualizar o insertar datos de una persona en la tabla 'general'.
  * Esta función está diseñada para ser llamada dentro de una transacción de base de datos.
@@ -15,19 +14,16 @@ const upsertGeneral = async (cedula, nombre, tel, id_usuario, client) => {
     if (!cedula) {
         return;
     }
-
     try {
         const completo = `${nombre || ''}`.trim();
         let nombres = nombre;
         let apellidos = null;
-
         // Si el nombre completo contiene una coma, se asume el formato 'APELLIDOS, NOMBRES'
         if (nombre && nombre.includes(',')) {
             const parts = nombre.split(',').map(part => part.trim());
             apellidos = parts[0];
             nombres = parts[1];
         }
-
         // Usamos ON CONFLICT (UPSERT) para simplificar la lógica.
         const upsertQuery = `
             INSERT INTO general (nombres, apellidos, cedula, completo, created_by)
@@ -41,7 +37,6 @@ const upsertGeneral = async (cedula, nombre, tel, id_usuario, client) => {
             RETURNING *;
         `;
         await client.query(upsertQuery, [nombres, apellidos, cedula, completo, id_usuario]);
-
         // Si hay teléfonos, maneja el upsert de ellos también.
         if (tel && Array.isArray(tel)) {
             await upsertTelefonos(client, cedula, tel, id_usuario);
@@ -51,7 +46,6 @@ const upsertGeneral = async (cedula, nombre, tel, id_usuario, client) => {
         throw error;
     }
 };
-
 /**
  * Obtiene los datos de la tabla general con paginación, búsqueda y ordenamiento.
  */
@@ -66,14 +60,11 @@ const getGeneralData = async (req, res) => {
                 console.error("Error al parsear el parámetro sortBy:", error);
             }
         }
-        
         const limit = Math.min(parseInt(itemsPerPage), 100);
         const offset = (parseInt(page) - 1) * limit;
-
         let whereClause = '';
         const queryParams = [];
         let paramIndex = 1;
-
         if (search) {
             const searchTerms = search.split(/\s+/).filter(term => term);
             if (searchTerms.length > 0) {
@@ -82,12 +73,10 @@ const getGeneralData = async (req, res) => {
                 paramIndex++;
             }
         }
-
         let orderByClause = 'ORDER BY g.cedula ASC';
         if (sortBy.length) {
             const sortKey = sortBy[0].key;
             const sortOrder = sortBy[0].order === 'desc' ? 'DESC' : 'ASC';
-            
             const validSortFields = {
                 'id': 'g.id',
                 'nombres': 'g.nombres',
@@ -98,16 +87,13 @@ const getGeneralData = async (req, res) => {
                 'updated_by': 'g.updated_by',
                 'updated_at': 'g.updated_at'
             };
-
             if (validSortFields[sortKey]) {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
         }
-
         const countQuery = `SELECT COUNT(*) FROM mv_general_busqueda g ${whereClause}`;
         const countResult = await pool.query(countQuery, queryParams);
         const totalItems = parseInt(countResult.rows[0].count);
-
         const dataQuery = `
             SELECT
                 g.id,
@@ -132,7 +118,6 @@ const getGeneralData = async (req, res) => {
         queryParams.push(offset);
         const dataResult = await pool.query(dataQuery, queryParams);
         const items = dataResult.rows;
-
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -142,7 +127,6 @@ const getGeneralData = async (req, res) => {
         res.status(500).json({ error: 'Error del servidor' });
     }
 };
-
 /**
  * Obtiene un registro de la tabla general por su cédula.
  */
@@ -175,7 +159,6 @@ const getGeneralById = async (req, res) => {
         res.status(500).json({ error: 'Error del servidor', details: err.detail });
     }
 };
-
 /**
  * Crea un nuevo registro en la tabla general.
  */
@@ -212,7 +195,6 @@ const createGeneral = async (req, res) => {
         client.release();
     }
 };
-
 /**
  * Actualiza un registro en la tabla general.
  */
@@ -236,16 +218,13 @@ const updateGeneral = async (req, res) => {
             RETURNING *;
         `;
         const result = await client.query(updateQuery, [nombres, apellidos, cedula, completo, id_usuario, id]);
-
         if (result.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro no encontrado' });
         }
-
         if (Array.isArray(telefonos)) {
             await upsertTelefonos(client, cedula, telefonos, id_usuario);
         }
-
         await client.query('COMMIT');
         res.json({ updatedRecord: result.rows[0] });
     } catch (err) {
@@ -260,7 +239,6 @@ const updateGeneral = async (req, res) => {
         client.release();
     }
 };
-
 /**
  * Elimina un registro de la tabla general.
  */
@@ -295,7 +273,6 @@ const deleteGeneral = async (req, res) => {
         client.release();
     }
 };
-
 module.exports = {
     getGeneralData,
     getGeneralById,

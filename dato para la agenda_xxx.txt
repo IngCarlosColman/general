@@ -1213,3 +1213,144 @@ REFERENCES RESUMEN
 A general: abogados, contact_details, despachantes,docentes,func_bnf,funcpublic,itaipu,user_agendas,yacyreta,telefonos,telefonos_historial
 A user_agendas: contact_notes, follow_up_events, user_agenda_categorias, contact_details,user_nombres, user_telefonos
 A categorias: user_agenda_categorias
+
+
+Análisis de Componentes y su Lógica
+Basado en los borradores que me proporcionaste, este es el desglose de cada componente y cómo se conectará con el store y con los demás:
+
+1. TheAgenda.vue (Componente Principal)
+Este componente actúa como el "cerebro" de toda la vista. Su función principal es coordinar la interacción entre todos los sub-componentes.
+
+Acciones Principales:
+
+Al cargarse (onMounted), llama a agendaStore.fetchAgendaContacts() para llenar la tabla.
+
+Gestiona el estado local para la búsqueda (searchQuery) y la categoría (selectedCategoryId), que se envían desde AgendaToolbar.vue.
+
+Define las funciones showContactDetails y openNewContactModal para controlar la visibilidad de los modales.
+
+Provee las props necesarias a sus hijos (AgendaTable.vue, ContactDetailsModal.vue, NewContactModal.vue).
+
+Puntos de Conexión Clave:
+
+Con AgendaTable.vue: Le pasa el searchQuery y el selectedCategoryId como props. Escucha el evento @show-details para abrir el modal de detalles y le pasa la información del contacto.
+
+Con ContactDetailsModal.vue: Le pasa el contacto seleccionado (selectedContact) como una prop y escucha el evento @update-agenda para refrescar los datos.
+
+Con NewContactModal.vue: Escucha el evento @contact-added para refrescar la lista de contactos una vez que se ha añadido uno nuevo.
+
+2. AgendaToolbar.vue
+Este es el componente de la barra superior. Es el punto de entrada para que el usuario busque y filtre contactos.
+
+Acciones Principales:
+
+Emite eventos (@update:search y @update:category) a TheAgenda.vue cuando el usuario interactúa con los campos de búsqueda y filtro.
+
+Puntos de Conexión Clave:
+
+No se conecta directamente con el store, pero actúa como un puente para que TheAgenda.vue pueda usar los valores para filtrar la lista de contactos.
+
+3. AgendaTable.vue
+Este componente es responsable de mostrar la lista de contactos y gestionar las acciones de la tabla.
+
+Acciones Principales:
+
+Accede directamente al agendaStore.agendaContacts para mostrar la lista.
+
+Accede a agendaStore.isLoading para mostrar un estado de carga.
+
+Define una propiedad computada filteredContacts para filtrar la lista según las props de búsqueda y categoría que recibe.
+
+Emite @show-details a TheAgenda.vue cuando se hace clic en un contacto.
+
+Llama directamente a agendaStore.removeContactFromAgenda(cedula) para eliminar un contacto de la agenda.
+
+Puntos de Conexión Clave:
+
+Con useAgendaStore: Se conecta directamente para leer el estado (agendaContacts, isLoading) y para llamar a la acción removeContactFromAgenda.
+
+Con TheAgenda.vue: Le pasa la información de un contacto a través del evento @show-details.
+
+4. NewContactModal.vue
+Este modal es la interfaz para que el usuario añada un nuevo contacto de la guía telefónica a su agenda privada.
+
+Acciones Principales:
+
+Utiliza una función con debounce para llamar a agendaStore.searchPublicContacts y buscar en la guía pública sin saturar la API.
+
+Llama a agendaStore.addContactToAgenda para añadir el contacto seleccionado.
+
+Al guardar, emite el evento @contact-added a TheAgenda.vue para que se refresque la tabla.
+
+Puntos de Conexión Clave:
+
+Con useAgendaStore: Se conecta directamente para usar las acciones searchPublicContacts y addContactToAgenda.
+
+Con TheAgenda.vue: Emite un evento para notificar que el proceso ha terminado.
+
+5. ContactDetailsModal.vue
+Este modal es el corazón de la interacción. Muestra los detalles de un contacto y contiene las micro-vistas para editar la información.
+
+Acciones Principales:
+
+Observa el prop contact y, cuando cambia, llama a agendaStore.fetchContactData(cedula) para cargar todos los datos detallados del contacto.
+
+Contiene un botón de "guardar" que llamará a las acciones upsertContactDetails, upsertUserNombre y upsertContactNote para guardar los cambios.
+
+Al cerrar o guardar, emite el evento @update-agenda para refrescar la agenda principal.
+
+Puntos de Conexión Clave:
+
+Con useAgendaStore: Se conecta directamente con el store para usar el estado (currentContactDetails, contactName, contactNotes, etc.) y para llamar a las acciones de actualización (upsert...).
+
+6. ContactInfoEditor.vue
+Este es el primer componente hijo del modal de detalles y se encarga de gestionar los teléfonos.
+
+Acciones Principales:
+
+Lee la lista de teléfonos de agendaStore.contactPhones.
+
+Define la lógica para añadir, editar y eliminar teléfonos, llamando a las acciones del store: addContactPhone, updateContactPhone, y deleteContactPhone.
+
+Puntos de Conexión Clave:
+
+Con useAgendaStore: Se conecta directamente a las propiedades y acciones del store para su CRUD de teléfonos.
+
+7. ContactCategories.vue
+Este componente se encarga de la gestión de categorías.
+
+Acciones Principales:
+
+Llama a agendaStore.fetchAllCategories() para obtener la lista completa de categorías.
+
+Llama a agendaStore.createCategory para crear una nueva categoría.
+
+Realiza un "diffing" entre las categorías antiguas y las nuevas para llamar a agendaStore.assignCategoryToContact y agendaStore.removeCategoryFromContact de forma eficiente.
+
+Puntos de Conexión Clave:
+
+Con useAgendaStore: Usa las acciones de categorías del store.
+
+8. FollowupEvents.vue
+Este componente gestiona los eventos de seguimiento.
+
+Acciones Principales:
+
+Llama a agendaStore.fetchContactFollowupEvents para obtener la lista de eventos.
+
+Llama a agendaStore.addFollowupEvent y agendaStore.deleteFollowupEvent para el CRUD de eventos.
+
+Puntos de Conexión Clave:
+
+Con useAgendaStore: Se conecta a las acciones y propiedades del store relacionadas con los eventos de seguimiento.
+
+Plan de Interconexión
+Con este análisis en mente, el plan perfecto es:
+
+Empezar por TheAgenda.vue: Escribiremos el código para que el onMounted cargue los datos, y para que las funciones de manejo de modales (showContactDetails, openNewContactModal) funcionen correctamente.
+
+Continuar con AgendaTable.vue: Implementaremos la lógica de la tabla para que filtre correctamente y para que el botón de "eliminar" llame a la acción del store.
+
+Trabajar en los Modales: Daremos vida a NewContactModal.vue y ContactDetailsModal.vue. El primero se encargará de la búsqueda y adición, y el segundo de cargar los datos de un solo contacto y de actuar como contenedor para las demás micro-vistas.
+
+Finalizar con las Micro-vistas: Implementaremos la lógica de guardar y actualizar datos en ContactInfoEditor.vue, ContactCategories.vue y FollowupEvents.vue, asegurándonos de que cada una llame a las acciones correctas del useAgendaStore.

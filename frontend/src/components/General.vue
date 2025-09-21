@@ -5,51 +5,50 @@
         title="Guía Telefónica"
         :categories="categories"
         v-model:selected-category="selectedCategory"
-        v-model:search="searchTerm"
-        @add="openDialog('create')"
-        @search="handleSearch" />
+        v-model:search="activeTable.searchTerm.value"
+        :show-add-button="showAddButton"
+        @add="activeTable.openDialog('create')"
+        @search="handleSearch"
+      />
       <v-divider></v-divider>
       <ContactTable
-        :headers="headers"
-        :items="items"
-        :items-length="totalItems"
-        :loading="isLoading"
+        :headers="activeTable.headers.value"
+        :items="activeTable.items.value"
+        :items-length="activeTable.totalItems.value"
+        :loading="activeTable.isLoading.value || isTogglingAgenda"
         :private-agenda-cedulas="agendaStore.privateAgendaCedulas"
-        :options="options"
-        @update:options="newOptions => Object.assign(options, newOptions)"
-        @edit="openDialog('edit', $event)"
-        @delete="confirmDeleteItem($event)"
+        :options="activeTable.options"
+        @update:options="newOptions => Object.assign(activeTable.options, newOptions)"
+        @edit="activeTable.openDialog('edit', $event)"
+        @delete="activeTable.confirmDeleteItem($event)"
         @toggle-private-agenda="togglePrivateAgenda"
         @share-contact="shareContact"
         @open-whatsapp="openWhatsApp"
         @download-vcard="downloadVCard"
       />
     </v-card>
-
     <ContactFormDialog
-      v-model:model-value="dialog"
-      :edited-item="editedItem"
-      :is-editing="isEditing"
-      :saving="isSaving"
-      @close="closeDialog"
-      @save="saveItem"
+      v-model:model-value="activeTable.dialog.value"
+      :edited-item="activeTable.editedItem.value"
+      :is-editing="activeTable.isEditing.value"
+      :saving="activeTable.isSaving.value"
+      @close="activeTable.closeDialog"
+      @save="activeTable.saveItem"
     />
-
     <ConfirmDeleteDialog
-      v-model:model-value="deleteDialog"
-      :name="itemToDelete?.nombreCompleto"
-      :deleting="isDeleting"
-      @close="closeDeleteDialog"
-      @confirm="deleteItem"
+      v-model:model-value="activeTable.deleteDialog.value"
+      :name="activeTable.itemToDelete.value?.nombreCompleto"
+      :deleting="activeTable.isDeleting.value"
+      @close="activeTable.closeDeleteDialog"
+      @confirm="activeTable.deleteItem"
     />
-
     <v-snackbar
-      v-model="snackbarState.snackbar"
+      v-model="snackbarState.show"
       :color="snackbarState.color"
-      :timeout="3000"
+      :timeout="snackbarState.timeout"
       class="centered-snackbar"
     >
-      {{ snackbarState.text }}
+      {{ snackbarState.message }}
       <template v-slot:actions>
         <v-btn color="white" variant="text" @click="closeSnackbar">Cerrar</v-btn>
       </template>
@@ -89,6 +88,19 @@ const categories = ref([
       { title: 'Apellidos', key: 'apellidos' },
       { title: 'Nombre Completo', key: 'completo' },
       { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Agenda Personal',
+    value: 'private-agenda',
+    icon: 'mdi-folder-account',
+    headers: [
+      { title: 'Cédula', key: 'cedula', align: 'start' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Relación', key: 'tipo_relacion' },
+      { title: 'Añadido', key: 'created_at' },
       { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
     ],
   },
@@ -185,99 +197,88 @@ const categories = ref([
 ]);
 
 // === COMPOSABLES ===
-const apiPath = computed(() => `/${selectedCategory.value}`);
-const {
-  items,
-  totalItems,
-  isLoading,
-  isSaving,
-  isDeleting,
-  dialog,
-  deleteDialog,
-  editedItem,
-  isEditing,
-  itemToDelete,
-  options,
-  searchTerm,
-  loadItems,
-  openDialog,
-  closeDialog,
-  saveItem,
-  confirmDeleteItem,
-  closeDeleteDialog,
-  deleteItem,
-} = useCrudTable(apiPath, defaultItem);
-
 const { snackbarState, closeSnackbar, showSnackbar } = useSnackbar();
 const agendaStore = useAgendaStore();
 const { openWhatsApp, downloadVCard, shareContact } = useContactUtilities();
 
-// === LÓGICA DE LA AGENDA PERSONAL ===
-const togglePrivateAgenda = async (item) => {
-  const cedula = item.cedula;
-  const isCurrentlyInAgenda = agendaStore.privateAgendaCedulas.includes(cedula);
+// Instancias separadas para cada tabla
+const generalTable = useCrudTable(computed(() => `/${selectedCategory.value}`), defaultItem);
+const privateAgendaTable = useCrudTable(ref('/private-agenda/agenda'), {});
 
-  let success = false;
-  if (isCurrentlyInAgenda) {
-    success = await agendaStore.removeContactFromAgenda(cedula);
-    if (success) {
-      showSnackbar('Contacto eliminado de tu agenda.', 'success');
-    }
-  } else {
-    success = await agendaStore.addContactToAgenda(cedula);
-    if (success) {
-      showSnackbar('Contacto añadido a tu agenda.', 'success');
-    }
-  }
+// Estado de carga específico para la acción de agregar/quitar de la agenda
+const isTogglingAgenda = ref(false);
 
-  if (!success && agendaStore.error) {
-    showSnackbar(agendaStore.error, 'error');
-  }
-};
+// === PROPIEDADES COMPUTADAS Y WATCHERS ===
 
-// === COMPUTED PROPERTIES AND WATCHERS ===
-const headers = computed(() => {
+// El objeto principal que orquesta la lógica de la vista activa
+const activeTable = computed(() => {
   const category = categories.value.find(c => c.value === selectedCategory.value);
-  return category ? category.headers : [];
+  if (selectedCategory.value === 'private-agenda') {
+    return {
+      ...privateAgendaTable,
+      headers: computed(() => category?.headers || []),
+    };
+  } else {
+    return {
+      ...generalTable,
+      headers: computed(() => category?.headers || []),
+    };
+  }
 });
 
+// Propiedad computada para controlar la visibilidad del botón 'Adicionar Registro'
+const showAddButton = computed(() => selectedCategory.value === 'private-agenda');
+
+// Observa el cambio de categoría para restablecer los filtros y recargar la tabla activa
 watch(selectedCategory, (newValue) => {
   if (!newValue) {
     selectedCategory.value = 'general';
     return;
   }
-  
-  searchTerm.value = '';
-  Object.assign(options, { page: 1, itemsPerPage: 10, sortBy: [] });
-  // La búsqueda se activa aquí después de un cambio de categoría
-  loadItems();
+  Object.assign(activeTable.value.options, { page: 1, itemsPerPage: 10, sortBy: [] });
+  activeTable.value.searchTerm.value = '';
+  activeTable.value.loadItems();
 });
 
-/**
- * Función que maneja la acción de búsqueda.
- * Solo realiza la búsqueda si el término no está vacío.
- */
-const handleSearch = () => {
-  if (searchTerm.value && searchTerm.value.trim() !== '') {
-    // Restablece la paginación a la página 1 al buscar
-    Object.assign(options, { page: 1, itemsPerPage: 10, sortBy: [] });
-    loadItems();
+// === ACCIONES Y FUNCIONES ===
+const togglePrivateAgenda = async (item) => {
+  if (!item || !item.cedula) {
+    showSnackbar('Error: No se pudo identificar el contacto. La cédula está vacía.', 'error');
+    console.error('Cédula del contacto es undefined o nula:', item);
+    return;
+  }
+
+  const cedula = item.cedula;
+  const isCurrentlyInAgenda = agendaStore.privateAgendaCedulas.includes(cedula);
+  let result;
+
+  if (isCurrentlyInAgenda) {
+    result = await agendaStore.removeContactFromAgenda(cedula);
+  } else {
+    // Al añadir a la agenda, se pasa el objeto completo
+    result = await agendaStore.addContactToAgenda(item);
+  }
+
+  if (result.success) {
+    showSnackbar(result.message, 'success');
+    // ❌ LÍNEA ELIMINADA: Ya no se fuerza la recarga de toda la tabla
+    // activeTable.value.loadItems();
+  } else {
+    showSnackbar(result.message, 'error');
   }
 };
 
-// === INITIAL LOAD ===
+const handleSearch = () => {
+  Object.assign(activeTable.value.options, { page: 1, itemsPerPage: 10, sortBy: [] });
+  activeTable.value.loadItems();
+};
+
+// Cargar los datos iniciales al montar el componente
 onMounted(() => {
   agendaStore.fetchAgendaContacts();
-  // Llama a la búsqueda inicial solo cuando el componente se monta
-  loadItems();
+  generalTable.loadItems();
 });
 </script>
 
 <style scoped>
-.centered-snackbar {
-  position: fixed !important;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
 </style>

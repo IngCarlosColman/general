@@ -31,106 +31,108 @@ const getUserAgendaData = async (req, res) => {
                 // La búsqueda se realiza en la tabla general que tiene el search_vector
                 whereClause += ` AND ua.contact_cedula IN (
                     SELECT cedula FROM mv_general_busqueda 
-                    WHERE search_vector @@ to_tsquery('spanish', $${paramIndex})
+                    WHERE search_vector @@ to_tsquery('spanish', $${paramIndex++})
                 )`;
-                queryParams.push(searchTerms.map(t => `${t}:*`).join(' & '));
-                paramIndex++;
+                queryParams.push(searchTerms.map(term => `${term}:*`).join(' & '));
             }
         }
-
-        let orderByClause = 'ORDER BY ua.created_at DESC';
-        if (sortBy.length) {
-            const sortKey = sortBy[0].key;
-            const sortOrder = sortBy[0].order === 'desc' ? 'DESC' : 'ASC';
-            
-            // Las columnas a ordenar son de la tabla general o de la propia tabla
-            const validSortFields = {
-                'cedula': 'g.cedula',
-                'nombres': 'g.nombres',
-                'apellidos': 'g.apellidos',
-                'tipo_relacion': 'ua.tipo_relacion',
-                'created_at': 'ua.created_at'
-            };
-
-            if (validSortFields[sortKey]) {
-                orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
-            }
+        
+        let orderClause = '';
+        if (sortBy.length > 0) {
+            const orderByColumns = sortBy.map(sort => {
+                const column = sort.key === 'completo' ? 'g.completo' : `ua.${sort.key}`;
+                return `${column} ${sort.order === 'desc' ? 'DESC' : 'ASC'}`;
+            });
+            orderClause = `ORDER BY ${orderByColumns.join(', ')}`;
         }
 
-        const countQuery = `SELECT COUNT(*) FROM user_agendas ua ${whereClause}`;
-        const countResult = await pool.query(countQuery, queryParams);
+        // Consulta para obtener los datos de la agenda
+        const dataQuery = `
+            SELECT 
+                ua.contact_cedula,
+                ua.tipo_relacion,
+                ua.created_at,
+                g.nombres,
+                g.apellidos
+            FROM user_agendas AS ua
+            JOIN general AS g ON ua.contact_cedula = g.cedula
+            ${whereClause}
+            ${orderClause}
+            LIMIT $${paramIndex++} OFFSET $${paramIndex++};
+        `;
+        queryParams.push(limit, offset);
+
+        const dataResult = await pool.query(dataQuery, queryParams);
+        
+        // Consulta para obtener el total de registros sin paginación
+        const countQuery = `
+            SELECT COUNT(ua.contact_cedula)
+            FROM user_agendas AS ua
+            ${whereClause};
+        `;
+        const countResult = await pool.query(countQuery, [id_usuario]);
         const totalItems = parseInt(countResult.rows[0].count);
 
-        const dataQuery = `
-            SELECT
-                ua.*,
-                g.nombres,
-                g.apellidos,
-                g.completo,
-                g.id as general_id
-            FROM
-                user_agendas ua
-            JOIN 
-                general g ON ua.contact_cedula = g.cedula
-            ${whereClause}
-            ${orderByClause}
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
-        `;
-        queryParams.push(limit);
-        queryParams.push(offset);
-        const dataResult = await pool.query(dataQuery, queryParams);
-        const items = dataResult.rows;
+        res.json({
+            items: dataResult.rows,
+            totalItems: totalItems,
+        });
 
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-        res.json({ items, totalItems });
     } catch (err) {
-        console.error('Error al obtener datos de la agenda del usuario:', err);
-        res.status(500).json({ error: 'Error del servidor' });
+        console.error('Error al obtener los contactos de la agenda:', err);
+        res.status(500).json({ error: 'Error del servidor', details: err.detail });
     }
 };
 
 /**
- * Agrega un contacto a la agenda personal del usuario.
- * Nota: El contacto debe existir previamente en la tabla `general`.
+ * Añade un contacto de la tabla 'general' a la agenda del usuario.
  */
 const addContactToAgenda = async (req, res) => {
-    const { contact_cedula, tipo_relacion = 'contacto' } = req.body;
+    const { contact_cedula } = req.body;
     const { id: id_usuario } = req.user;
     
-    // Verificación de existencia en la tabla `general`
-    try {
-        const generalCheckQuery = 'SELECT cedula FROM general WHERE cedula = $1';
-        const generalResult = await pool.query(generalCheckQuery, [contact_cedula]);
-        if (generalResult.rowCount === 0) {
-            return res.status(404).json({ error: 'La cédula no existe en la guía general.' });
-        }
+    // Verificamos si la cédula existe en la tabla general
+    const generalContact = await pool.query('SELECT cedula FROM general WHERE cedula = $1', [contact_cedula]);
+    if (generalContact.rowCount === 0) {
+        return res.status(404).json({ error: 'El contacto no existe en la guía general.' });
+    }
 
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        
+        // Usamos ON CONFLICT para manejar duplicados de manera limpia
         const insertQuery = `
-            INSERT INTO user_agendas (user_id, contact_cedula, tipo_relacion)
-            VALUES ($1, $2, $3)
+            INSERT INTO user_agendas (user_id, contact_cedula)
+            VALUES ($1, $2)
+            ON CONFLICT (user_id, contact_cedula) DO NOTHING
             RETURNING *;
         `;
-        const result = await pool.query(insertQuery, [id_usuario, contact_cedula, tipo_relacion]);
-        res.status(201).json(result.rows[0]);
+        const result = await client.query(insertQuery, [id_usuario, contact_cedula]);
+
+        // Si se insertó el registro, retornamos el resultado
+        if (result.rowCount > 0) {
+             await client.query('COMMIT');
+            res.status(201).json(result.rows[0]);
+        } else {
+            // Si el registro ya existe, retornamos un mensaje de error
+            await client.query('ROLLBACK');
+            res.status(409).json({ error: 'El contacto ya se encuentra en tu agenda.' });
+        }
 
     } catch (err) {
-        console.error('Error al agregar contacto a la agenda:', err);
-        if (err.code === '23505') {
-            res.status(409).json({ error: 'El contacto ya existe en tu agenda personal.' });
-        } else if (err.code === '23503') {
-            res.status(400).json({ error: 'La cédula de contacto no es válida.', details: err.detail });
-        } else {
-            res.status(500).json({ error: 'Error del servidor', details: err.detail });
-        }
+        await client.query('ROLLBACK');
+        console.error('Error al añadir contacto a la agenda:', err);
+        // Si hay un error, el 'upsert' de la tabla 'general' debe capturarlo
+        res.status(500).json({ error: 'Error del servidor', details: err.detail });
+    } finally {
+        client.release();
     }
 };
 
+
 /**
- * Elimina un contacto de la agenda personal del usuario y todos los registros
- * asociados en las tablas `user_nombres`, `user_telefonos`, `contact_details`,
- * `contact_notes` y `follow_up_events`.
+ * Elimina un contacto de la agenda del usuario.
  */
 const removeContactFromAgenda = async (req, res) => {
     const { contact_cedula } = req.params;
@@ -139,28 +141,29 @@ const removeContactFromAgenda = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // Eliminar registros de tablas relacionadas
-        await client.query('DELETE FROM user_nombres WHERE user_id = $1 AND contact_cedula = $2', [id_usuario, contact_cedula]);
-        await client.query('DELETE FROM user_telefonos WHERE user_id = $1 AND contact_cedula = $2', [id_usuario, contact_cedula]);
-        await client.query('DELETE FROM contact_details WHERE user_id = $1 AND cedula = $2', [id_usuario, contact_cedula]);
-        await client.query('DELETE FROM contact_notes WHERE user_id = $1 AND contact_cedula = $2', [id_usuario, contact_cedula]);
-        await client.query('DELETE FROM follow_up_events WHERE user_id = $1 AND contact_cedula = $2', [id_usuario, contact_cedula]);
-        await client.query('DELETE FROM user_agenda_categorias WHERE user_id = $1 AND contact_cedula = $2', [id_usuario, contact_cedula]);
-
-        // Eliminar el registro principal de user_agendas
+        // Se eliminan los registros relacionados antes de eliminar el contacto principal de la agenda.
+        // Se corrige el nombre de la columna para 'contact_details'
+        await client.query(`DELETE FROM contact_details WHERE cedula = $1 AND user_id = $2;`, [contact_cedula, id_usuario]);
+        
+        // Asumiendo que el resto de las tablas sí usan 'contact_cedula'
+        await client.query(`DELETE FROM user_nombres WHERE contact_cedula = $1 AND user_id = $2;`, [contact_cedula, id_usuario]);
+        await client.query(`DELETE FROM user_telefonos WHERE contact_cedula = $1 AND user_id = $2;`, [contact_cedula, id_usuario]);
+        await client.query(`DELETE FROM contact_notes WHERE contact_cedula = $1 AND user_id = $2;`, [contact_cedula, id_usuario]);
+        await client.query(`DELETE FROM follow_up_events WHERE contact_cedula = $1 AND user_id = $2;`, [contact_cedula, id_usuario]);
+        await client.query(`DELETE FROM user_agenda_categorias WHERE contact_cedula = $1 AND user_id = $2;`, [contact_cedula, id_usuario]);
+        
         const deleteQuery = `
             DELETE FROM user_agendas
             WHERE user_id = $1 AND contact_cedula = $2
             RETURNING *;
         `;
         const result = await client.query(deleteQuery, [id_usuario, contact_cedula]);
+        await client.query('COMMIT');
 
         if (result.rowCount === 0) {
-            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'El contacto no se encontró en tu agenda' });
         }
 
-        await client.query('COMMIT');
         res.json({ deletedRecord: result.rows[0] });
 
     } catch (err) {
@@ -198,7 +201,7 @@ const updateAgendaContact = async (req, res) => {
         }
         res.json(result.rows[0]);
     } catch (err) {
-        console.error('Error al actualizar el contacto en la agenda:', err);
+        console.error('Error al actualizar el contacto:', err);
         res.status(500).json({ error: 'Error del servidor', details: err.detail });
     }
 };
@@ -207,5 +210,5 @@ module.exports = {
     getUserAgendaData,
     addContactToAgenda,
     removeContactFromAgenda,
-    updateAgendaContact
+    updateAgendaContact,
 };
