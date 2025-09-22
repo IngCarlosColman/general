@@ -46,11 +46,26 @@ export function useCrudTable(apiPath, defaultItem) {
         params.sortBy = JSON.stringify(sortBy);
       }
       const response = await apiClient.get(apiPath.value, { params });
-      items.value = response.data.items.map((item) => ({
+
+      let fetchedItems;
+      let fetchedTotalItems;
+
+      if (Array.isArray(response.data)) {
+        // La API devuelve un array directo (e.g., en la categoría 'general')
+        fetchedItems = response.data;
+        fetchedTotalItems = response.data.length;
+      } else {
+        // La API devuelve un objeto con propiedades 'items' y 'totalItems'
+        fetchedItems = response.data.items;
+        fetchedTotalItems = response.data.totalItems ?? 0;
+      }
+      
+      items.value = fetchedItems.map((item) => ({
         ...item,
         nombreCompleto: `${item.nombres || ''} ${item.apellidos || ''}`.trim()
       }));
-      totalItems.value = response.data.totalItems ?? 0;
+      totalItems.value = fetchedTotalItems;
+
     } catch (err) {
       console.error('Error al cargar datos:', err);
       showSnackbar('Error al cargar los datos', 'error');
@@ -81,16 +96,26 @@ export function useCrudTable(apiPath, defaultItem) {
     let originalItems = [...items.value];
     
     try {
+      // ⭐️ CORRECCIÓN CLAVE: Determinar el identificador principal
+      const identifier = itemToSave.cedula || itemToSave.id;
+      
       if (isEditing.value) {
-        const index = items.value.findIndex(item => item.id === itemToSave.id);
+        if (!identifier) {
+          throw new Error('No se puede actualizar el registro. Falta el identificador (Cédula o ID).');
+        }
+        
+        // Optimistic UI update: buscar y actualizar el ítem
+        const index = items.value.findIndex(item => (item.id === identifier) || (item.cedula === identifier));
         if (index !== -1) {
-          // Actualización optimista
           items.value[index] = { 
-            ...itemToSave,
+            ...items.value[index], // Mantener campos que no se editan
+            ...itemToSave, // Actualizar con los nuevos datos
             nombreCompleto: `${itemToSave.nombres || ''} ${itemToSave.apellidos || ''}`.trim()
           };
         }
-        await apiClient.put(`${apiPath.value}/${itemToSave.id}`, itemToSave);
+        
+        // ✅ Solicitud PUT con el identificador correcto
+        await apiClient.put(`${apiPath.value}/${identifier}`, itemToSave);
         showSnackbar('Registro actualizado con éxito.', 'success');
       } else {
         const tempId = `temp_${Date.now()}`;
@@ -136,18 +161,30 @@ export function useCrudTable(apiPath, defaultItem) {
   };
 
   const deleteItem = async () => {
+    if (!itemToDelete.value) {
+      showSnackbar('Error: No se pudo identificar el registro a eliminar.', 'error');
+      closeDeleteDialog();
+      return;
+    }
+
     isDeleting.value = true;
-    
-    const itemToDeleteCopy = { ...itemToDelete.value };
-    
     const originalItems = [...items.value];
-    const itemIndex = items.value.findIndex(item => item.id === itemToDeleteCopy.id);
+    const itemToDeleteCopy = itemToDelete.value;
+    
+    // **CAMBIO CLAVE:** Utiliza `cedula` si está disponible, de lo contrario, usa `id`.
+    const identifier = itemToDeleteCopy.cedula || itemToDeleteCopy.id;
+
+    // Optimistic UI update: elimina el elemento de la lista inmediatamente
+    const itemIndex = items.value.findIndex(item => (item.id === identifier) || (item.cedula === identifier));
     if (itemIndex !== -1) {
       items.value.splice(itemIndex, 1);
     }
 
     try {
-      await apiClient.delete(`${apiPath.value}/${itemToDeleteCopy.id}`);
+      if (!identifier) {
+        throw new Error('El registro no tiene un identificador válido.');
+      }
+      await apiClient.delete(`${apiPath.value}/${identifier}`);
       showSnackbar('Registro eliminado con éxito.', 'success');
       closeDeleteDialog();
     } catch (err) {
@@ -206,4 +243,4 @@ export function useCrudTable(apiPath, defaultItem) {
     closeDeleteDialog,
     deleteItem,
   };
-}
+} 

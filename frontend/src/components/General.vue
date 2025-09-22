@@ -6,25 +6,24 @@
         :categories="categories"
         v-model:selected-category="selectedCategory"
         v-model:search="activeTable.searchTerm.value"
-        :show-add-button="showAddButton"
         @add="activeTable.openDialog('create')"
         @search="handleSearch"
       />
       <v-divider></v-divider>
       <ContactTable
-        :headers="activeTable.headers.value"
+        :headers="activeTableHeaders"
         :items="activeTable.items.value"
         :items-length="activeTable.totalItems.value"
-        :loading="activeTable.isLoading.value || isTogglingAgenda"
-        :private-agenda-cedulas="agendaStore.privateAgendaCedulas"
         :options="activeTable.options"
+        :loading="activeTable.isLoading.value"
+        :private-agenda-cedulas="privateAgendaCedulas"
         @update:options="newOptions => Object.assign(activeTable.options, newOptions)"
-        @edit="activeTable.openDialog('edit', $event)"
-        @delete="activeTable.confirmDeleteItem($event)"
-        @toggle-private-agenda="togglePrivateAgenda"
+        @edit="handleEdit"
+        @delete="handleDelete"
         @share-contact="shareContact"
         @open-whatsapp="openWhatsApp"
         @download-vcard="downloadVCard"
+        @toggle-private-agenda="togglePrivateAgenda"
       />
     </v-card>
     <ContactFormDialog
@@ -32,6 +31,8 @@
       :edited-item="activeTable.editedItem.value"
       :is-editing="activeTable.isEditing.value"
       :saving="activeTable.isSaving.value"
+      :selected-category="selectedCategory"
+      :agenda-categories="agendaCategories"
       @close="activeTable.closeDialog"
       @save="activeTable.saveItem"
     />
@@ -64,8 +65,8 @@ import ContactFormDialog from '@/components/comunes/ContactFormDialog.vue';
 import ConfirmDeleteDialog from '@/components/comunes/ConfirmDeleteDialog.vue';
 import { useCrudTable } from '@/composables/useCrudTable';
 import { useSnackbar } from '@/composables/useSnackbar';
-import { useAgendaStore } from '@/stores/useAgendaStore';
 import { useContactUtilities } from '@/composables/useContactUtilities';
+import apiClient from '@/api/axiosClient';
 
 // === STATE AND OPTIONS ===
 const defaultItem = {
@@ -74,9 +75,13 @@ const defaultItem = {
   cedula: '',
   telefonos: [],
   salario: 0,
+  categoria_id: null, // ✅ Nuevo campo para la agenda privada
+  notas: '',           // ✅ Nuevo campo para la agenda privada
 };
 
 const selectedCategory = ref('general');
+const privateAgendaCedulas = ref([]);
+const agendaCategories = ref([]); // ✅ Nuevo estado para las categorías de la agenda
 const categories = ref([
   {
     title: 'Guía General',
@@ -92,15 +97,16 @@ const categories = ref([
     ],
   },
   {
-    title: 'Agenda Personal',
+    title: 'Mi Agenda Privada',
     value: 'private-agenda',
-    icon: 'mdi-folder-account',
+    icon: 'mdi-star',
     headers: [
-      { title: 'Cédula', key: 'cedula', align: 'start' },
+      { title: 'Cédula', key: 'cedula' },
       { title: 'Nombres', key: 'nombres' },
       { title: 'Apellidos', key: 'apellidos' },
-      { title: 'Relación', key: 'tipo_relacion' },
-      { title: 'Añadido', key: 'created_at' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Categoría', key: 'nombre_categoria', sortable: false }, // ✅ Nota: el key es el nombre del campo de la tabla.
+      { title: 'Notas', key: 'notas', sortable: false }, // ✅ Nuevo key para la columna de notas
       { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
     ],
   },
@@ -198,49 +204,53 @@ const categories = ref([
 
 // === COMPOSABLES ===
 const { snackbarState, closeSnackbar, showSnackbar } = useSnackbar();
-const agendaStore = useAgendaStore();
 const { openWhatsApp, downloadVCard, shareContact } = useContactUtilities();
 
-// Instancias separadas para cada tabla
-const generalTable = useCrudTable(computed(() => `/${selectedCategory.value}`), defaultItem);
-const privateAgendaTable = useCrudTable(ref('/private-agenda/agenda'), {});
-
-// Estado de carga específico para la acción de agregar/quitar de la agenda
-const isTogglingAgenda = ref(false);
-
-// === PROPIEDADES COMPUTADAS Y WATCHERS ===
-
-// El objeto principal que orquesta la lógica de la vista activa
-const activeTable = computed(() => {
-  const category = categories.value.find(c => c.value === selectedCategory.value);
+// La ruta de la API se hace una propiedad computada
+const activeTablePath = computed(() => {
   if (selectedCategory.value === 'private-agenda') {
-    return {
-      ...privateAgendaTable,
-      headers: computed(() => category?.headers || []),
-    };
+    return '/agenda';
   } else {
-    return {
-      ...generalTable,
-      headers: computed(() => category?.headers || []),
-    };
+    // La ruta por defecto de la guía general es la misma que la categoría
+    return `/${selectedCategory.value}`;
   }
 });
 
-// Propiedad computada para controlar la visibilidad del botón 'Adicionar Registro'
-const showAddButton = computed(() => selectedCategory.value === 'private-agenda');
+// Se instancia el composable una sola vez, pasándole la ruta reactiva
+const activeTable = useCrudTable(activeTablePath, defaultItem);
 
-// Observa el cambio de categoría para restablecer los filtros y recargar la tabla activa
-watch(selectedCategory, (newValue) => {
-  if (!newValue) {
-    selectedCategory.value = 'general';
-    return;
-  }
-  Object.assign(activeTable.value.options, { page: 1, itemsPerPage: 10, sortBy: [] });
-  activeTable.value.searchTerm.value = '';
-  activeTable.value.loadItems();
+// Propiedad computada para los headers de la tabla
+const activeTableHeaders = computed(() => {
+  const category = categories.value.find(c => c.value === selectedCategory.value);
+  return category?.headers || [];
 });
 
 // === ACCIONES Y FUNCIONES ===
+const fetchPrivateAgendaCedulas = async () => {
+  try {
+    const response = await apiClient.get('/agenda');
+    if (response.data && Array.isArray(response.data)) { // Tu backend devuelve un array directamente
+      privateAgendaCedulas.value = response.data.map(item => item.cedula);
+    } else {
+      privateAgendaCedulas.value = [];
+    }
+  } catch (err) {
+    console.error('Error al cargar la agenda privada:', err);
+    showSnackbar('Error al cargar la agenda privada', 'error');
+  }
+};
+
+const fetchAgendaCategories = async () => {
+  try {
+    // ✅ CORRECCIÓN: La ruta es ' en lugar de '/categories'
+    const response = await apiClient.get('/categorias');
+    agendaCategories.value = response.data;
+  } catch (err) {
+    console.error('Error al cargar las categorías:', err);
+    showSnackbar('Error al cargar las categorías de la agenda.', 'error');
+  }
+};
+
 const togglePrivateAgenda = async (item) => {
   if (!item || !item.cedula) {
     showSnackbar('Error: No se pudo identificar el contacto. La cédula está vacía.', 'error');
@@ -249,34 +259,69 @@ const togglePrivateAgenda = async (item) => {
   }
 
   const cedula = item.cedula;
-  const isCurrentlyInAgenda = agendaStore.privateAgendaCedulas.includes(cedula);
   let result;
 
-  if (isCurrentlyInAgenda) {
-    result = await agendaStore.removeContactFromAgenda(cedula);
+  if (selectedCategory.value === 'private-agenda') {
+    try {
+      await apiClient.delete(`/agenda/${cedula}`);
+      result = { success: true, message: 'Contacto eliminado de tu agenda privada.' };
+    } catch (err) {
+      result = { success: false, message: err.response?.data?.error || 'Error al eliminar el contacto.' };
+    }
   } else {
-    // Al añadir a la agenda, se pasa el objeto completo
-    result = await agendaStore.addContactToAgenda(item);
+    if (privateAgendaCedulas.value.includes(cedula)) {
+      try {
+        await apiClient.delete(`/agenda/${cedula}`);
+        result = { success: true, message: 'Contacto eliminado de tu agenda privada.' };
+      } catch (err) {
+        result = { success: false, message: err.response?.data?.error || 'Error al eliminar el contacto.' };
+      }
+    } else {
+      try {
+        await apiClient.post('/agenda', { contact_cedula: cedula });
+        result = { success: true, message: 'Contacto añadido a tu agenda privada.' };
+      } catch (err) {
+        result = { success: false, message: err.response?.data?.error || 'Error al añadir el contacto.' };
+      }
+    }
   }
 
   if (result.success) {
+    // Si la operación fue exitosa, actualizamos la lista de cédulas.
+    await fetchPrivateAgendaCedulas();
     showSnackbar(result.message, 'success');
-    // ❌ LÍNEA ELIMINADA: Ya no se fuerza la recarga de toda la tabla
-    // activeTable.value.loadItems();
   } else {
     showSnackbar(result.message, 'error');
   }
 };
 
 const handleSearch = () => {
-  Object.assign(activeTable.value.options, { page: 1, itemsPerPage: 10, sortBy: [] });
-  activeTable.value.loadItems();
+  Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
+  activeTable.loadItems();
 };
+
+const handleEdit = (item) => {
+  activeTable.openDialog('edit', item);
+};
+
+const handleDelete = (item) => {
+  activeTable.confirmDeleteItem(item);
+};
+
+// Observa el cambio de categoría para restablecer los filtros y recargar la tabla activa
+watch(selectedCategory, (newValue) => {
+  if (newValue) {
+    Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
+    activeTable.searchTerm.value = '';
+    activeTable.loadItems();
+  }
+});
 
 // Cargar los datos iniciales al montar el componente
 onMounted(() => {
-  agendaStore.fetchAgendaContacts();
-  generalTable.loadItems();
+  fetchPrivateAgendaCedulas();
+  fetchAgendaCategories(); // ✅ Llama a la nueva función para cargar las categorías
+  activeTable.loadItems();
 });
 </script>
 

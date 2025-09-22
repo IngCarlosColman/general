@@ -1,0 +1,19 @@
+# Usa la imagen de PostGIS como base
+FROM postgis/postgis:16-3.4
+
+# Instala todas las dependencias necesarias para compilar pg_cron
+RUN apt-get update && apt-get install -y \
+    postgresql-server-dev-16 \
+    make \
+    gcc \
+    git \
+    clang-13 \
+    llvm-13 \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Descarga, compila e instala pg_cron desde el código fuente
+RUN git clone https://github.com/citusdata/pg_cron.git && \
+    cd pg_cron && \
+    make && \
+    make install

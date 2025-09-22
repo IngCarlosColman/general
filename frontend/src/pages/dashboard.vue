@@ -48,13 +48,6 @@
           :class="{ 'px-2': !drawer }"
           @click="showComponent('general')"
         ></v-list-item>
-        
-        <v-list-item
-          prepend-icon="mdi-briefcase-account"
-          title="Mi Agenda"
-          :class="{ 'px-2': !drawer }"
-          @click="showComponent('agenda')"
-        ></v-list-item>
         <v-list-item
           prepend-icon="mdi-map-marker-radius"
           title="Catastro Dinámico"
@@ -102,7 +95,6 @@ import { useAuthStore } from '@/stores/auth';
 import General from '@/components/General.vue';
 import UsersProfiles from '@/components/usersprofiles.vue';
 import Catastro from '@/components/Catastro.vue';
-import TheAgenda from '@/components/TheAgenda.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -114,7 +106,6 @@ const components = {
   general: General,
   users: UsersProfiles,
   catastro: Catastro,
-  agenda: TheAgenda,
 };
 
 const currentComponent = ref('general');

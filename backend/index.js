@@ -24,8 +24,9 @@ const ciudadesRoutes = require('./routes/ciudades.routes');
 const propruralesRoutes = require('./routes/proprurales.routes');
 const prourbanasRoutes = require('./routes/prourbanas.routes');
 const propiedadesPropietariosRoutes = require('./routes/propro.routes');
-const privateAgendaRoutes = require('./routes/privateAgenda.routes');
 const telefonosRouter = require('./routes/telefonos.router');
+const userAgendaRoutes = require('./routes/user_agenda.routes');
+const categoriesRoutes = require('./routes/categories.routes'); 
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -62,10 +63,9 @@ app.use('/api', propruralesRoutes);
 app.use('/api', prourbanasRoutes);
 app.use('/api', propiedadesPropietariosRoutes);
 app.use('/api', catastroRoutes);
-
-// Usa solo el nuevo router de agenda privada
-app.use('/api/private-agenda', privateAgendaRoutes);
+app.use('/api/agenda', userAgendaRoutes);
 app.use('/api', telefonosRouter);
+app.use('/api/categorias', categoriesRoutes); 
 
 // Iniciar el servidor
 app.listen(PORT, () => {

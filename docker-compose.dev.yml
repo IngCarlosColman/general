@@ -17,8 +17,10 @@ services:
       - db
 
   db:
-    # Cambiamos la imagen de 'postgres:17.5' a una versión de PostGIS estable
-    image: postgis/postgis:16-3.4
+    # Usa 'build' para construir la imagen desde tu Dockerfile.db
+    build:
+      context: .
+      dockerfile: Dockerfile.db
     restart: always
     env_file:
       - ./.env
@@ -30,6 +32,8 @@ services:
       - "${DB_PORT}:${DB_PORT}"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # Monta el archivo de configuración
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
     shm_size: 12288mb
 
 volumes:

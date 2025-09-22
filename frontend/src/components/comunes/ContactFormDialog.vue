@@ -44,6 +44,26 @@
                 :readonly="isEditing"
               ></v-text-field>
             </v-col>
+            <template v-if="selectedCategory === 'private-agenda'">
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="editedItem.categoria_id"
+                  :items="agendaCategories"
+                  item-title="nombre_categoria"
+                  item-value="id"
+                  label="Categoría"
+                  clearable
+                ></v-select>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-textarea
+                  v-model="editedItem.notas"
+                  label="Notas de la Agenda"
+                  rows="2"
+                  no-resize
+                ></v-textarea>
+              </v-col>
+            </template>
             <v-col cols="12">
               <div class="mb-2 text-subtitle-1">Teléfonos</div>
               <div v-for="(tel, index) in editedItem.telefonos" :key="index" class="d-flex align-center mb-2">
@@ -92,7 +112,7 @@
 </template>
 
 <script setup>
-import { computed, defineProps, defineEmits } from 'vue';
+import { computed, defineProps, defineEmits, ref } from 'vue';
 
 const props = defineProps({
   modelValue: {
@@ -114,6 +134,14 @@ const props = defineProps({
   serverError: {
     type: String,
     default: ''
+  },
+  selectedCategory: { // ✅ Agregada la prop del padre
+    type: String,
+    required: true
+  },
+  agendaCategories: { // ✅ Agregada la prop del padre
+    type: Array,
+    default: () => []
   }
 });
 
@@ -124,13 +152,7 @@ const emit = defineEmits([
   'save'
 ]);
 
-// Elimina el 'ref' local para editedItem
-// const editedItem = ref({});
-
-// Y también elimina el 'watch'
-// watch(() => props.editedItem, (newVal) => {
-//   editedItem.value = JSON.parse(JSON.stringify(newVal));
-// }, { immediate: true, deep: true });
+const form = ref(null);
 
 const title = computed(() => {
   return props.isEditing ? 'Editar Registro' : 'Nuevo Registro';
@@ -144,7 +166,6 @@ const completo = computed(() => {
 });
 
 const addTelefono = () => {
-  // Asegúrate de que telefonos exista
   if (!props.editedItem.telefonos) {
     props.editedItem.telefonos = [];
   }
@@ -156,7 +177,9 @@ const removeTelefono = (index) => {
 };
 
 const save = async () => {
-  // Aquí usamos la prop directamente
-  emit('save', props.editedItem);
+  const { valid } = await form.value.validate();
+  if (valid) {
+    emit('save', props.editedItem);
+  }
 };
 </script>

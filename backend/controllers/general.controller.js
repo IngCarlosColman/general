@@ -1,5 +1,6 @@
 const { pool } = require('../db/db');
 const { upsertTelefonos } = require('./common.controller'); // Asegúrate de que la ruta sea correcta
+
 /**
  * Función auxiliar para actualizar o insertar datos de una persona en la tabla 'general'.
  * Esta función está diseñada para ser llamada dentro de una transacción de base de datos.
@@ -46,12 +47,16 @@ const upsertGeneral = async (cedula, nombre, tel, id_usuario, client) => {
         throw error;
     }
 };
+
 /**
  * Obtiene los datos de la tabla general con paginación, búsqueda y ordenamiento.
  */
 const getGeneralData = async (req, res) => {
     try {
         const { page = 1, itemsPerPage = 10, search = '' } = req.query;
+        // Obtenemos el ID del usuario desde el token JWT.
+        const { id: userId } = req.user;
+
         let sortBy = [];
         if (req.query.sortBy) {
             try {
@@ -60,11 +65,14 @@ const getGeneralData = async (req, res) => {
                 console.error("Error al parsear el parámetro sortBy:", error);
             }
         }
+
         const limit = Math.min(parseInt(itemsPerPage), 100);
         const offset = (parseInt(page) - 1) * limit;
+
         let whereClause = '';
         const queryParams = [];
         let paramIndex = 1;
+
         if (search) {
             const searchTerms = search.split(/\s+/).filter(term => term);
             if (searchTerms.length > 0) {
@@ -73,6 +81,7 @@ const getGeneralData = async (req, res) => {
                 paramIndex++;
             }
         }
+
         let orderByClause = 'ORDER BY g.cedula ASC';
         if (sortBy.length) {
             const sortKey = sortBy[0].key;
@@ -91,9 +100,11 @@ const getGeneralData = async (req, res) => {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
         }
+
         const countQuery = `SELECT COUNT(*) FROM mv_general_busqueda g ${whereClause}`;
         const countResult = await pool.query(countQuery, queryParams);
         const totalItems = parseInt(countResult.rows[0].count);
+
         const dataQuery = `
             SELECT
                 g.id,
@@ -105,19 +116,26 @@ const getGeneralData = async (req, res) => {
                 g.created_at,
                 g.updated_by,
                 g.updated_at,
-                t.telefonos
+                t.telefonos,
+                -- **LÍNEA MEJORADA:**
+                (SELECT COUNT(*) FROM user_agendas WHERE user_id = $${paramIndex} AND contact_cedula = g.cedula) > 0 AS is_in_agenda
             FROM
                 mv_general_busqueda g
             LEFT JOIN
                 mv_telefonos_agregados t ON g.cedula = t.cedula
             ${whereClause}
             ${orderByClause}
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
+            LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2};
         `;
+        
+        // Se añade el ID del usuario, y luego los parámetros de paginación
+        queryParams.push(userId);
         queryParams.push(limit);
         queryParams.push(offset);
+
         const dataResult = await pool.query(dataQuery, queryParams);
         const items = dataResult.rows;
+
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -127,11 +145,14 @@ const getGeneralData = async (req, res) => {
         res.status(500).json({ error: 'Error del servidor' });
     }
 };
+
 /**
  * Obtiene un registro de la tabla general por su cédula.
  */
 const getGeneralById = async (req, res) => {
     const { cedula } = req.params;
+    // Obtenemos el ID del usuario desde el token JWT.
+    const { id: userId } = req.user;
     try {
         const query = `
             SELECT
@@ -144,12 +165,14 @@ const getGeneralById = async (req, res) => {
                 g.created_at,
                 g.updated_by,
                 g.updated_at,
-                t.telefonos
+                t.telefonos,
+                -- **LÍNEA MEJORADA:**
+                (SELECT COUNT(*) FROM user_agendas WHERE user_id = $2 AND contact_cedula = g.cedula) > 0 AS is_in_agenda
             FROM mv_general_busqueda g
             LEFT JOIN mv_telefonos_agregados t ON g.cedula = t.cedula
             WHERE g.cedula = $1;
         `;
-        const result = await pool.query(query, [cedula]);
+        const result = await pool.query(query, [cedula, userId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Registro no encontrado' });
         }
@@ -159,6 +182,7 @@ const getGeneralById = async (req, res) => {
         res.status(500).json({ error: 'Error del servidor', details: err.detail });
     }
 };
+
 /**
  * Crea un nuevo registro en la tabla general.
  */
@@ -195,6 +219,7 @@ const createGeneral = async (req, res) => {
         client.release();
     }
 };
+
 /**
  * Actualiza un registro en la tabla general.
  */
@@ -239,6 +264,7 @@ const updateGeneral = async (req, res) => {
         client.release();
     }
 };
+
 /**
  * Elimina un registro de la tabla general.
  */
@@ -273,6 +299,7 @@ const deleteGeneral = async (req, res) => {
         client.release();
     }
 };
+
 module.exports = {
     getGeneralData,
     getGeneralById,
