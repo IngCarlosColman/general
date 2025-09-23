@@ -397,3 +397,49 @@ Modifica tu MapComponent para que, en lugar de renderizar marcadores, dibuje las
 Sigue estos pasos en orden, y tu aplicación será capaz de buscar, obtener y mostrar inteligentemente solo las propiedades con datos geográficos, mientras construye progresivamente su propia base de datos de mapas.
 ----
 la verdad que es un link de arcgis.com para saber si podemos usar para saber si podemos usar world imagery con open layer como vista mapa principal para nuestra apliacion o no es posible..
+----
+----- IMPLEMENTACIÓN...
+
+Paso 1: Configurar la Base de Datos ⚙️
+
+Este es el punto de partida. Necesitas crear una nueva tabla que será el pilar de toda la funcionalidad del mapa.
+Crea la Tabla propiedades_geo: Esta tabla almacenará los polígonos (la forma de la parcela) de las propiedades que ya has consultado. Su diseño debe ser simple y eficiente.
+id: Clave primaria, tipo entero, autoincremental.
+id_vinculo: Entero. Esta es la clave de todo. Este campo debe coincidir con el id o id_vinculo de la propiedad en tu tabla principal (propiedades_propietarios). Así, sabrás a qué propiedad pertenece cada polígono.
+geojson: Texto (TEXT) o JSON. Aquí guardarás el polígono en formato GeoJSON. El tipo de dato JSON es ideal para esto.
+fecha_creacion: Sello de tiempo (TIMESTAMP) con la fecha y hora de la inserción.
+Paso 2: Crear la Lógica del Backend (API) 🖥️
+Tu backend será el cerebro que gestiona las peticiones a la API externa de Catastro y a tu nueva tabla local.
+Nueva Ruta de Búsqueda Principal (GET /api/propiedades/buscar): En lugar de modificar tu ruta actual, crea una nueva que esté optimizada para el frontend. Esta ruta es la que alimentará tu tabla de resultados.
+Función: Aceptará los filtros de búsqueda (departamento, ciudad, etc.).
+Lógica: En tu consulta SQL, haz un LEFT JOIN con la tabla propiedades_geo.
+Resultado: Devolverá una lista de propiedades, y cada registro tendrá una nueva columna booleana, por ejemplo, tiene_mapa, que será true si la propiedad existe en propiedades_geo y false si no.
+Nueva Ruta de Enriquecimiento (POST /api/propiedades/enriquecer): Esta es la ruta central que manejará toda la lógica compleja.
+Función: Recibirá el id_vinculo de la propiedad que el usuario quiere enriquecer.
+Lógica:
+a.  Realizará una petición a la API de Catastro para obtener los datos de propietarios.
+b.  Guardará esos datos en tu tabla propiedades_propietarios (o los actualizará si ya existen).
+c.  Realizará una segunda petición al servicio WFS de Catastro para obtener los datos geoespaciales (el polígono).
+d.  Guardará esos datos en tu nueva tabla propiedades_geo.
+Importante: Esta ruta es crítica. Debe ser robusta y manejar los posibles errores de la API externa.
+Nueva Ruta de Consulta del Mapa (GET /api/propiedades/geo/:id_vinculo): Esta ruta es para cuando el usuario hace clic en el ícono del mapa.
+Función: Aceptará un id_vinculo como parámetro.
+Lógica: Realizará una consulta directa y simple a tu tabla propiedades_geo y devolverá el geojson de ese registro. Esta petición debe ser extremadamente rápida, ya que no depende de ningún servicio externo.
+Paso 3: Construir el Frontend (Vue y Pinia) 🌐
+Aquí es donde el usuario interactúa con tu sistema.
+Modifica tu Store de Pinia:
+Estado (State):
+propiedades: La lista de propiedades que se mostrará en la tabla.
+mapProperties: Un arreglo para guardar los datos geoespaciales que se le pasarán al componente del mapa.
+showMapModal: Una variable booleana para controlar si el modal del mapa está abierto.
+Acciones (Actions):
+fetchPropiedades(filtros): Tu acción de búsqueda que ahora llama a la nueva ruta GET /api/propiedades/buscar.
+enriquecerPropiedad(item): Llamará a la ruta POST /api/propiedades/enriquecer. Una vez que la llamada sea exitosa, actualizará el item en el estado propiedades para que item.tiene_mapa sea true. Esto es clave para el cambio visual.
+verMapa(id_vinculo): Llamará a la ruta GET /api/propiedades/geo/:id_vinculo para obtener el GeoJSON. Luego, guardará ese GeoJSON en la variable de estado mapProperties y establecerá showMapModal en true.
+Modifica tu Componente de Vue (La Tabla de Resultados):
+Estructura de la Tabla: Añade una columna para las acciones.
+Lógica Condicional: Dentro de la celda de acciones, usa la directiva v-if para mostrar lo siguiente:
+v-if="!item.tiene_mapa": Muestra el botón de "Buscar en Catastro". Al hacer clic, llama a la acción enriquecerPropiedad.
+v-else: Muestra el ícono de mapa. Al hacer clic, llama a la acción verMapa.
+Componente del Mapa: Crea un modal o un componente separado para mostrar el mapa. Este componente recibirá los datos de mapProperties de tu store.
+Este plan te da una hoja de ruta completa, desde la base de datos hasta la interfaz de usuario, para construir la funcionalidad de forma lógica y eficiente.

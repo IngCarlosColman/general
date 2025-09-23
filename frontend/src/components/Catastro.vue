@@ -128,39 +128,55 @@
           </v-card-text>
 
           <v-card-actions class="justify-center mt-4">
-            <v-btn
-              color="primary"
-              class="ma-2 font-weight-bold"
-              size="large"
-              variant="elevated"
-              @click="handleSearch"
-              :disabled="!form.departamento || isLoading"
-            >
-              <v-icon start>mdi-magnify</v-icon>
-              Buscar Propiedades
-            </v-btn>
-            <v-btn
-              color="grey-darken-2"
-              class="ma-2 font-weight-bold"
-              size="large"
-              variant="outlined"
-              @click="clearForm"
-              :disabled="isLoading"
-            >
-              <v-icon start>mdi-close</v-icon>
-              Limpiar
-            </v-btn>
-            <v-btn
-              color="teal-darken-2"
-              class="ma-2 font-weight-bold"
-              size="large"
-              variant="tonal"
-              @click="showMap = true"
-            >
-              <v-icon start>mdi-map-marker-radius</v-icon>
-              Ver Mapa
-            </v-btn>
-          </v-card-actions>
+  <v-btn
+    color="primary"
+    class="ma-2 font-weight-bold"
+    size="large"
+    variant="elevated"
+    @click="handleSearch"
+    :disabled="!form.departamento || isLoading"
+  >
+    <v-icon start>mdi-magnify</v-icon>
+    Buscar Propiedades
+  </v-btn>
+
+  <v-btn
+    :disabled="propiedades.length === 0"
+    color="teal-darken-2"
+    class="ma-2 font-weight-bold"
+    size="large"
+    variant="tonal"
+    
+    @click="handleGetMaps"
+  >
+    <v-icon start>mdi-map-search-outline</v-icon>
+    Obtener Mapas
+  </v-btn>
+
+  <v-btn
+    color="blue-grey-darken-2"
+    class="ma-2 font-weight-bold"
+    size="large"
+    variant="tonal"
+    @click="handleViewMaps"
+    :disabled="mapProperties.length === 0"
+  >
+    <v-icon start>mdi-map-marker-radius</v-icon>
+    Ver Mapas
+  </v-btn>
+
+  <v-btn
+    color="grey-darken-2"
+    class="ma-2 font-weight-bold"
+    size="large"
+    variant="outlined"
+    @click="clearForm"
+    :disabled="isLoading"
+  >
+    <v-icon start>mdi-close</v-icon>
+    Limpiar
+  </v-btn>
+</v-card-actions>
         </div>
       </v-expand-transition>
     </v-card>

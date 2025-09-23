@@ -3,22 +3,21 @@
 const { pool } = require('../db/db');
 
 /**
- * Obtiene todas las categorías predefinidas.
+ * Obtiene todas las categorías de la tabla 'categorias'.
  */
 const getCategorias = async (req, res) => {
     try {
         const query = 'SELECT id, nombre_categoria FROM categorias ORDER BY nombre_categoria ASC;';
         const result = await pool.query(query);
-        res.json(result.rows);
+        res.status(200).json(result.rows);
     } catch (err) {
         console.error('Error al obtener las categorías:', err);
-        res.status(500).json({ error: 'Error del servidor.', details: err.detail });
+        res.status(500).json({ error: 'Error del servidor al obtener las categorías' });
     }
 };
 
 /**
  * Crea una nueva categoría.
- * Asume que esta es una operación para administradores o con permisos especiales.
  */
 const createCategoria = async (req, res) => {
     const { nombre_categoria } = req.body;
@@ -36,7 +35,7 @@ const createCategoria = async (req, res) => {
 };
 
 /**
- * Actualiza el nombre de una categoría.
+ * Actualiza una categoría existente.
  */
 const updateCategoria = async (req, res) => {
     const { id } = req.params;

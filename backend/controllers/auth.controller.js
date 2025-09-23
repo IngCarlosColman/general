@@ -31,7 +31,6 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // ⚠️ CORRECCIÓN CLAVE: Ahora seleccionamos el 'password_hash' de la base de datos
         const userResult = await pool.query('SELECT id, username, email, rol, first_name, last_name, telefono, direccion, password_hash FROM users WHERE email = $1', [email]);
         const user = userResult.rows[0];
         if (!user) {
@@ -43,10 +42,16 @@ const login = async (req, res) => {
             return res.status(400).json({ error: 'Credenciales inválidas.' });
         }
 
-        // ⚠️ CAMBIO: Actualizamos la fecha de último inicio de sesión
         await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
-        // ⚠️ CORRECCIÓN: Incluimos todos los campos en el JWT
+        // 🧪 Log de verificación de JWT_SECRET
+        console.log('🔐 JWT_SECRET:', process.env.JWT_SECRET ? '✔️ definida' : '❌ faltante');
+
+        if (!process.env.JWT_SECRET) {
+            console.error('❌ JWT_SECRET no está definida en el entorno');
+            return res.status(500).json({ error: 'Configuración inválida del servidor.' });
+        }
+
         const accessToken = jwt.sign({
             id: user.id,
             username: user.username,
@@ -67,7 +72,6 @@ const login = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
-        // ⚠️ CORRECCIÓN: Incluimos los nuevos campos en la respuesta
         res.status(200).json({
             token: accessToken,
             user: {
@@ -97,14 +101,12 @@ const refreshToken = async (req, res) => {
     try {
         const payload = jwt.verify(token, process.env.REFRESH_SECRET);
 
-        // ⚠️ CORRECCIÓN: Seleccionamos todos los campos para el nuevo token
         const userResult = await pool.query('SELECT rol, username, email, first_name, last_name, telefono, direccion FROM users WHERE id = $1', [payload.id]);
         const user = userResult.rows[0];
         if (!user) {
             return res.status(403).json({ error: 'Usuario no encontrado.' });
         }
 
-        // ⚠️ CORRECCIÓN: Creamos un nuevo token con todos los campos
         const newAccessToken = jwt.sign({
             id: payload.id,
             username: user.username,

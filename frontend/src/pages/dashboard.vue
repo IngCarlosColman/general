@@ -48,6 +48,13 @@
           :class="{ 'px-2': !drawer }"
           @click="showComponent('general')"
         ></v-list-item>
+        <!-- Nuevo ítem de menú para Consulta Padrón -->
+        <v-list-item
+          prepend-icon="mdi-card-account-details-outline"
+          title="Consulta Datos Personales"
+          :class="{ 'px-2': !drawer }"
+          @click="showComponent('consulta-padron')"
+        ></v-list-item>
         <v-list-item
           prepend-icon="mdi-map-marker-radius"
           title="Catastro Dinámico"
@@ -95,6 +102,7 @@ import { useAuthStore } from '@/stores/auth';
 import General from '@/components/General.vue';
 import UsersProfiles from '@/components/usersprofiles.vue';
 import Catastro from '@/components/Catastro.vue';
+import Consulta from '@/components/Consulta.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -106,6 +114,7 @@ const components = {
   general: General,
   users: UsersProfiles,
   catastro: Catastro,
+  'consulta-padron': Consulta,
 };
 
 const currentComponent = ref('general');
@@ -116,17 +125,11 @@ const showComponent = (name) => {
 
 const handleLogout = async () => {
   try {
-    // 1. Llama a la acción de logout del store para limpiar los datos de sesión y la cookie.
     await authStore.logout();
-
-    // 2. Redirige al usuario a la página de login.
     await router.push('/login');
-
-    // 3. Después de la redirección, fuerza una recarga de la página.
     window.location.reload();
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
-    // En caso de error, aún se puede intentar la recarga para limpiar el estado.
     window.location.reload();
   }
 };

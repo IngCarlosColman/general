@@ -13,6 +13,7 @@ declare module 'vue' {
     AppFooter: typeof import('./src/components/AppFooter.vue')['default']
     Catastro: typeof import('./src/components/Catastro.vue')['default']
     ConfirmDeleteDialog: typeof import('./src/components/comunes/ConfirmDeleteDialog.vue')['default']
+    Consulta: typeof import('./src/components/Consulta.vue')['default']
     ContactCategories: typeof import('./src/components/agendautilities/ContactCategories.vue')['default']
     ContactDetails: typeof import('./src/components/agendautilities/ContactDetails.vue')['default']
     ContactDetailsModal: typeof import('./src/components/agendautilities/ContactDetailsModal.vue')['default']

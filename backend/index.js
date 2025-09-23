@@ -1,7 +1,5 @@
 // server.js
-
-require('dotenv').config();
-
+require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -26,7 +24,10 @@ const prourbanasRoutes = require('./routes/prourbanas.routes');
 const propiedadesPropietariosRoutes = require('./routes/propro.routes');
 const telefonosRouter = require('./routes/telefonos.router');
 const userAgendaRoutes = require('./routes/user_agenda.routes');
-const categoriesRoutes = require('./routes/categories.routes'); 
+const categoriasRoutes = require('./routes/categorias.routes'); 
+const geoRoutes = require('./routes/geo.routes');
+const mapaRoutes = require('./routes/mapa.routes'); 
+const consultaPadronRoutes = require('./routes/consulta_padron.routes');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -65,7 +66,11 @@ app.use('/api', propiedadesPropietariosRoutes);
 app.use('/api', catastroRoutes);
 app.use('/api/agenda', userAgendaRoutes);
 app.use('/api', telefonosRouter);
-app.use('/api/categorias', categoriesRoutes); 
+app.use('/api/categorias', categoriasRoutes); 
+app.use('/api', geoRoutes);
+app.use('/api', mapaRoutes);
+app.use('/api', consultaPadronRoutes);
+
 
 // Iniciar el servidor
 app.listen(PORT, () => {
