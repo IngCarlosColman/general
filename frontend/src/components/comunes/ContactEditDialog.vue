@@ -17,7 +17,7 @@
                 <v-form ref="form">
                     <v-container class="pa-0">
                         <v-row dense>
-                                                        <v-col cols="12" sm="6">
+                            <v-col cols="12" sm="6">
                                 <v-text-field
                                     v-model="localItem.nombres"
                                     @update:model-value="val => localItem.nombres = val.toUpperCase()"
@@ -26,7 +26,7 @@
                                     density="compact"
                                 ></v-text-field>
                             </v-col>
-                                                        <v-col cols="12" sm="6">
+                            <v-col cols="12" sm="6">
                                 <v-text-field
                                     v-model="localItem.apellidos"
                                     @update:model-value="val => localItem.apellidos = val.toUpperCase()"
@@ -35,7 +35,7 @@
                                     density="compact"
                                 ></v-text-field>
                             </v-col>
-                                                        <v-col cols="12" sm="6">
+                            <v-col cols="12" sm="6">
                                 <v-text-field
                                     :model-value="localItem.cedula"
                                     label="Cédula"
@@ -46,7 +46,7 @@
                                     persistent-hint
                                 ></v-text-field>
                             </v-col>
-                                                        <v-col cols="12" sm="6">
+                            <v-col cols="12" sm="6">
                                 <v-text-field
                                     label="Nombre Completo"
                                     :model-value="completo"
@@ -56,7 +56,8 @@
                                     flat
                                 ></v-text-field>
                             </v-col>
-                                                        <template v-if="selectedCategory === 'private-agenda'">
+                            
+                            <template v-if="selectedCategory === 'private-agenda'">
                                 <v-col cols="12">
                                     <v-divider class="my-3"></v-divider>
                                     <p class="text-subtitle-1 font-weight-medium text-blue-grey-darken-2 mb-2">Detalles de Agenda</p>
@@ -83,7 +84,8 @@
                                     ></v-textarea>
                                 </v-col>
                             </template>
-                                <v-col cols="12" v-if="isAdmin" class="pt-1">
+
+                            <v-col cols="12" v-if="isAdmin" class="pt-1">
                                 <v-divider class="my-3"></v-divider>
                                 <p class="text-subtitle-1 font-weight-medium text-blue-grey-darken-2 mb-2">Teléfonos de Contacto (Solo Admin)</p>
                                 <div v-for="(tel, index) in localItem.telefonos" :key="index" class="d-flex align-center mb-2">
@@ -133,7 +135,7 @@
                                     Añadir Teléfono
                                 </v-btn>
                             </v-col>
-                            </v-row>
+                        </v-row>
                     </v-container>
                 </v-form>
             </v-card-text>
@@ -156,6 +158,7 @@
 </template>
 <script setup>
 import { computed, defineProps, defineEmits, ref, watch } from 'vue';
+
 const props = defineProps({
     modelValue: { type: Boolean, required: true },
     editedItem: { type: Object, required: true },
@@ -164,19 +167,12 @@ const props = defineProps({
     agendaCategories: { type: Array, default: () => [] },
     currentUserRol: { type: String, required: true },
 });
+
 const emit = defineEmits(['update:modelValue', 'close', 'save']);
 const form = ref(null);
-// **NUEVO**: Estado local para la edición
-const localItem = ref(JSON.parse(JSON.stringify(props.editedItem)));
-// Observa el prop 'editedItem' y lo clona al estado local cuando se actualiza.
-// Esto es CRUCIAL para evitar mutar el prop directamente y para resetear
-// el formulario cuando se abre con un nuevo ítem (modelValue se hace true).
-watch(() => props.editedItem, (newItem) => {
-    localItem.value = JSON.parse(JSON.stringify(newItem));
-}, { deep: true, immediate: true });
+
 // =========================================================
 // 💡 CÓDIGOS DE PAÍS POR REGIÓN, con PARAGUAY como referencia
-// (Se deja como estaba, ya que la lógica es correcta)
 // =========================================================
 const americaCodes = [
     { code: '+595', name: '🇵🇾 Paraguay (+595)' }, // Referencia
@@ -263,8 +259,6 @@ const africaCodes = [
     { code: '+265', name: '🇲🇼 Malaui (+265)' },
     { code: '+244', name: '🇦🇴 Angola (+244)' },
     { code: '+245', name: '🇬🇼 Guinea-Bisáu (+245)' },
-    { code: '+246', name: '🇮🇴 Territorio Británico del Océano Índico (+246)' },
-    { code: '+247', name: '🇸🇭 Santa Helena, Ascensión y Tristán de Acuña (+247)' },
     { code: '+248', name: '🇸🇨 Seychelles (+248)' },
     { code: '+249', name: '🇸🇩 Sudán (+249)' },
     { code: '+250', name: '🇷🇼 Ruanda (+250)' },
@@ -296,6 +290,7 @@ const oceaniaCodes = [
     { code: '+64', name: '🇳🇿 Nueva Zelanda (+64)' },
     { code: '+679', name: '🇫🇯 Fiyi (+679)' },
 ];
+
 // COMBINACIÓN Y FILTRADO para asegurar que Paraguay esté al inicio
 const countryCodesTemp = [
     ...americaCodes.filter(c => c.code === '+595'),
@@ -305,23 +300,64 @@ const countryCodesTemp = [
     ...asiaCodes.sort((a, b) => a.name.localeCompare(b.name)),
     ...oceaniaCodes.sort((a, b) => a.name.localeCompare(b.name)),
 ];
+
 const countryCodes = countryCodesTemp.filter((c, index, self) =>
     index === self.findIndex((t) => (
         t.code === c.code
     ))
 );
+
 // =========================================================
-// 💡 LÓGICA DEL COMPONENTE (MODIFICADA)
+// 💡 LÓGICA DEL COMPONENTE (AJUSTADA)
 // =========================================================
+
 const isAdmin = computed(() => props.currentUserRol === 'administrador');
+
+// Función para desglosar el teléfono (e.g., "+595973520528" -> {codigo: "+595", numero: "973520528"})
+const parseTelefono = (fullNumber) => {
+    if (!fullNumber) return { codigo: '+595', numero: '' };
+
+    // Buscamos un código de país conocido que sea un prefijo del número completo
+    const matchedCode = countryCodes.find(c => fullNumber.startsWith(c.code));
+
+    if (matchedCode) {
+        return {
+            codigo: matchedCode.code,
+            numero: fullNumber.substring(matchedCode.code.length),
+        };
+    }
+
+    // Si no encontramos un código, asumimos Paraguay por defecto y el número completo como número.
+    return { codigo: '+595', numero: fullNumber.replace(/\D/g, '') };
+};
+
+// **Estado local para la edición**
+const localItem = ref({});
+
+// Observa el prop 'editedItem' y lo clona, además de DESGLOSAR los teléfonos.
+watch(() => props.editedItem, (newItem) => {
+    // Clonación profunda del ítem
+    const clonedItem = JSON.parse(JSON.stringify(newItem));
+    
+    // Si es administrador y hay teléfonos, los desglosamos para el formulario
+    if (isAdmin.value && Array.isArray(clonedItem.telefonos)) {
+        clonedItem.telefonos = clonedItem.telefonos.map(parseTelefono);
+    } else if (isAdmin.value && !clonedItem.telefonos) {
+        // Inicializamos como array vacío para el admin si no viene
+        clonedItem.telefonos = [];
+    }
+
+    localItem.value = clonedItem;
+}, { deep: true, immediate: true });
+
 const completo = computed(() => {
     if (localItem.value.nombres || localItem.value.apellidos) {
-        // Aseguramos que la visualización también esté en mayúsculas
         return `${(localItem.value.nombres || '').toUpperCase()} ${(localItem.value.apellidos || '').toUpperCase()}`.trim();
     }
     return '';
 });
-// FUNCIÓN MODIFICADA: Añade el teléfono como OBJETO {codigo, numero} con Paraguay por defecto
+
+// Añade el teléfono como OBJETO {codigo, numero} con Paraguay por defecto
 const addTelefono = () => {
     if (!localItem.value.telefonos) {
         localItem.value.telefonos = [];
@@ -329,42 +365,41 @@ const addTelefono = () => {
     // Establece Paraguay (+595) como código por defecto y campo 'numero' vacío
     localItem.value.telefonos.push({ codigo: '+595', numero: '' });
 };
+
 const removeTelefono = (index) => {
     if (localItem.value.telefonos) {
         localItem.value.telefonos.splice(index, 1);
     }
 };
+
 const save = async () => {
     const { valid } = await form.value.validate();
     if (valid) {
-        // Utilizamos localItem para obtener los datos
-        let telefonosToSave = localItem.value.telefonos;
+        let telefonosToSave = props.editedItem.telefonos || []; // Valor por defecto: el array original
+
         if (isAdmin.value) {
             // Si es Admin, procesamos la concatenación de los objetos {codigo, numero}
             telefonosToSave = (localItem.value.telefonos || [])
                 .filter(tel => tel.numero && tel.numero.trim() && tel.codigo && tel.codigo.trim())
                 .map(tel => {
                     const codigo = tel.codigo.trim();
-                    const numeroLimpio = tel.numero ? tel.numero.replace(/\D/g, '') : '';
+                    const numeroLimpio = tel.numero.replace(/\D/g, '');
                     return codigo + numeroLimpio; // Concatenación: "+595" + "973520528"
                 });
-        } else {
-            // Si no es Admin, no enviamos los teléfonos al guardado.
-            // Esto es por si editedItem tenía teléfonos originales que no debería modificar.
-            // Asignamos los teléfonos originales que vienen en props.editedItem
-            // Si el backend espera una lista vacía para no-admin, esta línea es necesaria.
-            telefonosToSave = props.editedItem.telefonos || [];
         }
+        
         // Creamos el objeto final para guardar
         const itemToSave = {
-            ...localItem.value, // Usamos los datos del estado local
-            // Conversión a mayúsculas para los campos de texto
+            ...localItem.value,
+            // Aseguramos que los campos obligatorios vayan en MAYÚSCULAS
             nombres: localItem.value.nombres ? localItem.value.nombres.toUpperCase() : '',
             apellidos: localItem.value.apellidos ? localItem.value.apellidos.toUpperCase() : '',
-            cedula: localItem.value.cedula ? localItem.value.cedula.toUpperCase() : '', // Aunque es readonly, se mantiene la conversión
+            cedula: localItem.value.cedula ? localItem.value.cedula.toUpperCase() : '',
             notas: localItem.value.notas ? localItem.value.notas.toUpperCase() : '',
-            telefonos: telefonosToSave // Array de strings concatenados o el valor original si no es admin
+            // Reemplazamos los teléfonos con el array de strings concatenados para el backend
+            telefonos: telefonosToSave 
         };
+
         emit('save', itemToSave);
     }
 };
