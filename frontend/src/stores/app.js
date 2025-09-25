@@ -70,7 +70,6 @@ export const useAuthStore = defineStore('auth', {
         this.token = newToken;
         this.isLoggedIn = true;
         sessionStorage.setItem('accessToken', newToken);
-        console.log('Token refrescado con éxito.');
       } catch (error) {
         console.error('No se pudo refrescar el token, redirigiendo a login...');
         this.logout();

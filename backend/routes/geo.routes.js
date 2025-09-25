@@ -11,8 +11,15 @@ const allowedRoles = ['administrador', 'editor'];
 router.use(authenticateJWT);
 
 // Rutas protegidas con validación de roles
+
+// POST: La ruta se mantiene, ya que los datos de identificación van en el cuerpo (req.body)
 router.post('/geo-data', checkRoles(allowedRoles), geoController.upsertGeoData);
-router.get('/geo-data/:id', checkRoles(allowedRoles), geoController.getGeoData);
-router.delete('/geo-data/:id', checkRoles(allowedRoles), geoController.deleteGeoData);
+
+//  GET: La ruta cambia para aceptar parámetros de consulta (req.query)
+// Esto permite buscar por la clave única compuesta (dpto, ciudad, tipo, padrón/ccc)
+router.get('/geo-data', checkRoles(allowedRoles), geoController.getGeoData);
+
+//  DELETE: La ruta cambia para aceptar parámetros de consulta para la eliminación
+router.delete('/geo-data', checkRoles(allowedRoles), geoController.deleteGeoData);
 
 module.exports = router;

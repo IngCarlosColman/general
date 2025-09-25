@@ -1,22 +1,31 @@
 // src/controllers/geo.controller.js
 const { pool } = require('../db/db');
 
-// Función para insertar o actualizar datos geoespaciales (POST /geo-data)
+// Función para insertar o actualizar datos geoespaciales
 const upsertGeoData = async (req, res) => {
-  const { id_vinculo, geojson } = req.body;
-  if (!id_vinculo || !geojson) {
-    return res.status(400).json({ error: 'Faltan parámetros: id_vinculo y geojson son obligatorios.' });
+  // ✅ CAMBIO 1: Desestructuramos los campos de identificación única en lugar de 'id_vinculo'
+  const {
+    cod_dep,
+    cod_ciu,
+    tipo_propiedad,
+    padron_ccc,
+    geojson
+  } = req.body;
+
+  // ✅ CAMBIO 2: Validamos los campos de identificación y el geojson
+  if (!cod_dep || !cod_ciu || !tipo_propiedad || !padron_ccc || !geojson) {
+    return res.status(400).json({ error: 'Faltan parámetros: cod_dep, cod_ciu, tipo_propiedad, padron_ccc y geojson son obligatorios.' });
   }
 
   try {
     const query = `
-      INSERT INTO propiedades_geo (id_vinculo, geojson)
-      VALUES ($1, $2)
-      ON CONFLICT (id_vinculo) DO UPDATE
+      INSERT INTO propiedades_geo (cod_dep, cod_ciu, tipo_propiedad, padron_ccc, geojson)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (cod_dep, cod_ciu, tipo_propiedad, padron_ccc) DO UPDATE
       SET geojson = EXCLUDED.geojson, updated_at = NOW()
       RETURNING *;
     `;
-    const result = await pool.query(query, [id_vinculo, JSON.stringify(geojson)]);
+    const result = await pool.query(query, [cod_dep, cod_ciu, tipo_propiedad, padron_ccc, JSON.stringify(geojson)]);
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Error al insertar/actualizar geojson:', err);
@@ -24,14 +33,22 @@ const upsertGeoData = async (req, res) => {
   }
 };
 
-// Función para obtener un geojson por id_vinculo (GET /geo-data/:id)
+// Función para obtener un geojson por la identificación de la propiedad
 const getGeoData = async (req, res) => {
-  const { id } = req.params;
+  // ✅ CAMBIO 3: Obtenemos los campos de identificación desde los parámetros de la URL
+  const { cod_dep, cod_ciu, tipo_propiedad, padron_ccc } = req.query;
+
+  // ✅ CAMBIO 4: Validamos los campos requeridos
+  if (!cod_dep || !cod_ciu || !tipo_propiedad || !padron_ccc) {
+    return res.status(400).json({ error: 'Faltan parámetros: cod_dep, cod_ciu, tipo_propiedad y padron_ccc son obligatorios.' });
+  }
+
   try {
-    const query = 'SELECT geojson FROM propiedades_geo WHERE id_vinculo = $1;';
-    const result = await pool.query(query, [id]);
+    const query = 'SELECT geojson FROM propiedades_geo WHERE cod_dep = $1 AND cod_ciu = $2 AND tipo_propiedad = $3 AND padron_ccc = $4;';
+    const result = await pool.query(query, [cod_dep, cod_ciu, tipo_propiedad, padron_ccc]);
+
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Datos geoespaciales no encontrados para el id_vinculo proporcionado.' });
+      return res.status(404).json({ error: 'Datos geoespaciales no encontrados para la propiedad proporcionada.' });
     }
     res.status(200).json(result.rows[0].geojson);
   } catch (err) {
@@ -40,12 +57,20 @@ const getGeoData = async (req, res) => {
   }
 };
 
-// Función para eliminar un registro geoespacial (DELETE /geo-data/:id)
+// Función para eliminar un registro geoespacial
 const deleteGeoData = async (req, res) => {
-  const { id } = req.params;
+  // ✅ CAMBIO 5: Obtenemos los campos de identificación desde los parámetros de la URL
+  const { cod_dep, cod_ciu, tipo_propiedad, padron_ccc } = req.query;
+
+  // ✅ CAMBIO 6: Validamos los campos requeridos
+  if (!cod_dep || !cod_ciu || !tipo_propiedad || !padron_ccc) {
+    return res.status(400).json({ error: 'Faltan parámetros: cod_dep, cod_ciu, tipo_propiedad y padron_ccc son obligatorios.' });
+  }
+
   try {
-    const query = 'DELETE FROM propiedades_geo WHERE id_vinculo = $1 RETURNING *;';
-    const result = await pool.query(query, [id]);
+    const query = 'DELETE FROM propiedades_geo WHERE cod_dep = $1 AND cod_ciu = $2 AND tipo_propiedad = $3 AND padron_ccc = $4 RETURNING *;';
+    const result = await pool.query(query, [cod_dep, cod_ciu, tipo_propiedad, padron_ccc]);
+
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Datos geoespaciales no encontrados para eliminar.' });
     }
@@ -60,4 +85,4 @@ module.exports = {
   upsertGeoData,
   getGeoData,
   deleteGeoData,
-};
+};  

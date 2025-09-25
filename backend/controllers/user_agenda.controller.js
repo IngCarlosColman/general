@@ -28,7 +28,9 @@ const getUserAgenda = async (req, res) => {
         res.status(200).json(result.rows);
     } catch (err) {
         console.error('Error al obtener la agenda del usuario:', err);
-        console.log('Datos de la agenda:', result.rows);
+        // Nota: La variable 'result' puede no estar definida en caso de error, 
+        // por lo que el console.log('Datos de la agenda:', result.rows) debe eliminarse
+        // o protegerse dentro del catch.
         res.status(500).json({ error: 'Error del servidor' });
     }
 };
@@ -38,6 +40,11 @@ const addContactToUserAgenda = async (req, res) => {
     const { contact_cedula, categoria_id, notas } = req.body;
     const { id: userId } = req.user;
     const client = await pool.connect();
+
+    // Validación de entrada simple
+    if (!contact_cedula) {
+        return res.status(400).json({ error: 'La cédula del contacto es obligatoria.' });
+    }
 
     try {
         await client.query('BEGIN');
@@ -94,6 +101,7 @@ const removeContactFromUserAgenda = async (req, res) => {
         await client.query('BEGIN');
         
         // 1. Eliminar de la tabla contact_notes (si existe)
+        // Se puede hacer en una transacción separada o simplemente antes del commit final
         await client.query(`DELETE FROM contact_notes WHERE user_id = $1 AND contact_cedula = $2;`, [userId, contact_cedula]);
 
         // 2. Eliminar de la tabla user_agendas
@@ -120,6 +128,12 @@ const removeContactFromUserAgenda = async (req, res) => {
         client.release();
     }
 };
+
+/**
+ * Actualiza un contacto en la agenda privada del usuario.
+ * 🚨 CORRECCIÓN: Se garantiza que el campo 'titulo' de contact_notes se maneje correctamente 
+ * durante el ON CONFLICT.
+ */
 const updateContactInUserAgenda = async (req, res) => {
     const { contact_cedula } = req.params;
     const { categoria_id, notas } = req.body;
@@ -136,6 +150,7 @@ const updateContactInUserAgenda = async (req, res) => {
             WHERE user_id = $2 AND contact_cedula = $3
             RETURNING *;
         `;
+        // Nota: Solo se actualiza categoria_id, por lo que categoria_id es el único campo obligatorio
         const agendaResult = await client.query(updateAgendaQuery, [categoria_id, userId, contact_cedula]);
 
         if (agendaResult.rowCount === 0) {
@@ -144,16 +159,17 @@ const updateContactInUserAgenda = async (req, res) => {
         }
 
         // 2. Insertar o actualizar notas
-        if (notas) {
+        if (notas && notas.trim() !== '') {
             const upsertNotesQuery = `
-                INSERT INTO contact_notes (user_id, contact_cedula, cuerpo)
-                VALUES ($1, $2, $3)
+                INSERT INTO contact_notes (user_id, contact_cedula, titulo, cuerpo) 
+                VALUES ($1, $2, 'Notas de la agenda', $3)
                 ON CONFLICT (user_id, contact_cedula) DO UPDATE SET
-                cuerpo = EXCLUDED.cuerpo;
+                cuerpo = EXCLUDED.cuerpo,
+                updated_at = NOW(); 
             `;
             await client.query(upsertNotesQuery, [userId, contact_cedula, notas]);
         } else {
-            // Si las notas se vaciaron, eliminarlas
+            // Si las notas están vacías o son nulas, eliminarlas
             await client.query(`DELETE FROM contact_notes WHERE user_id = $1 AND contact_cedula = $2;`, [userId, contact_cedula]);
         }
 
@@ -163,6 +179,9 @@ const updateContactInUserAgenda = async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al actualizar contacto en la agenda:', err);
+        if (err.code === '23503') { // Violación de clave foránea
+             return res.status(400).json({ error: 'La categoría proporcionada no es válida.' });
+        }
         res.status(500).json({ error: 'Error del servidor' });
     } finally {
         client.release();
@@ -173,5 +192,5 @@ module.exports = {
     getUserAgenda,
     addContactToUserAgenda,
     removeContactFromUserAgenda,
-    updateContactInUserAgenda, // ✅ Exporta el nuevo controlador
+    updateContactInUserAgenda,
 };

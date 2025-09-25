@@ -17,13 +17,13 @@
                 label="Nombres"
                 required
                 :rules="[v => !!v || 'Campo obligatorio']"
-              ></v-text-field>
+                :readonly="isFieldReadOnly" ></v-text-field>
             </v-col>
             <v-col cols="12" sm="6">
               <v-text-field
                 v-model="editedItem.apellidos"
                 label="Apellidos"
-              ></v-text-field>
+                :readonly="isFieldReadOnly" ></v-text-field>
             </v-col>
             <v-col cols="12">
               <v-text-field
@@ -41,8 +41,7 @@
                 label="Cédula"
                 required
                 :rules="[v => !!v || 'Campo obligatorio']"
-                :readonly="isEditing"
-              ></v-text-field>
+                :readonly="isEditing || isFieldReadOnly" ></v-text-field>
             </v-col>
             <template v-if="selectedCategory === 'private-agenda'">
               <v-col cols="12" sm="6">
@@ -53,7 +52,7 @@
                   item-value="id"
                   label="Categoría"
                   clearable
-                ></v-select>
+                  :readonly="isFieldReadOnly" ></v-select>
               </v-col>
               <v-col cols="12" sm="6">
                 <v-textarea
@@ -61,7 +60,7 @@
                   label="Notas de la Agenda"
                   rows="2"
                   no-resize
-                ></v-textarea>
+                  :readonly="isFieldReadOnly" ></v-textarea>
               </v-col>
             </template>
             <v-col cols="12">
@@ -74,14 +73,14 @@
                   prepend-inner-icon="mdi-phone"
                   hide-details
                   class="me-2"
-                ></v-text-field>
+                  :readonly="isFieldReadOnly" ></v-text-field>
                 <v-btn
                   icon
                   size="small"
                   variant="text"
                   color="red"
                   @click="removeTelefono(index)"
-                >
+                  v-if="!isFieldReadOnly" >
                   <v-icon>mdi-delete</v-icon>
                 </v-btn>
               </div>
@@ -90,7 +89,7 @@
                 variant="text"
                 @click="addTelefono"
                 prepend-icon="mdi-plus-circle-outline"
-              >
+                v-if="!isFieldReadOnly" >
                 Añadir teléfono
               </v-btn>
             </v-col>
@@ -105,7 +104,14 @@
       <v-card-actions class="px-6 pb-4">
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="$emit('close')">Cancelar</v-btn>
-        <v-btn color="primary" variant="flat" @click="save" :loading="saving">Guardar</v-btn>
+        <v-btn 
+          color="primary" 
+          variant="flat" 
+          @click="save" 
+          :loading="saving" 
+          :disabled="isSaveButtonDisabled" v-if="!isFieldReadOnly" >
+          Guardar
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -135,14 +141,23 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  selectedCategory: { // ✅ Agregada la prop del padre
+  selectedCategory: {
     type: String,
     required: true
   },
-  agendaCategories: { // ✅ Agregada la prop del padre
+  agendaCategories: {
     type: Array,
     default: () => []
-  }
+  },
+  // 🔑 NUEVAS PROPS DE PERMISOS
+  currentUserId: {
+    type: [Number, String],
+    required: true,
+  },
+  currentUserRol: {
+    type: String,
+    required: true,
+  },
 });
 
 const emit = defineEmits([
@@ -165,6 +180,38 @@ const completo = computed(() => {
   return '';
 });
 
+/**
+ * Determina si el formulario debe estar en modo solo lectura.
+ */
+const isFieldReadOnly = computed(() => {
+  // 1. Al crear un nuevo registro, el formulario nunca es de solo lectura (el botón 'Add' ya controla el acceso).
+  if (!props.isEditing) return false;
+
+  // 2. Al editar un contacto de una categoría de Guía General (no privada).
+  //    Asumimos que los datos base de la guía principal son Read-Only para evitar cambios no autorizados.
+  if (props.selectedCategory !== 'private-agenda') {
+    return true;
+  }
+
+  // 3. Al editar un contacto de la Agenda Privada:
+  
+  // El Administrador tiene control total sobre cualquier registro de la agenda privada.
+  if (props.currentUserRol === 'administrador') {
+    return false;
+  }
+
+  // El Editor solo puede editar sus propios registros (donde el ID del creador coincide con su ID).
+  if (props.currentUserRol === 'editor') {
+    // Usamos doble igualdad (==) para comparar ID que pueden ser Number o String.
+    return props.editedItem.created_by != props.currentUserId;
+  }
+
+  // 4. Cualquier otro caso es Read-Only por seguridad.
+  return true;
+});
+
+const isSaveButtonDisabled = computed(() => props.saving || isFieldReadOnly.value);
+
 const addTelefono = () => {
   if (!props.editedItem.telefonos) {
     props.editedItem.telefonos = [];
@@ -177,6 +224,8 @@ const removeTelefono = (index) => {
 };
 
 const save = async () => {
+  if (isFieldReadOnly.value) return; // Doble chequeo por seguridad
+
   const { valid } = await form.value.validate();
   if (valid) {
     emit('save', props.editedItem);

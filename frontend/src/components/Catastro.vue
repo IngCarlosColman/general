@@ -17,7 +17,7 @@
       <v-expand-transition>
         <div v-if="!isFormCollapsed">
           <v-card-text>
-            <v-form ref="formRef" v-model="isFormValid" @keydown.enter.prevent="handleSearch">
+            <v-form ref="formRef" @keydown.enter.prevent="handleSearch">
               <v-row>
                 <v-col cols="12" md="6">
                   <v-select
@@ -128,55 +128,54 @@
           </v-card-text>
 
           <v-card-actions class="justify-center mt-4">
-  <v-btn
-    color="primary"
-    class="ma-2 font-weight-bold"
-    size="large"
-    variant="elevated"
-    @click="handleSearch"
-    :disabled="!form.departamento || isLoading"
-  >
-    <v-icon start>mdi-magnify</v-icon>
-    Buscar Propiedades
-  </v-btn>
+            <v-btn
+              color="primary"
+              class="ma-2 font-weight-bold"
+              size="large"
+              variant="elevated"
+              @click="handleSearch"
+              :disabled="!form.departamento || isLoading"
+            >
+              <v-icon start>mdi-magnify</v-icon>
+              Buscar Propiedades
+            </v-btn>
 
-  <v-btn
-    :disabled="propiedades.length === 0"
-    color="teal-darken-2"
-    class="ma-2 font-weight-bold"
-    size="large"
-    variant="tonal"
-    
-    @click="handleGetMaps"
-  >
-    <v-icon start>mdi-map-search-outline</v-icon>
-    Obtener Mapas
-  </v-btn>
+            <v-btn
+              :disabled="propiedades.length === 0"
+              color="teal-darken-2"
+              class="ma-2 font-weight-bold"
+              size="large"
+              variant="tonal"
+              @click="handleGetMaps"
+            >
+              <v-icon start>mdi-map-search-outline</v-icon>
+              Obtener Mapas
+            </v-btn>
 
-  <v-btn
-    color="blue-grey-darken-2"
-    class="ma-2 font-weight-bold"
-    size="large"
-    variant="tonal"
-    @click="handleViewMaps"
-    :disabled="mapProperties.length === 0"
-  >
-    <v-icon start>mdi-map-marker-radius</v-icon>
-    Ver Mapas
-  </v-btn>
+            <v-btn
+              color="blue-grey-darken-2"
+              class="ma-2 font-weight-bold"
+              size="large"
+              variant="tonal"
+              @click="handleViewMaps"
+              :disabled="mapaStore.propiedadesMapa.length === 0"
+            >
+              <v-icon start>mdi-map-marker-radius</v-icon>
+              Ver Mapas
+            </v-btn>
 
-  <v-btn
-    color="grey-darken-2"
-    class="ma-2 font-weight-bold"
-    size="large"
-    variant="outlined"
-    @click="clearForm"
-    :disabled="isLoading"
-  >
-    <v-icon start>mdi-close</v-icon>
-    Limpiar
-  </v-btn>
-</v-card-actions>
+            <v-btn
+              color="grey-darken-2"
+              class="ma-2 font-weight-bold"
+              size="large"
+              variant="outlined"
+              @click="clearForm"
+              :disabled="isLoading"
+            >
+              <v-icon start>mdi-close</v-icon>
+              Limpiar
+            </v-btn>
+          </v-card-actions>
         </div>
       </v-expand-transition>
     </v-card>
@@ -197,18 +196,28 @@
           <div class="pa-4 text-center text-subtitle-1">Sin Datos</div>
         </template>
 
-        <template #item.acciones="{ item, index }">
+        <template #item.acciones="{ item }">
           <div class="d-flex align-center justify-center">
             <v-btn
               color="blue-darken-2"
               class="ma-1"
               size="small"
-              @click="handleSearchCadastre(item, index)"
+              @click="handleSearchCadastre(item)"
               :loading="loadingCadastre[item.id]"
               :disabled="loadingCadastre[item.id]"
               prepend-icon="mdi-database-search"
             >
               Buscar
+            </v-btn>
+            <v-btn
+              v-if="item.geojson"
+              icon
+              size="small"
+              color="green-darken-1"
+              class="ma-1"
+              @click="verMapaIndividual(item)"
+            >
+              <v-icon>mdi-map-marker</v-icon>
             </v-btn>
             <v-btn
               v-if="canEdit"
@@ -235,10 +244,10 @@
           </v-btn>
         </v-card-title>
         <v-card-text class="pa-0 flex-grow-1">
-          <Mapa :properties="mapProperties" /> </v-card-text>
+          <Mapa v-if="showMap" :properties="mapaStore.propiedadesMapa" />
+        </v-card-text>
       </v-card>
     </v-dialog>
-
 
     <v-dialog v-model="dialog" max-width="500px">
       <v-card class="pa-4 rounded-xl">
@@ -295,6 +304,8 @@
 import { ref, reactive, onMounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCatastroStore } from '../stores/catastro';
+// Importamos el store del mapa.js para centralizar la gestión de datos del mapa.
+import { useMapaStore } from '../stores/mapa';
 import Mapa from './Mapa.vue';
 
 // === PROPS ===
@@ -307,6 +318,8 @@ const props = defineProps({
 
 // === PINIA STORE ===
 const store = useCatastroStore();
+// Obtenemos el store del mapa para interactuar con su estado.
+const mapaStore = useMapaStore();
 const {
   departamentos,
   ciudades,
@@ -332,8 +345,6 @@ const form = reactive({
   m2_min: null,
   m2_max: null,
 });
-
-const isFormValid = ref(false);
 
 const tiposPropiedad = ref(['Rural', 'Urbana']);
 const lastOptions = ref({ page: 1, itemsPerPage: 10, sortBy: [] });
@@ -371,6 +382,7 @@ const editingItem = reactive({
   telefono: '',
 });
 
+// Nueva gestión del estado del snackbar
 const snackbar = reactive({
   show: false,
   message: '',
@@ -378,16 +390,16 @@ const snackbar = reactive({
   timeout: 3000,
 });
 
-const mapProperties = ref([]);
-const showMap = ref(false);
-
-// === MÉTODOS Y ACCIONES ===
-
 const showSnackbar = (message, color = 'info') => {
   snackbar.message = message;
   snackbar.color = color;
   snackbar.show = true;
 };
+
+// === LÓGICA DEL MAPA ===
+const showMap = ref(false);
+
+// === MÉTODOS Y ACCIONES ===
 
 const toggleFormVisibility = () => {
   isFormCollapsed.value = !isFormCollapsed.value;
@@ -405,7 +417,7 @@ const handleTipoPropiedadChange = () => {
 };
 
 const handleSearch = () => {
-  store.searchProperties(form, { page: 1, itemsPerPage: 10, sortBy: [] });
+  store.searchProperties(form, lastOptions.value);
   isFormCollapsed.value = true;
 };
 
@@ -433,15 +445,13 @@ const clearForm = () => {
   store.totalPropiedades = 0;
   showMap.value = false;
   isFormCollapsed.value = false;
+  // Al limpiar el formulario, también limpiamos los datos en el store del mapa.
+  mapaStore.setPropiedadesMapa([]);
 };
-
-// Se eliminó la función toggleMapVisibility, ahora el botón cambia showMap directamente
-// y el modal lo maneja
 
 const handleSearchCadastre = async (item) => {
   showSnackbar('Consultando API de Catastro...', 'info');
-  const isRural = form.tipoPropiedad === 'Rural';
-  const result = await store.searchCadastre(item, form.tipoPropiedad, isRural);
+  const result = await store.searchCadastre(item, form.tipoPropiedad);
   showSnackbar(result.message, result.success ? 'success' : 'error');
 };
 
@@ -451,6 +461,22 @@ const editItem = (item) => {
   editingItem.cedula = item.cedula_propietario;
   editingItem.telefono = item.telefono;
   dialog.value = true;
+};
+
+const handleGetMaps = async () => {
+  showSnackbar('Obteniendo datos geográficos...', 'info');
+  // Llama a la función del mapaStore para obtener los geojson.
+  const result = await mapaStore.getMapsForFilteredProperties(propiedades.value);
+  showSnackbar(result.message, result.success ? 'success' : 'error');
+};
+
+const handleViewMaps = () => {
+  // Verifica los datos del mapa directamente en el store de Pinia.
+  if (mapaStore.propiedadesMapa.length > 0) {
+    showMap.value = true;
+  } else {
+    showSnackbar('No hay propiedades con coordenadas para mostrar en el mapa.', 'warning');
+  }
 };
 
 const saveEditedItem = async () => {
@@ -466,14 +492,12 @@ const saveEditedItem = async () => {
     showSnackbar(result.message, 'error');
   }
 };
-
 // === WATCHERS ===
 watch(() => form.departamento, (newValue, oldValue) => {
   if (newValue !== oldValue) {
     store.fetchCiudades(newValue);
   }
 });
-
 watch(() => form.ciudadValue, (newValue) => {
   if (newValue) {
     const city = store.ciudades.find(c => c.value === newValue);
@@ -484,23 +508,41 @@ watch(() => form.ciudadValue, (newValue) => {
     form.ciudad = null;
   }
 });
-
+// Este watcher es clave: escucha los cambios en las propiedades y actualiza el mapaStore
 watch(propiedades, (newPropiedades) => {
-  mapProperties.value = newPropiedades
-    .filter(item => item.lat && item.lng)
-    .map(item => ({
+  if (newPropiedades) {
+    const propertiesWithGeojson = newPropiedades.filter(item => item.geojson);
+    const mappedProperties = propertiesWithGeojson.map(item => ({
       ...item,
       lat: parseFloat(item.lat),
       lng: parseFloat(item.lng),
+      geojson: item.geojson,
     }));
-});
-
+    // Se llama al store del mapa (mapa.js) para establecer los nuevos datos
+    mapaStore.setPropiedadesMapa(mappedProperties);
+  } else {
+    mapaStore.setPropiedadesMapa([]);
+  }
+}, { deep: true });
+const verMapaIndividual = (item) => {
+  if (item.geojson) {
+    // Al igual que el watcher, esta función llama al store del mapa con un solo item.
+    mapaStore.setPropiedadesMapa([{
+      ...item,
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lng),
+      geojson: item.geojson,
+    }]);
+    showMap.value = true;
+  } else {
+    showSnackbar('Esta propiedad no tiene datos geográficos para mostrar.', 'warning');
+  }
+};
 // === CICLO DE VIDA ===
 onMounted(() => {
   store.fetchDepartamentos();
 });
 </script>
-
 <style scoped>
 /* Estilos para una apariencia más moderna y unificada */
 .rounded-xl {

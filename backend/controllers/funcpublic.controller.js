@@ -48,7 +48,7 @@ const getFuncPublicData = async (req, res) => {
             }
         }
 
-        // Consulta para el conteo de registros (no necesita el join completo)
+        // Consulta para el conteo de registros
         const countQuery = `
             SELECT COUNT(*) 
             FROM funcpublic AS fp
@@ -58,7 +58,7 @@ const getFuncPublicData = async (req, res) => {
         const countResult = await pool.query(countQuery, queryParams);
         const totalItems = parseInt(countResult.rows[0].count);
 
-        // --- INICIO DE LA CORRECCIÓN EN LA CONSULTA DE DATOS ---
+        // Consulta para los datos, incluyendo created_by para la validación de propiedad en el frontend
         const dataQuery = `
             SELECT
                 fp.id,
@@ -67,6 +67,7 @@ const getFuncPublicData = async (req, res) => {
                 g.nombres,
                 g.apellidos,
                 g.completo AS nom_completo,
+                g.created_by,
                 json_agg(t.numero) FILTER (WHERE t.numero IS NOT NULL) AS telefonos
             FROM
                 funcpublic AS fp
@@ -76,7 +77,7 @@ const getFuncPublicData = async (req, res) => {
                 telefonos AS t ON g.cedula = t.cedula_persona
             ${whereClause}
             GROUP BY
-                fp.id, fp.salario, g.cedula, g.nombres, g.apellidos, g.completo
+                fp.id, fp.salario, g.cedula, g.nombres, g.apellidos, g.completo, g.created_by
             ${orderByClause}
             LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
         `;
@@ -91,18 +92,31 @@ const getFuncPublicData = async (req, res) => {
     }
 };
 
+// ------------------------------------
+//          FUNCIONES CUD BLINDADAS
+// ------------------------------------
+
 /**
  * Función para crear un nuevo registro, insertando en las tablas general y funcpublic.
+ * 🚨 MEJORA DE SEGURIDAD: Se propaga el rol a upsertGeneral.
  */
 const createFuncPublic = async (req, res) => {
     const { nombres, apellidos, cedula, telefonos, salario } = req.body;
-    const { id: id_usuario } = req.user;
+    // Capturamos ID y ROL
+    const { id: id_usuario, rol: rol_usuario } = req.user;
+    
+    if (!cedula || !nombres || !apellidos || salario === undefined) {
+        return res.status(400).json({ error: 'Faltan campos obligatorios para crear un Funcionario Público.' });
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
-        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+        // 1. Usar la función centralizada, PROPAGANDO EL ROL
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
         
+        // 2. Insertar en funcpublic
         const insertFuncPublicQuery = `
             INSERT INTO funcpublic (cedula, salario, created_by)
             VALUES ($1, $2, $3)
@@ -130,36 +144,68 @@ const createFuncPublic = async (req, res) => {
 
 /**
  * Función para actualizar un registro, en las tablas general y funcpublic.
+ * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
+ * Se añade la verificación de propiedad y la restricción de cédula para editores.
  */
 const updateFuncPublic = async (req, res) => {
     const { id } = req.params;
-    const { nombres, apellidos, cedula, telefonos, salario } = req.body;
-    const { id: id_usuario } = req.user;
+    // Cédula propuesta (nueva_cedula)
+    const { nombres, apellidos, cedula: new_cedula, telefonos, salario } = req.body;
+    // Capturamos ID y ROL
+    const { id: id_usuario, rol: rol_usuario } = req.user;
+    
+    if (!new_cedula || !nombres || !apellidos || salario === undefined) {
+        return res.status(400).json({ error: 'Faltan campos obligatorios para actualizar un Funcionario Público.' });
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        const oldCedulaQuery = 'SELECT cedula FROM funcpublic WHERE id = $1';
-        const oldCedulaResult = await client.query(oldCedulaQuery, [id]);
-        if (oldCedulaResult.rowCount === 0) {
+        // 1. OBTENER CÉDULA ORIGINAL y created_by de la tabla general
+        const checkQuery = `
+            SELECT fp.cedula AS original_cedula, g.created_by 
+            FROM funcpublic AS fp
+            JOIN general AS g ON fp.cedula = g.cedula
+            WHERE fp.id = $1 FOR UPDATE;
+        `;
+        const checkResult = await client.query(checkQuery, [id]);
+        
+        if (checkResult.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro de funcionario público no encontrado' });
         }
-        const oldCedula = oldCedulaResult.rows[0].cedula;
         
-        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, oldCedula);
+        const { original_cedula, created_by: record_owner_id } = checkResult.rows[0];
+        const isOwner = record_owner_id === id_usuario;
+        let final_cedula = new_cedula;
 
+        // 2. RESTRICCIÓN DE CÉDULA para EDITORES
+        if (rol_usuario === 'editor' && !isOwner) {
+            if (original_cedula !== new_cedula) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ 
+                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
+                });
+            }
+        }
+        
+        // 3. Ejecutar UPSERT en la tabla `general`, PROPAGANDO EL ROL
+        await upsertGeneral(final_cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
+
+        // 4. Actualizar funcpublic (cédula y salario)
         const updateFuncPublicQuery = `
             UPDATE funcpublic
             SET cedula = $1, salario = $2, updated_by = $3, updated_at = NOW()
             WHERE id = $4
             RETURNING *;
         `;
-        const resultFuncPublic = await client.query(updateFuncPublicQuery, [cedula, salario, id_usuario, id]);
+        const resultFuncPublic = await client.query(updateFuncPublicQuery, [final_cedula, salario, id_usuario, id]);
 
         await client.query('COMMIT');
         
         if (resultFuncPublic.rowCount === 0) {
+            // Este caso es poco probable si checkResult.rowCount > 0, pero lo mantenemos como fallback
             return res.status(404).json({ error: 'Registro no encontrado en la tabla funcpublic.' });
         }
         
@@ -179,6 +225,7 @@ const updateFuncPublic = async (req, res) => {
 
 /**
  * Función para eliminar un registro.
+ * (Se mantiene igual, la restricción de borrado debe estar en un middleware o capa de permisos superior).
  */
 const deleteFuncPublic = async (req, res) => {
     const { id } = req.params;

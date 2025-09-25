@@ -66,7 +66,7 @@
             <v-icon
               size="small"
               class="me-2"
-              @click="$emit('open-whatsapp', item)"
+              @click="$emit('open-whatsapp', item, item.telefonos[0])" 
               color="green-lighten-1"
               v-bind="props"
             >
@@ -97,6 +97,7 @@
               @click="$emit('edit', item)"
               color="blue"
               v-bind="props"
+              v-if="canAccess(item)"
             >
               mdi-pencil
             </v-icon>
@@ -110,6 +111,7 @@
               @click="$emit('delete', item)"
               color="red"
               v-bind="props"
+              v-if="canAccess(item)"
             >
               mdi-delete
             </v-icon>
@@ -122,7 +124,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { formatCurrencyPy } from '@/utils/formatters'; // Importación corregida
+import { formatCurrencyPy } from '@/utils/formatters';
 
 const props = defineProps({
   headers: {
@@ -149,6 +151,20 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  // 🔑 PROPS DE PERMISOS
+  currentUserId: {
+    type: [Number, String],
+    required: true,
+  },
+  currentUserRol: {
+    type: String,
+    required: true,
+  },
+  // 🎯 NUEVA PROP REQUERIDA PARA LA LÓGICA DE VISUALIZACIÓN
+  selectedCategory: {
+    type: String,
+    required: true,
+  },
 });
 
 const emit = defineEmits([
@@ -163,5 +179,34 @@ const emit = defineEmits([
 
 const isAddedToPrivateAgenda = (cedula) => {
   return props.privateAgendaCedulas.includes(cedula);
+};
+
+/**
+ * Determina si el usuario logueado (administrador o editor) puede
+ * realizar acciones de edición o eliminación en un item.
+ * @param {object} item - El objeto de contacto.
+ * @returns {boolean} - true si el usuario tiene permiso, false en caso contrario.
+ */
+const canAccess = (item) => {
+  // 1. Regla: El Administrador tiene acceso total, independientemente de la categoría.
+  if (props.currentUserRol === 'administrador') {
+    return true;
+  }
+  
+  // 2. Regla: La Guía General (otras categorías) es Read-Only para el Editor.
+  if (props.selectedCategory !== 'private-agenda') {
+    return false;
+  }
+
+  // A partir de aquí, sabemos que la categoría es 'private-agenda' y el usuario NO es Administrador.
+
+  // 3. Regla: El Editor solo puede editar/eliminar sus propios registros de la agenda privada.
+  if (props.currentUserRol === 'editor') {
+    // Retorna true solo si el ID del creador coincide con el ID del usuario actual.
+    return item.created_by == props.currentUserId;
+  }
+
+  // 4. Por defecto (otros roles en la agenda privada), no tiene acceso.
+  return false;
 };
 </script>

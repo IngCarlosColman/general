@@ -24,6 +24,7 @@ const getYacyretaData = async (req, res) => {
         if (search) {
             const searchTerms = search.split(/\s+/).filter(term => term);
             if (searchTerms.length > 0) {
+                // Búsqueda Full-Text Search en la tabla 'general'
                 whereClauses.push(`g.search_vector @@ to_tsquery('spanish', $${paramIndex})`);
                 queryParams.push(searchTerms.map(t => `${t}:*`).join(' & '));
                 paramIndex++;
@@ -56,6 +57,7 @@ const getYacyretaData = async (req, res) => {
             SELECT
                 y.id,
                 y.salario,
+                y.created_by,
                 g.cedula,
                 g.nombres,
                 g.apellidos,
@@ -86,21 +88,29 @@ const getYacyretaData = async (req, res) => {
     }
 };
 
+// ------------------------------------
+//          FUNCIONES CUD BLINDADAS
+// ------------------------------------
+
 /**
  * Crea un nuevo registro de Yacyreta.
- * OPTIMIZADO: Ahora usa la función upsertGeneral para mantener la consistencia.
  */
 const createYacyreta = async (req, res) => {
     const { id: id_usuario } = req.user;
     const { nombres, apellidos, cedula, telefonos, salario } = req.body;
+    
+    if (!cedula || !salario) {
+        return res.status(400).json({ error: 'La cédula y el salario son obligatorios.' });
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
-        // Usa la función centralizada para manejar la inserción/actualización de general y telefonos.
+        // 1. Usa la función centralizada para manejar la inserción/actualización de general y telefonos.
         await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
         
-        // Inserta o actualiza el registro en la tabla yacyreta.
+        // 2. Inserta el registro en la tabla yacyreta.
         const insertYacyretaQuery = `
             INSERT INTO yacyreta (cedula, salario, created_by)
             VALUES ($1, $2, $3)
@@ -127,39 +137,61 @@ const createYacyreta = async (req, res) => {
 
 /**
  * Actualiza un registro de Yacyreta.
- * OPTIMIZADO: Ahora usa la función upsertGeneral para mantener la consistencia.
+ * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
+ * Restringe la modificación de la cédula para 'editor' que no es dueño.
  */
 const updateYacyreta = async (req, res) => {
-    const { id: id_usuario } = req.user;
+    const { id: id_usuario, rol: rol_usuario } = req.user;
     const { id } = req.params;
     if (isNaN(parseInt(id))) {
         return res.status(400).json({ error: 'ID de registro no válido.' });
     }
     const { nombres, apellidos, cedula, telefonos, salario } = req.body;
+
+    if (!cedula || !salario) {
+        return res.status(400).json({ error: 'La cédula y el salario son obligatorios.' });
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
-        // Obtenemos la cédula actual para pasársela a upsertGeneral.
-        const oldCedulaQuery = 'SELECT cedula FROM yacyreta WHERE id = $1 FOR UPDATE;';
-        const oldCedulaResult = await client.query(oldCedulaQuery, [id]);
-        if (oldCedulaResult.rowCount === 0) {
+        // 1. Obtener la información de propiedad y cédula original
+        const checkQuery = 'SELECT cedula, created_by FROM yacyreta WHERE id = $1 FOR UPDATE;';
+        const checkResult = await client.query(checkQuery, [id]);
+        
+        if (checkResult.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro de Yacyreta no encontrado' });
         }
-        const oldCedula = oldCedulaResult.rows[0].cedula;
         
-        // Usa la función centralizada para manejar la actualización de general y telefonos.
+        const { cedula: oldCedula, created_by: record_owner_id } = checkResult.rows[0];
+        const isOwner = record_owner_id === id_usuario;
+
+        // 2. RESTRICCIÓN DE CAMBIO DE CÉDULA para EDITORES
+        if (rol_usuario === 'editor' && !isOwner) {
+            if (oldCedula !== cedula) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ 
+                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
+                });
+            }
+        }
+        
+        // 3. Usa la función centralizada para manejar la actualización de general y telefonos.
+        // Se pasa la cédula original (oldCedula) en caso de que haya cambiado.
         await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, oldCedula);
 
+        // 4. Actualiza el registro de Yacyreta
         const updateYacyretaQuery = `
             UPDATE yacyreta
-            SET cedula = $1, salario = $2, updated_by = $3
+            SET cedula = $1, salario = $2, updated_by = $3, updated_at = NOW()
             WHERE id = $4
             RETURNING *;
         `;
         const resultYacyreta = await client.query(updateYacyretaQuery, [cedula, salario, id_usuario, id]);
         
+        // Esta doble verificación de rowCount=0 es redundante, pero se mantiene por si la actualización falla.
         if (resultYacyreta.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro no encontrado en la tabla yacyreta.' });
@@ -182,10 +214,13 @@ const updateYacyreta = async (req, res) => {
 
 /**
  * Elimina un registro de Yacyreta.
- * OPTIMIZADO: Ahora solo elimina el registro de Yacyreta y no toca la tabla general.
+ * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
+ * Restringe la eliminación para usuarios 'editor' que no son dueños.
  */
 const deleteYacyreta = async (req, res) => {
     const { id } = req.params;
+    const { id: userId, rol: userRole } = req.user;
+
     if (isNaN(parseInt(id))) {
         return res.status(400).json({ error: 'ID de registro no válido.' });
     }
@@ -193,15 +228,32 @@ const deleteYacyreta = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        const deleteYacyretaQuery = 'DELETE FROM yacyreta WHERE id = $1 RETURNING *;';
-        const resultYacyreta = await client.query(deleteYacyretaQuery, [id]);
-        
-        if (resultYacyreta.rowCount === 0) {
+        // 1. Verificar propiedad antes de eliminar
+        const checkQuery = 'SELECT created_by FROM yacyreta WHERE id = $1 FOR UPDATE;';
+        const checkResult = await client.query(checkQuery, [id]);
+
+        if (checkResult.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro de Yacyreta no encontrado' });
         }
         
+        const recordOwnerId = checkResult.rows[0].created_by;
+        const isOwner = recordOwnerId === userId;
+
+        // 2. RESTRICCIÓN DE ELIMINACIÓN para EDITORES
+        if (userRole === 'editor' && !isOwner) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ 
+                error: 'Acceso prohibido. No puedes eliminar un registro creado por otro usuario.' 
+            });
+        }
+        
+        // 3. Eliminar el registro de Yacyreta
+        const deleteYacyretaQuery = 'DELETE FROM yacyreta WHERE id = $1 RETURNING *;';
+        const resultYacyreta = await client.query(deleteYacyretaQuery, [id]);
+        
         await client.query('COMMIT');
+        
         res.json({
             message: 'Registro de Yacyreta eliminado exitosamente',
             deletedRecord: resultYacyreta.rows[0]
@@ -209,7 +261,12 @@ const deleteYacyreta = async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al eliminar el registro de Yacyreta:', err);
-        res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        // Manejo de error de clave foránea si el registro está referenciado por otra tabla
+        if (err.code === '23503') {
+            res.status(409).json({ error: 'No se puede eliminar este registro porque está vinculado a otros datos.' });
+        } else {
+            res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        }
     } finally {
         client.release();
     }

@@ -48,7 +48,6 @@
           :class="{ 'px-2': !drawer }"
           @click="showComponent('general')"
         ></v-list-item>
-        <!-- Nuevo ítem de menú para Consulta Padrón -->
         <v-list-item
           prepend-icon="mdi-card-account-details-outline"
           title="Consulta Datos Personales"
@@ -78,7 +77,11 @@
 
     <v-main class="main-scroll-area bg-grey-lighten-4">
       <v-container fluid class="pa-6">
-        <component :is="components[currentComponent]" />
+        <component
+          v-if="components[currentComponent]"
+          :is="components[currentComponent]"
+          :key="currentComponent"
+        />
       </v-container>
     </v-main>
 
@@ -127,10 +130,8 @@ const handleLogout = async () => {
   try {
     await authStore.logout();
     await router.push('/login');
-    window.location.reload();
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
-    window.location.reload();
   }
 };
 </script>

@@ -36,15 +36,13 @@
       hide-details
       density="compact"
       class="me-2"
-      @keyup.enter="$emit('search')"
-      prepend-inner-icon="mdi-magnify"
+      @keyup.enter="search && $emit('search')"       prepend-inner-icon="mdi-magnify"
     ></v-text-field>
 
     <v-btn
       color="blue"
       variant="flat"
-      @click="$emit('search')"
-      prepend-icon="mdi-magnify"
+      @click="search && $emit('search')"       :disabled="!search"       prepend-icon="mdi-magnify"
       class="me-2"
     >
       Buscar
@@ -68,10 +66,12 @@ defineProps({
     type: String,
     default: 'Búsqueda',
   },
+  // v-model:search
   search: {
     type: String,
     default: '',
   },
+  // v-model:selectedCategory
   selectedCategory: {
     type: String,
     default: '',
@@ -82,5 +82,8 @@ defineProps({
   },
 });
 
+// Emite 'update:selectedCategory' (para el v-model de categoría)
+// Emite 'update:search' (para el v-model de búsqueda)
+// Emite 'search' (para el botón de Buscar/Enter)
 defineEmits(['update:search', 'search', 'add', 'update:selectedCategory']);
 </script>

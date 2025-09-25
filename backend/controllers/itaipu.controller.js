@@ -33,19 +33,17 @@ const getItaipuData = async (req, res) => {
         if (sortBy.length) {
             const sortKey = sortBy[0].key;
             const sortOrder = sortBy[0].order === 'desc' ? 'DESC' : 'ASC';
-            // === INICIO DE LA CORRECCIÓN ===
             const validSortFields = {
-                'id': 'i.id', // Ahora el ID de la tabla itaipu
+                'id': 'i.id',
                 'nombres': 'g.nombres',
                 'apellidos': 'g.apellidos',
                 'cedula': 'g.cedula',
-                'ubicacion': 'i.ubicacion', // ¡Añadido!
-                'salario': 'i.salario'     // ¡Añadido!
+                'ubicacion': 'i.ubicacion',
+                'salario': 'i.salario'
             };
             if (validSortFields[sortKey]) {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
-            // === FIN DE LA CORRECCIÓN ===
         }
 
         const countQuery = `SELECT COUNT(*) FROM itaipu i INNER JOIN general g ON i.cedula = g.cedula ${whereClause}`;
@@ -61,6 +59,7 @@ const getItaipuData = async (req, res) => {
                 g.completo,
                 i.ubicacion,
                 i.salario,
+                g.created_by, -- 🚨 AÑADIDO: Campo necesario para validación de propiedad
                 json_agg(t.numero) FILTER (WHERE t.numero IS NOT NULL) AS telefonos
             FROM
                 itaipu i
@@ -70,7 +69,7 @@ const getItaipuData = async (req, res) => {
                 telefonos t ON g.cedula = t.cedula_persona
             ${whereClause}
             GROUP BY
-                i.id, g.nombres, g.apellidos, g.cedula, g.completo, i.ubicacion, i.salario
+                i.id, g.nombres, g.apellidos, g.cedula, g.completo, i.ubicacion, i.salario, g.created_by
             ${orderByClause}
             LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
         `;
@@ -104,6 +103,7 @@ const getItaipuById = async (req, res) => {
                 g.completo,
                 i.ubicacion,
                 i.salario,
+                g.created_by, -- 🚨 AÑADIDO: Campo necesario para validación de propiedad
                 json_agg(t.numero) FILTER (WHERE t.numero IS NOT NULL) AS telefonos
             FROM
                 itaipu i
@@ -113,7 +113,7 @@ const getItaipuById = async (req, res) => {
                 telefonos t ON g.cedula = t.cedula_persona
             WHERE g.cedula = $1
             GROUP BY
-                i.id, g.nombres, g.apellidos, g.cedula, g.completo, i.ubicacion, i.salario;
+                i.id, g.nombres, g.apellidos, g.cedula, g.completo, i.ubicacion, i.salario, g.created_by;
         `;
         const result = await pool.query(query, [cedula]);
         if (result.rows.length === 0) {
@@ -129,16 +129,25 @@ const getItaipuById = async (req, res) => {
 
 /**
  * Crea un nuevo registro en la tabla itaipu.
+ * 🚨 MEJORA DE SEGURIDAD: Se propaga el rol a upsertGeneral.
  */
 const createItaipu = async (req, res) => {
     const { nombres, apellidos, cedula, ubicacion, salario, telefonos } = req.body;
-    const { id: id_usuario } = req.user;
+    // Capturamos ID y ROL
+    const { id: id_usuario, rol: rol_usuario } = req.user;
+    
+    if (!cedula || !nombres || !apellidos || ubicacion === undefined || salario === undefined) {
+        return res.status(400).json({ error: 'Faltan campos obligatorios para crear un funcionario de Itaipu.' });
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
-        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+        // 1. Usar la función centralizada, PROPAGANDO EL ROL
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
         
+        // 2. Insertar en itaipu
         const insertItaipuQuery = `
             INSERT INTO itaipu (cedula, ubicacion, salario, created_by)
             VALUES ($1, $2, $3, $4)
@@ -166,31 +175,63 @@ const createItaipu = async (req, res) => {
 
 /**
  * Actualiza un registro en la tabla itaipu y la tabla general.
+ * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
+ * Se añade la verificación de propiedad y la restricción de cédula para editores.
  */
 const updateItaipu = async (req, res) => {
     const { id } = req.params;
-    const { nombres, apellidos, cedula, ubicacion, salario, telefonos } = req.body;
-    const { id: id_usuario } = req.user;
+    // Cédula propuesta (nueva_cedula)
+    const { nombres, apellidos, cedula: new_cedula, ubicacion, salario, telefonos } = req.body;
+    // Capturamos ID y ROL
+    const { id: id_usuario, rol: rol_usuario } = req.user;
+
+    if (!new_cedula || !nombres || !apellidos || ubicacion === undefined || salario === undefined) {
+        return res.status(400).json({ error: 'Faltan campos obligatorios para actualizar un funcionario de Itaipu.' });
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
-        const oldCedulaQuery = 'SELECT cedula FROM itaipu WHERE id = $1';
-        const oldCedulaResult = await client.query(oldCedulaQuery, [id]);
-        if (oldCedulaResult.rowCount === 0) {
+        // 1. OBTENER CÉDULA ORIGINAL y created_by de la tabla general
+        const checkQuery = `
+            SELECT i.cedula AS original_cedula, g.created_by 
+            FROM itaipu AS i
+            JOIN general AS g ON i.cedula = g.cedula
+            WHERE i.id = $1 FOR UPDATE;
+        `;
+        const checkResult = await client.query(checkQuery, [id]);
+
+        if (checkResult.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro de Itaipu no encontrado' });
         }
         
-        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+        const { original_cedula, created_by: record_owner_id } = checkResult.rows[0];
+        const isOwner = record_owner_id === id_usuario;
+        let final_cedula = new_cedula;
+
+        // 2. RESTRICCIÓN DE CÉDULA para EDITORES
+        if (rol_usuario === 'editor' && !isOwner) {
+            if (original_cedula !== new_cedula) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ 
+                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
+                });
+            }
+        }
         
+        // 3. Ejecutar UPSERT en la tabla `general`, PROPAGANDO EL ROL
+        await upsertGeneral(final_cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
+        
+        // 4. Actualizar itaipu (cédula, ubicación y salario)
         const updateItaipuQuery = `
             UPDATE itaipu
-            SET cedula = $1, ubicacion = $2, salario = $3, updated_by = $4
+            SET cedula = $1, ubicacion = $2, salario = $3, updated_by = $4, updated_at = NOW()
             WHERE id = $5
             RETURNING *;
         `;
-        const result = await client.query(updateItaipuQuery, [cedula, ubicacion, salario, id_usuario, id]);
+        const result = await client.query(updateItaipuQuery, [final_cedula, ubicacion, salario, id_usuario, id]);
         
         await client.query('COMMIT');
         res.json({ message: 'Registro actualizado correctamente.', updatedRecord: result.rows[0] });
@@ -212,6 +253,7 @@ const updateItaipu = async (req, res) => {
  */
 const deleteItaipu = async (req, res) => {
     const { id } = req.params;
+    // La restricción de eliminación por rol/propiedad debería estar en un middleware de seguridad o una capa superior.
     const client = await pool.connect();
     try {
         await client.query('BEGIN');

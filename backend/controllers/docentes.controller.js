@@ -1,4 +1,4 @@
-// docentes.controller.js (Versión Mejorada)
+// docentes.controller.js
 const { pool } = require('../db/db');
 const { upsertGeneral } = require('./general.controller');
 
@@ -59,7 +59,8 @@ const getDocentesData = async (req, res) => {
                 g.apellidos,
                 f.salario,
                 json_agg(t.numero) FILTER (WHERE t.numero IS NOT NULL) AS telefonos,
-                g.completo AS nom_completo
+                g.completo AS nom_completo,
+                g.created_by
             FROM
                 docentes AS d
             JOIN
@@ -70,7 +71,7 @@ const getDocentesData = async (req, res) => {
                 telefonos AS t ON g.cedula = t.cedula_persona
             ${whereClause}
             GROUP BY
-                d.id, d.cedula, g.nombres, g.apellidos, g.completo, f.salario
+                d.id, d.cedula, g.nombres, g.apellidos, g.completo, f.salario, g.created_by
             ${orderByClause}
             LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
         `;
@@ -87,11 +88,13 @@ const getDocentesData = async (req, res) => {
 
 /**
  * Crea un nuevo registro de docente.
- * Se ha mejorado la validación para ser más precisa.
+ * 🚨 MEJORA DE SEGURIDAD: Se propaga el rol a upsertGeneral.
  */
 const createDocente = async (req, res) => {
     const { cedula, nombres, apellidos, salario, telefonos } = req.body;
-    const { id: id_usuario } = req.user;
+    // Capturamos ID y ROL
+    const { id: id_usuario, rol: rol_usuario } = req.user; 
+
     if (!cedula || !nombres || !apellidos || salario === undefined) {
         return res.status(400).json({ error: 'Faltan campos obligatorios para crear un docente.' });
     }
@@ -99,9 +102,11 @@ const createDocente = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // Se usa la función centralizada para manejar la inserción/actualización en la tabla general
-        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+        // 1. Usar la función centralizada, PROPAGANDO EL ROL
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
 
+        // 2. Insertar/Actualizar en funcpublic
+        // La tabla funcpublic no tiene una restricción estricta de propiedad/rol.
         const funcpublicQuery = `
             INSERT INTO funcpublic (cedula, salario, created_by) 
             VALUES ($1, $2, $3)
@@ -110,6 +115,7 @@ const createDocente = async (req, res) => {
         `;
         await client.query(funcpublicQuery, [cedula, salario, id_usuario]);
 
+        // 3. Insertar en docentes
         const docentesQuery = `
             INSERT INTO docentes (cedula) 
             VALUES ($1) 
@@ -131,16 +137,17 @@ const createDocente = async (req, res) => {
 
 /**
  * Actualiza un registro de docente.
- * La cédula ahora debe venir en el cuerpo de la solicitud para evitar una consulta innecesaria.
+ * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
+ * Se añade la verificación de propiedad y la restricción de cédula para editores.
  */
 const updateDocente = async (req, res) => {
     const { id } = req.params;
-    // Se espera que la cedula venga en el cuerpo de la solicitud para mayor eficiencia
-    const { cedula, nombres, apellidos, salario, telefonos } = req.body;
-    const { id: id_usuario } = req.user;
+    // Cédula propuesta (puede ser la misma o una nueva)
+    const { cedula: new_cedula, nombres, apellidos, salario, telefonos } = req.body;
+    // Capturamos ID y ROL
+    const { id: id_usuario, rol: rol_usuario } = req.user;
     
-    // Se verifica que todos los campos requeridos estén presentes
-    if (!cedula || !nombres || !apellidos || salario === undefined) {
+    if (!new_cedula || !nombres || !apellidos || salario === undefined) {
         return res.status(400).json({ error: 'Faltan campos obligatorios para actualizar un docente.' });
     }
 
@@ -148,21 +155,55 @@ const updateDocente = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // Se usa la función centralizada para manejar la actualización en la tabla general y los teléfonos.
-        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+        // 1. OBTENER CÉDULA ORIGINAL y created_by (Necesitamos JOIN para el created_by)
+        const checkQuery = `
+            SELECT d.cedula AS original_cedula, g.created_by 
+            FROM docentes AS d
+            JOIN general AS g ON d.cedula = g.cedula
+            WHERE d.id = $1 FOR UPDATE;
+        `;
+        const checkResult = await client.query(checkQuery, [id]);
 
+        if (checkResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Registro de docente no encontrado' });
+        }
+        
+        const { original_cedula, created_by: record_owner_id } = checkResult.rows[0];
+        const isOwner = record_owner_id === id_usuario;
+        let final_cedula = new_cedula;
+
+        // 2. RESTRICCIÓN DE CÉDULA para EDITORES
+        if (rol_usuario === 'editor' && !isOwner) {
+            if (original_cedula !== new_cedula) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ 
+                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
+                });
+            }
+            // Si el editor edita un registro ajeno, pero NO modificó la cédula, puede continuar.
+        }
+
+        // 3. Ejecutar UPSERT en la tabla `general`, PROPAGANDO EL ROL
+        await upsertGeneral(final_cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
+
+        // 4. Actualizar funcpublic (Salario)
         const updateFuncPublicQuery = `
             UPDATE funcpublic
             SET salario = $1, updated_by = $2, updated_at = NOW()
             WHERE cedula = $3
             RETURNING *;
         `;
-        await client.query(updateFuncPublicQuery, [salario, id_usuario, cedula]);
+        // Nota: La restricción de salario aquí asume que todos pueden cambiar el salario 
+        // una vez que se permite la actualización. Si el salario es sensible, se requeriría
+        // un chequeo de rol/propiedad *adicional* solo para ese campo.
+        await client.query(updateFuncPublicQuery, [salario, id_usuario, final_cedula]);
         
-        // Opcional: Si el ID de la tabla 'docentes' no coincide con la nueva cédula, se actualiza
-        // Esto solo sería necesario si se permite cambiar la cédula
-        const updateDocenteCedulaQuery = 'UPDATE docentes SET cedula = $1 WHERE id = $2;';
-        await client.query(updateDocenteCedulaQuery, [cedula, id]);
+        // 5. Si la cédula CAMBIÓ, actualizar la tabla `docentes`
+        if (original_cedula !== final_cedula) {
+             const updateDocenteCedulaQuery = 'UPDATE docentes SET cedula = $1 WHERE id = $2;';
+             await client.query(updateDocenteCedulaQuery, [final_cedula, id]);
+        }
         
         await client.query('COMMIT');
         res.status(200).json({ message: 'Registro de docente actualizado correctamente.' });
@@ -177,6 +218,7 @@ const updateDocente = async (req, res) => {
 
 /**
  * Elimina un registro de docente.
+ * (Se mantiene igual, la restricción de borrado debe estar en un middleware o capa de permisos superior).
  */
 const deleteDocente = async (req, res) => {
     const { id } = req.params;
