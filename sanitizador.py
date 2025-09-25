@@ -13,7 +13,7 @@ def sanitize_text(text, report):
     # Detectar y eliminar caracteres invisibles
     invisible_chars = [
         '\u200B', '\u200C', '\u200D', '\uFEFF', '\u2060', '\u202A', '\u202B',
-        '\u202C', '\u202D', '\u202E'
+        '\u202C', '\u202D', '\u202E', '\u00A0',
     ]
     found_invisible = [c for c in text if c in invisible_chars]
     report['invisible_chars'] = Counter(found_invisible)

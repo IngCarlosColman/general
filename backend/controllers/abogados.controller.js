@@ -5,10 +5,10 @@ const { upsertGeneral } = require('./general.controller');
 
 /**
  * Obtiene los datos de abogados.
- * La validación de permisos ahora se realiza en el middleware.
+ * (Sin cambios de lógica necesarios)
  */
 const getAbogadosData = async (req, res) => {
-    // Se ha eliminado la verificación de roles, ahora se hace en el middleware
+    // Código de getAbogadosData sin cambios
     try {
         const { page = 1, itemsPerPage = 10, search = '' } = req.query;
         let sortBy = [];
@@ -45,6 +45,7 @@ const getAbogadosData = async (req, res) => {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
         }
+
         const countQuery = `
             SELECT COUNT(*) 
             FROM abogados AS a 
@@ -53,6 +54,9 @@ const getAbogadosData = async (req, res) => {
         `;
         const countResult = await pool.query(countQuery, queryParams);
         const totalItems = parseInt(countResult.rows[0].count);
+
+        const dataQueryParamIndex = paramIndex;
+        
         const dataQuery = `
             SELECT 
                 a.id, 
@@ -72,10 +76,13 @@ const getAbogadosData = async (req, res) => {
             GROUP BY 
                 a.id, a.cedula, g.nombres, g.apellidos, g.completo, g.created_by
             ${orderByClause} 
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
+            LIMIT $${dataQueryParamIndex} OFFSET $${dataQueryParamIndex + 1};
         `;
+        
+        // El push de limit y offset es correcto si se respeta paramIndex
         queryParams.push(limit);
         queryParams.push(offset);
+
         const dataResult = await pool.query(dataQuery, queryParams);
         const items = dataResult.rows;
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -88,19 +95,23 @@ const getAbogadosData = async (req, res) => {
     }
 };
 
+// --- Funciones de Modificación ---
+
 /**
  * Crea un nuevo registro de abogado.
- * OPTIMIZADO: Ahora usa la función upsertGeneral.
+ * La lógica de seguridad se mantiene: en la creación inicial, el usuario tiene control total sobre lo que ingresa.
  */
 const createAbogado = async (req, res) => {
     const { nombres, apellidos, cedula, telefonos } = req.body;
-    const { id: id_usuario } = req.user;
+    const { id: id_usuario, rol: rol_usuario } = req.user; 
     const client = await pool.connect();
+    
     try {
         await client.query('BEGIN');
         
-        // Se usa la función centralizada para manejar la inserción/actualización en la tabla general
-        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+        // Se usa la función centralizada, pasando el rol real (que upsertGeneral puede
+        // forzar a 'administrador' en la creación para permitir el CRUD completo de teléfonos).
+        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
 
         const insertAbogadoQuery = `
             INSERT INTO abogados (cedula)
@@ -126,31 +137,68 @@ const createAbogado = async (req, res) => {
 
 /**
  * Actualiza un registro de abogado.
- * OPTIMIZADO: Ahora usa la función upsertGeneral.
+ * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
+ * La restricción de cédula debe aplicarse aquí, ya que el cambio afecta a la tabla `general`.
  */
 const updateAbogado = async (req, res) => {
     const { id } = req.params;
-    const { nombres, apellidos, cedula, telefonos } = req.body;
-    const { id: id_usuario } = req.user;
+    // La cédula aquí es la *nueva* cédula propuesta.
+    const { nombres, apellidos, cedula: new_cedula, telefonos } = req.body; 
+    const { id: id_usuario, rol: rol_usuario } = req.user; 
     const client = await pool.connect();
+
+    if (!new_cedula || !nombres) {
+        return res.status(400).json({ error: 'Faltan campos obligatorios (cédula, nombres).' });
+    }
+    
     try {
         await client.query('BEGIN');
+
+        // 1. OBTENER CÉDULA ORIGINAL DE LA TABLA `abogados` y `created_by` DE LA TABLA `general`
+        // Usamos JOIN para obtener ambos datos críticos.
+        const checkQuery = `
+            SELECT a.cedula AS original_cedula, g.created_by 
+            FROM abogados AS a
+            JOIN general AS g ON a.cedula = g.cedula
+            WHERE a.id = $1 FOR UPDATE;
+        `;
+        const checkResult = await client.query(checkQuery, [id]);
+
+        if (checkResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Registro de abogado no encontrado' });
+        }
         
-        // Se usa la función centralizada para manejar la actualización en la tabla general
-        await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client);
+        const { original_cedula, created_by: record_owner_id } = checkResult.rows[0];
+        const isOwner = record_owner_id === id_usuario;
+        let final_cedula = new_cedula;
+
+        // 2. RESTRICCIÓN DE CÉDULA para EDITORES
+        if (rol_usuario === 'editor' && !isOwner) {
+            // Si el editor intenta cambiar la cédula de un registro ajeno, se bloquea.
+            if (original_cedula !== new_cedula) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ 
+                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
+                });
+            }
+            // Si el editor edita un registro ajeno, pero NO modificó la cédula, puede continuar.
+        }
+
+        // 3. Ejecutar UPSERT en la tabla `general` (actualiza datos y teléfonos con la restricción de rol)
+        await upsertGeneral(final_cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
         
-        // Si la cédula ha cambiado, se actualiza también en la tabla de abogados
-        const oldCedulaQuery = 'SELECT cedula FROM abogados WHERE id = $1';
-        const oldCedulaResult = await client.query(oldCedulaQuery, [id]);
-        if (oldCedulaResult.rowCount > 0 && cedula !== oldCedulaResult.rows[0].cedula) {
+        // 4. Si la cédula CAMBIÓ, actualizar la tabla `abogados` (Esto ya estaba en tu código, pero la validación lo precede)
+        if (original_cedula !== final_cedula) {
             const updateAbogadoCedulaQuery = `
                 UPDATE abogados SET cedula = $1 WHERE id = $2;
             `;
-            await client.query(updateAbogadoCedulaQuery, [cedula, id]);
+            await client.query(updateAbogadoCedulaQuery, [final_cedula, id]);
         }
         
         await client.query('COMMIT');
         res.json({ message: 'Registro actualizado correctamente.' });
+
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al actualizar el registro de abogado:', err);
@@ -166,7 +214,7 @@ const updateAbogado = async (req, res) => {
 
 /**
  * Elimina un registro de abogado.
- * La validación de permisos ahora se realiza en el middleware.
+ * NOTA: La restricción de 'solo eliminar si es dueño' debe estar en un middleware (canAccessRecord)
  */
 const deleteAbogado = async (req, res) => {
     const { id } = req.params;
@@ -175,7 +223,6 @@ const deleteAbogado = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // La consulta de eliminación ahora solo afecta a la tabla 'abogados'.
         const deleteAbogadoQuery = `
             DELETE FROM abogados WHERE id = $1 RETURNING *;
         `;

@@ -2,36 +2,48 @@ const express = require('express');
 const router = express.Router();
 const departamentosController = require('../controllers/departamentos.controller');
 
-// Importamos todos los middlewares necesarios
+// Importamos los middlewares necesarios
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
-// Importa el nuevo middleware unificado para permisos
-const { canAccessRecord } = require('../middlewares/permissions.middleware');
+// El middleware 'canAccessRecord' no se usará si los departamentos son globales.
 
-// Definimos los roles que tienen permiso para acceder a estas rutas
-const allowedRoles = ['administrador', 'editor'];
+// Definimos los roles que tienen permiso para MODIFICAR estas rutas
+const CUD_ROLES = ['administrador', 'editor'];
 
-// Aplicamos el middleware de autenticación a todas las rutas del router
+// Aplicamos el middleware de autenticación a todas las rutas (Permite acceso a 'readonly' para GET)
 router.use(authenticateJWT);
 
-// Rutas protegidas con validación de roles
-router.get('/departamentos', checkRoles(allowedRoles), departamentosController.getDepartamentosData);
-router.post('/departamentos', checkRoles(allowedRoles), departamentosController.createDepartamento);
+// -------------------------------------------------------------
+// RUTAS DE CONSULTA (GET)
+// -------------------------------------------------------------
+// Cualquier usuario autenticado puede ver la lista de departamentos.
+router.get('/departamentos', departamentosController.getDepartamentosData);
 
-// Rutas protegidas con validación de roles y de propiedad del registro
-// La ruta PUT usa el middleware canAccessRecord con la acción 'edit'
-router.put(
-    '/departamentos/:id',
-    checkRoles(allowedRoles),
-    canAccessRecord('departamentos', 'id', 'edit'),
-    departamentosController.updateDepartamento
+
+// -------------------------------------------------------------
+// RUTAS DE MODIFICACIÓN (POST, PUT, DELETE)
+// -------------------------------------------------------------
+// Estas rutas requieren el blindaje de rol (solo 'administrador' o 'editor').
+
+// Ruta para crear un nuevo departamento
+router.post('/departamentos', 
+    checkRoles(CUD_ROLES), 
+    departamentosController.createDepartamento
 );
 
-// La ruta DELETE usa el middleware canAccessRecord con la acción 'delete'
+// Ruta para actualizar un departamento por su ID
+// No se usa canAccessRecord porque los departamentos son recursos compartidos.
+router.put(
+    '/departamentos/:id',
+    checkRoles(CUD_ROLES),
+    departamentosController.updateDepartamento
+);
+
+// Ruta para eliminar un departamento por su ID
+// No se usa canAccessRecord porque los departamentos son recursos compartidos.
 router.delete(
-    '/departamentos/:id',
-    checkRoles(allowedRoles),
-    canAccessRecord('departamentos', 'id', 'delete'),
-    departamentosController.deleteDepartamento
+    '/departamentos/:id',
+    checkRoles(CUD_ROLES),
+    departamentosController.deleteDepartamento
 );
 
 module.exports = router;

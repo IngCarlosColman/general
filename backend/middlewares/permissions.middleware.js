@@ -1,67 +1,56 @@
+// src/middlewares/permissions.middleware.js
+
 const { pool } = require('../db/db');
 
-/**
- * Middleware para verificar si el usuario tiene permiso sobre un registro.
- * La lógica es la misma para editar y eliminar, ya que los administradores
- * siempre tienen permiso y los demás roles pueden tener restricciones de propiedad.
- * @param {string} mainTable - La tabla principal del registro.
- * @param {string} [idField='id'] - El campo ID del registro.
- * @param {string} [permissionType='edit'] - El tipo de permiso a verificar ('edit' o 'delete').
- * @param {string} [creatorField='created_by'] - El nombre de la columna que almacena el ID del creador.
- * @param {string|null} [joinTable=null] - La tabla para JOIN si es necesario.
- * @param {string|null} [joinIdField=null] - El campo de unión entre tablas.
- * @returns {function} Middleware de Express.
- */
-const canAccessRecord = (mainTable, idField = 'id', permissionType = 'edit', creatorField = 'created_by', joinTable = null, joinIdField = null) => async (req, res, next) => {
+const canAccessRecord = (mainTable, idField = 'id', permissionType = 'edit', creatorField = 'created_by') => async (req, res, next) => {
     const { id: id_usuario, rol: rol_usuario } = req.user;
     const { id } = req.params;
 
-    // Los administradores tienen permiso total.
+    // 1. Regla: Administrador tiene permiso total
     if (rol_usuario === 'administrador') {
         return next();
     }
 
-    // Si el permiso es solo de edición y el usuario es un editor,
-    // se le permite continuar sin verificar propiedad.
-    if (permissionType === 'edit' && rol_usuario === 'editor') {
-        return next();
-    }
-    
-    // Si el usuario no es un administrador, verificamos la propiedad del registro.
-    // Solo permitimos que los 'editores' (o cualquier otro rol)
-    // modifiquen/eliminen sus propios registros.
+    // Si no es administrador, verificamos la propiedad
     try {
-        let query;
-        let queryParams;
-
-        if (joinTable && joinIdField) {
-            // Caso para tablas con JOIN
-            query = `
-                SELECT T2.${creatorField}
-                FROM ${mainTable} AS T1
-                JOIN ${joinTable} AS T2 ON T1.${joinIdField} = T2.${joinIdField}
-                WHERE T1.${idField} = $1;
-            `;
-            queryParams = [id];
-        } else {
-            // Caso para una sola tabla
-            query = `SELECT ${creatorField} FROM ${mainTable} WHERE ${idField} = $1;`;
-            queryParams = [id];
-        }
-
-        const result = await pool.query(query, queryParams);
+        // Consultamos el creador del registro
+        const query = `SELECT ${creatorField} FROM ${mainTable} WHERE ${idField} = $1;`;
+        const result = await pool.query(query, [id]);
 
         if (result.rowCount === 0) {
+            // No existe el registro, o el ID es incorrecto.
             return res.status(404).json({ error: 'Registro no encontrado.' });
         }
 
         const recordOwnerId = result.rows[0][creatorField];
-        if (recordOwnerId !== id_usuario) {
-            return res.status(403).json({ error: 'No tienes permiso para ' + (permissionType === 'delete' ? 'eliminar este registro.' : 'modificar este registro.') });
+        // Comparamos el ID del creador (BD) con el ID del usuario logueado (req.user).
+        // Usamos la doble igualdad (==) por si uno es string y el otro number.
+        const isOwner = recordOwnerId == id_usuario;
+
+        // 2. Regla A: EDITAR (PUT)
+        if (permissionType === 'edit') {
+            if (isOwner) {
+                // Si es el dueño, se permite editar.
+                return next();
+            } else {
+                 // Si NO es el dueño, se bloquea la edición.
+                 return res.status(403).json({ error: 'Acceso prohibido. Solo puedes editar los registros que has creado.' });
+            }
+        }
+
+        // 3. Regla B: ELIMINAR (DELETE)
+        if (permissionType === 'delete') {
+            if (isOwner) {
+                // Si es el dueño, se permite eliminar.
+                return next();
+            } else {
+                // Si NO es el dueño, se bloquea la eliminación.
+                return res.status(403).json({ error: 'Acceso prohibido. Solo puedes eliminar los registros que has creado.' });
+            }
         }
         
-        // El usuario es el creador del registro, se le permite continuar.
-        next();
+        // Permiso no reconocido
+        return res.status(403).json({ error: 'Acceso prohibido. Permiso no cubierto por las reglas de acceso.' });
 
     } catch (err) {
         console.error(`Error en el middleware de permisos para la tabla ${mainTable}:`, err);

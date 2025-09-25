@@ -4,8 +4,8 @@
       <SearchAndActionsToolbar
         title="Guía Telefónica"
         :categories="categories"
-        v-model:selected-category="selectedCategory"
-        v-model:search="activeTable.searchTerm.value"
+        :selected-category="selectedCategory"
+        @update:selected-category="handleCategoryUpdate" v-model:search="pendingSearchTerm"
         @add="activeTable.openDialog('create')"
         @search="handleSearch"
       />
@@ -24,6 +24,8 @@
         @open-whatsapp="openWhatsApp"
         @download-vcard="downloadVCard"
         @toggle-private-agenda="togglePrivateAgenda"
+        :selected-category="selectedCategory" :current-user-id="currentUserId"
+        :current-user-rol="currentUserRol"
       />
     </v-card>
     <ContactFormDialog
@@ -35,6 +37,8 @@
       :agenda-categories="agendaCategories"
       @close="activeTable.closeDialog"
       @save="activeTable.saveItem"
+      :current-user-id="currentUserId"
+      :current-user-rol="currentUserRol"
     />
     <ConfirmDeleteDialog
       v-model:model-value="activeTable.deleteDialog.value"
@@ -68,6 +72,23 @@ import { useSnackbar } from '@/composables/useSnackbar';
 import { useContactUtilities } from '@/composables/useContactUtilities';
 import apiClient from '@/api/axiosClient';
 
+// ----------------------------------------------------
+// 🔑 INTEGRACIÓN DE PERMISOS
+// Reemplaza esta simulación con la importación y uso de tu useAuthStore real.
+const useAuthStore = () => ({
+  user: {
+    // ID del usuario logueado. Cambia 2 (Admin) o 5 (Editor) para pruebas.
+    id: 2,
+    // Rol actual: 'administrador' o 'editor'.
+    rol: 'administrador',
+  }
+});
+
+const authStore = useAuthStore();
+const currentUserId = computed(() => authStore.user?.id);
+const currentUserRol = computed(() => authStore.user?.rol);
+// ----------------------------------------------------
+
 // === STATE AND OPTIONS ===
 const defaultItem = {
   nombres: '',
@@ -75,13 +96,14 @@ const defaultItem = {
   cedula: '',
   telefonos: [],
   salario: 0,
-  categoria_id: null, // ✅ Nuevo campo para la agenda privada
-  notas: '',           // ✅ Nuevo campo para la agenda privada
+  categoria_id: null,
+  notas: '',
 };
 
 const selectedCategory = ref('general');
 const privateAgendaCedulas = ref([]);
-const agendaCategories = ref([]); // ✅ Nuevo estado para las categorías de la agenda
+const agendaCategories = ref([]);
+const pendingSearchTerm = ref('');
 const categories = ref([
   {
     title: 'Guía General',
@@ -105,8 +127,8 @@ const categories = ref([
       { title: 'Nombres', key: 'nombres' },
       { title: 'Apellidos', key: 'apellidos' },
       { title: 'Teléfonos', key: 'telefonos', sortable: false },
-      { title: 'Categoría', key: 'nombre_categoria', sortable: false }, // ✅ Nota: el key es el nombre del campo de la tabla.
-      { title: 'Notas', key: 'notas', sortable: false }, // ✅ Nuevo key para la columna de notas
+      { title: 'Categoría', key: 'nombre_categoria', sortable: false },
+      { title: 'Notas', key: 'notas', sortable: false },
       { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
     ],
   },
@@ -229,20 +251,18 @@ const activeTableHeaders = computed(() => {
 const fetchPrivateAgendaCedulas = async () => {
   try {
     const response = await apiClient.get('/agenda');
-    if (response.data && Array.isArray(response.data)) { // Tu backend devuelve un array directamente
+    if (response.data && Array.isArray(response.data)) {
       privateAgendaCedulas.value = response.data.map(item => item.cedula);
     } else {
       privateAgendaCedulas.value = [];
     }
   } catch (err) {
     console.error('Error al cargar la agenda privada:', err);
-    showSnackbar('Error al cargar la agenda privada', 'error');
   }
 };
 
 const fetchAgendaCategories = async () => {
   try {
-    // ✅ CORRECCIÓN: La ruta es ' en lugar de '/categories'
     const response = await apiClient.get('/categorias');
     agendaCategories.value = response.data;
   } catch (err) {
@@ -287,15 +307,46 @@ const togglePrivateAgenda = async (item) => {
   }
 
   if (result.success) {
-    // Si la operación fue exitosa, actualizamos la lista de cédulas.
+    // 1. Actualizamos la lista de cédulas para refrescar el ícono de estrella en cualquier vista.
     await fetchPrivateAgendaCedulas();
-    showSnackbar(result.message, 'success');
+
+    // 2. CORRECCIÓN: Si estamos en la vista 'Mi Agenda Privada' y eliminamos,
+    //    manipulamos el array localmente para eliminar el registro sin recargar la tabla completa.
+    if (selectedCategory.value === 'private-agenda') {
+        // Filtramos el item eliminado del array local.
+        activeTable.items.value = activeTable.items.value.filter(i => i.cedula !== cedula);
+        activeTable.totalItems.value = activeTable.totalItems.value - 1;
+    }
+
+    // activeTable.loadItems(); <--- ¡ELIMINADA PARA EVITAR EL EFECTO DE CARGA!
+
+    // La notificación de éxito se espera que sea manejada por el interceptor de Axios.
   } else {
+    // Mantenemos el snackbar de error.
     showSnackbar(result.message, 'error');
   }
 };
 
+/**
+ * Controla la actualización del v-select de categorías.
+ */
+const handleCategoryUpdate = (newCategoryValue) => {
+    // Si el nuevo valor es nulo (botón de limpiar), forzamos a la categoría 'general'
+    if (newCategoryValue === null) {
+      selectedCategory.value = 'general';
+    } else {
+      selectedCategory.value = newCategoryValue;
+    }
+    // El watch(selectedCategory) se encargará de resetear la búsqueda y recargar la tabla.
+};
+
+
+/**
+ * Controla la búsqueda.
+ */
 const handleSearch = () => {
+  // Copiamos el término pendiente al término activo antes de cargar.
+  activeTable.searchTerm.value = pendingSearchTerm.value || '';
   Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
   activeTable.loadItems();
 };
@@ -312,7 +363,11 @@ const handleDelete = (item) => {
 watch(selectedCategory, (newValue) => {
   if (newValue) {
     Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
-    activeTable.searchTerm.value = '';
+
+    // Limpiamos las dos variables de búsqueda para sincronizar el estado
+    pendingSearchTerm.value = ''; // Limpia el input visible
+    activeTable.searchTerm.value = ''; // Limpia el filtro activo
+
     activeTable.loadItems();
   }
 });
@@ -320,7 +375,7 @@ watch(selectedCategory, (newValue) => {
 // Cargar los datos iniciales al montar el componente
 onMounted(() => {
   fetchPrivateAgendaCedulas();
-  fetchAgendaCategories(); // ✅ Llama a la nueva función para cargar las categorías
+  fetchAgendaCategories();
   activeTable.loadItems();
 });
 </script>

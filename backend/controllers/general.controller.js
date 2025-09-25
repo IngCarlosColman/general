@@ -1,16 +1,19 @@
+// src/controllers/general.controller.js
+
 const { pool } = require('../db/db');
-const { upsertTelefonos } = require('./common.controller'); // Asegúrate de que la ruta sea correcta
+const { upsertTelefonos } = require('./common.controller'); // La ruta se mantiene
 
 /**
  * Función auxiliar para actualizar o insertar datos de una persona en la tabla 'general'.
- * Esta función está diseñada para ser llamada dentro de una transacción de base de datos.
- * @param {string} cedula - La cédula de la persona.
- * @param {string} nombre - El nombre completo de la persona. Puede contener nombres y apellidos.
+ * AHORA RECIBE Y PROPAGA EL ROL DEL USUARIO.
+ * * @param {string} cedula - La cédula de la persona.
+ * @param {string} nombre - El nombre completo de la persona ('APELLIDOS, NOMBRES' o solo NOMBRES).
  * @param {string[]} tel - Un array de números de teléfono.
  * @param {number} id_usuario - El ID del usuario que realiza la operación.
  * @param {object} client - El cliente de la base de datos de una transacción activa.
+ * @param {string} rol_usuario - El rol del usuario que realiza la operación. 👈 NUEVO PARÁMETRO
  */
-const upsertGeneral = async (cedula, nombre, tel, id_usuario, client) => {
+const upsertGeneral = async (cedula, nombre, tel, id_usuario, client, rol_usuario) => {
     // Si la cédula no se proporciona, no hay nada que hacer en la tabla general.
     if (!cedula) {
         return;
@@ -25,6 +28,7 @@ const upsertGeneral = async (cedula, nombre, tel, id_usuario, client) => {
             apellidos = parts[0];
             nombres = parts[1];
         }
+        
         // Usamos ON CONFLICT (UPSERT) para simplificar la lógica.
         const upsertQuery = `
             INSERT INTO general (nombres, apellidos, cedula, completo, created_by)
@@ -37,11 +41,16 @@ const upsertGeneral = async (cedula, nombre, tel, id_usuario, client) => {
                 updated_at = NOW()
             RETURNING *;
         `;
-        await client.query(upsertQuery, [nombres, apellidos, cedula, completo, id_usuario]);
+        // En una inserción/upsert, 'created_by' y 'updated_by' son el mismo usuario que ejecuta.
+        const result = await client.query(upsertQuery, [nombres, apellidos, cedula, completo, id_usuario]);
+
         // Si hay teléfonos, maneja el upsert de ellos también.
         if (tel && Array.isArray(tel)) {
-            await upsertTelefonos(client, cedula, tel, id_usuario);
+            // Se pasa el rol_usuario real. Si es 'editor', upsertTelefonos
+            // aplicará la restricción de SOLO ADICIÓN.
+            await upsertTelefonos(client, cedula, tel, id_usuario, rol_usuario); 
         }
+        return result.rows[0];
     } catch (error) {
         // Propagamos el error para que el controlador principal maneje el rollback.
         throw error;
@@ -100,6 +109,11 @@ const getGeneralData = async (req, res) => {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
         }
+        
+        // Ajustamos el índice de los parámetros de paginación y el userId
+        const userIdParamIndex = paramIndex; 
+        const limitParamIndex = paramIndex + 1;
+        const offsetParamIndex = paramIndex + 2;
 
         const countQuery = `SELECT COUNT(*) FROM mv_general_busqueda g ${whereClause}`;
         const countResult = await pool.query(countQuery, queryParams);
@@ -117,15 +131,14 @@ const getGeneralData = async (req, res) => {
                 g.updated_by,
                 g.updated_at,
                 t.telefonos,
-                -- **LÍNEA MEJORADA:**
-                (SELECT COUNT(*) FROM user_agendas WHERE user_id = $${paramIndex} AND contact_cedula = g.cedula) > 0 AS is_in_agenda
+                (SELECT COUNT(*) FROM user_agendas WHERE user_id = $${userIdParamIndex} AND contact_cedula = g.cedula) > 0 AS is_in_agenda
             FROM
                 mv_general_busqueda g
             LEFT JOIN
                 mv_telefonos_agregados t ON g.cedula = t.cedula
             ${whereClause}
             ${orderByClause}
-            LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2};
+            LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex};
         `;
         
         // Se añade el ID del usuario, y luego los parámetros de paginación
@@ -166,7 +179,6 @@ const getGeneralById = async (req, res) => {
                 g.updated_by,
                 g.updated_at,
                 t.telefonos,
-                -- **LÍNEA MEJORADA:**
                 (SELECT COUNT(*) FROM user_agendas WHERE user_id = $2 AND contact_cedula = g.cedula) > 0 AS is_in_agenda
             FROM mv_general_busqueda g
             LEFT JOIN mv_telefonos_agregados t ON g.cedula = t.cedula
@@ -188,7 +200,8 @@ const getGeneralById = async (req, res) => {
  */
 const createGeneral = async (req, res) => {
     const { nombres, apellidos, cedula, telefonos } = req.body;
-    const { id: id_usuario } = req.user;
+    // Capturamos el rol, aunque para la creación inicial forzamos el permiso.
+    const { id: id_usuario, rol: rol_usuario } = req.user;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -206,15 +219,22 @@ const createGeneral = async (req, res) => {
         `;
         const result = await client.query(insertQuery, [nombres, apellidos, cedula, completo, id_usuario]);
         const newRecord = result.rows[0];
+        
         if (Array.isArray(telefonos) && telefonos.length > 0) {
-            await upsertTelefonos(client, cedula, telefonos, id_usuario);
+            // En la creación, el usuario tiene permiso total sobre su nuevo registro.
+            // Para garantizar esto, mantenemos el rol de 'administrador' aquí.
+            await upsertTelefonos(client, cedula, telefonos, id_usuario, 'administrador'); 
         }
         await client.query('COMMIT');
         res.status(201).json(newRecord);
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al insertar el registro:', err);
-        res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        if (err.code === '23505') {
+            res.status(409).json({ error: 'Ya existe un registro con esa cédula.', details: err.detail });
+        } else {
+            res.status(500).json({ error: 'Error del servidor', details: err.detail });
+        }
     } finally {
         client.release();
     }
@@ -222,14 +242,49 @@ const createGeneral = async (req, res) => {
 
 /**
  * Actualiza un registro en la tabla general.
+ * 🚨 ESTA ES LA FUNCIÓN CRÍTICA CON LAS RESTRICCIONES DE SEGURIDAD 🚨
  */
 const updateGeneral = async (req, res) => {
     const { id } = req.params;
-    const { nombres, apellidos, cedula, telefonos } = req.body;
-    const { id: id_usuario } = req.user;
+    const { nombres, apellidos, cedula: new_cedula, telefonos } = req.body;
+    const { id: id_usuario, rol: rol_usuario } = req.user;
+    
+    // --- Validación inicial ---
+    if (!new_cedula || !nombres) {
+        return res.status(400).json({ error: 'Faltan campos obligatorios (cédula, nombres).' });
+    }
+
     const client = await pool.connect();
+    
     try {
         await client.query('BEGIN');
+        
+        // 1. OBTENER DATOS ORIGINALES y VERIFICAR PROPIEDAD
+        const checkQuery = `SELECT cedula, created_by FROM general WHERE id = $1 FOR UPDATE;`;
+        const checkResult = await client.query(checkQuery, [id]);
+        
+        if (checkResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Registro no encontrado' });
+        }
+        
+        const { cedula: original_cedula, created_by: record_owner_id } = checkResult.rows[0];
+        const isOwner = record_owner_id === id_usuario;
+        let final_cedula = new_cedula;
+
+        // 2. RESTRICCIÓN DE CÉDULA para EDITORES
+        if (rol_usuario === 'editor' && !isOwner) {
+            // Si el editor intenta cambiar la cédula de un registro ajeno, se bloquea.
+            if (original_cedula !== new_cedula) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ 
+                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
+                });
+            }
+            // Si el editor está editando un registro ajeno, pero NO modificó la cédula (original_cedula === new_cedula), puede continuar.
+        }
+
+        // 3. ACTUALIZACIÓN de la tabla principal 'general'
         const completo = `${nombres || ''} ${apellidos || ''}`.trim();
         const updateQuery = `
             UPDATE general
@@ -242,16 +297,17 @@ const updateGeneral = async (req, res) => {
             WHERE id = $6
             RETURNING *;
         `;
-        const result = await client.query(updateQuery, [nombres, apellidos, cedula, completo, id_usuario, id]);
-        if (result.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Registro no encontrado' });
-        }
+        const result = await client.query(updateQuery, [nombres, apellidos, final_cedula, completo, id_usuario, id]);
+        
+        // 4. LÓGICA DE TELÉFONOS (La restricción de SOLO ADICIÓN se delega a upsertTelefonos)
         if (Array.isArray(telefonos)) {
-            await upsertTelefonos(client, cedula, telefonos, id_usuario);
+            // Pasamos el rol REAL para que upsertTelefonos aplique la lógica de filtrado/adición
+            await upsertTelefonos(client, final_cedula, telefonos, id_usuario, rol_usuario);
         }
+
         await client.query('COMMIT');
         res.json({ updatedRecord: result.rows[0] });
+
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al actualizar el registro:', err);
@@ -267,6 +323,7 @@ const updateGeneral = async (req, res) => {
 
 /**
  * Elimina un registro de la tabla general.
+ * NOTA: La restricción de 'solo eliminar si es dueño' está en el middleware canAccessRecord.
  */
 const deleteGeneral = async (req, res) => {
     const { id } = req.params;
