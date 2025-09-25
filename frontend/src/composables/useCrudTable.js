@@ -1,11 +1,9 @@
 import { ref, reactive, watch, computed } from 'vue';
 import apiClient from '@/api/axiosClient';
-// ❌ ELIMINADA la importación de useSnackbar
 
 /**
  * Composible para manejar la lógica de tablas con operaciones CRUD (Create, Read, Update, Delete)
  * de forma dinámica, centralizando la lógica de la API y el estado.
- * El manejo de notificaciones (snackbars) se delega al componente principal.
  * @param {import('vue').Ref<string>} apiPath - La ruta base de la API para la tabla (e.g., '/abogados').
  * @param {object} defaultItem - El objeto por defecto para crear nuevos registros.
  * @returns {object} - Un objeto con propiedades y métodos para gestionar la tabla.
@@ -17,14 +15,15 @@ export function useCrudTable(apiPath, defaultItem) {
     const isLoading = ref(false);
     const isSaving = ref(false);
     const isDeleting = ref(false);
-    const dialog = ref(false);
+    
+    // 🟢 ESTADOS para los modales separados
+    const isAdding = ref(false); 
+    const isEditing = ref(false); 
+
     const deleteDialog = ref(false);
     const editedItem = ref({ ...defaultItem });
-    const isEditing = ref(false);
     const itemToDelete = ref(null);
     const searchTerm = ref('');
-
-    // ❌ ELIMINADA: const { showSnackbar } = useSnackbar();
 
     // === LÓGICA DE PAGINACIÓN Y BÚSQUEDA ===
     const options = reactive({
@@ -75,7 +74,6 @@ export function useCrudTable(apiPath, defaultItem) {
 
         } catch (err) {
             console.error('Error al cargar datos:', err);
-            // ❌ ELIMINADA: showSnackbar('Error al cargar los datos', 'error');
             // Retorna el error para que el componente padre lo maneje
             const errorMessage = err.response?.data?.error || 'Error al cargar los datos';
             return { success: false, message: errorMessage };
@@ -89,23 +87,54 @@ export function useCrudTable(apiPath, defaultItem) {
      */
     const showResetButton = computed(() => !!searchTerm.value);
 
-    // === LÓGICA DEL DIÁLOGO DE FORMULARIO ===
-    const openDialog = (mode, item = {}) => {
-        isEditing.value = mode === 'edit';
+    // === LÓGICA DEL DIÁLOGO DE FORMULARIO (SEPARADA) ===
+    
+    /**
+     * Abre el modal de creación.
+     */
+    const openAddDialog = () => {
+        editedItem.value = { ...defaultItem, telefonos: [] };
+        isEditing.value = false;
+        isAdding.value = true;
+    };
+
+    /**
+     * Cierra el modal de creación.
+     */
+    const closeAddDialog = () => {
+        isAdding.value = false;
+    };
+
+    /**
+     * Abre el modal de edición.
+     * @param {object} item - El objeto a editar.
+     */
+    const openEditDialog = (item) => {
         const clonedItem = { 
             ...item, 
             telefonos: item.telefonos ? [...item.telefonos] : [] 
         };
         editedItem.value = { ...defaultItem, ...clonedItem };
-        dialog.value = true;
-    };
-
-    const closeDialog = () => {
-        dialog.value = false;
+        isEditing.value = true;
+        isAdding.value = false;
     };
 
     /**
-     * Guarda un ítem (Crea o Actualiza).
+     * Cierra el modal de edición.
+     */
+    const closeEditDialog = () => {
+        isEditing.value = false;
+    };
+    
+    // Función de cierre unificada para usar internamente
+    const closeFormDialog = () => {
+        closeAddDialog();
+        closeEditDialog();
+    };
+
+    /**
+     * 🟢 CORREGIDO: Maneja solo la lógica de Creación (POST).
+     * @param {object} itemToSave - El objeto a crear.
      * Retorna { success: boolean, message: string }.
      */
     const saveItem = async (itemToSave) => {
@@ -114,63 +143,80 @@ export function useCrudTable(apiPath, defaultItem) {
         const itemToSaveCopy = { ...itemToSave }; 
 
         try {
-            const identifier = itemToSaveCopy.id || itemToSaveCopy.cedula;
-            let successMessage = '';
+            // LÓGICA DE CREACIÓN (POST)
+            const tempId = `temp_${Date.now()}`;
+            const newItemWithId = {
+                ...itemToSaveCopy,
+                id: tempId, // ID temporal para Optimistic UI
+                telefonos: itemToSaveCopy.telefonos || [],
+                nombreCompleto: `${itemToSaveCopy.nombres || ''} ${itemToSaveCopy.apellidos || ''}`.trim()
+            };
+            items.value.unshift(newItemWithId);
 
-            if (isEditing.value) {
-                if (!identifier) {
-                    throw new Error('No se puede actualizar. Falta el identificador (ID o Cédula).');
-                }
-
-                // Optimistic UI update
-                const index = items.value.findIndex(item => item.id === identifier || item.cedula === identifier);
-                if (index !== -1) {
-                    items.value[index] = {
-                        ...items.value[index], 
-                        ...itemToSaveCopy, 
-                        nombreCompleto: `${itemToSaveCopy.nombres || ''} ${itemToSaveCopy.apellidos || ''}`.trim()
-                    };
-                }
-
-                await apiClient.put(`${apiPath.value}/${identifier}`, itemToSaveCopy);
-                successMessage = 'Registro actualizado con éxito.';
-            } else {
-                // LÓGICA DE CREACIÓN (POST)
-                const tempId = `temp_${Date.now()}`;
-                const newItemWithId = {
-                    ...itemToSaveCopy,
-                    id: tempId, // ID temporal para Optimistic UI
-                    telefonos: itemToSaveCopy.telefonos || [],
+            const response = await apiClient.post(apiPath.value, itemToSaveCopy);
+            
+            // Reemplazar el tempId con el ID REAL del servidor
+            const tempIndex = items.value.findIndex(item => item.id === tempId);
+            if (tempIndex !== -1) {
+                // Si la API devuelve el objeto creado con el ID real, lo usamos.
+                items.value[tempIndex] = {
+                    ...items.value[tempIndex], 
+                    ...response.data, 
                     nombreCompleto: `${itemToSaveCopy.nombres || ''} ${itemToSaveCopy.apellidos || ''}`.trim()
                 };
-                items.value.unshift(newItemWithId);
-
-                const response = await apiClient.post(apiPath.value, itemToSaveCopy);
-                
-                // Reemplazar el tempId con el ID REAL del servidor
-                const tempIndex = items.value.findIndex(item => item.id === tempId);
-                if (tempIndex !== -1) {
-                    items.value[tempIndex] = {
-                        ...items.value[tempIndex], 
-                        ...response.data, 
-                        nombreCompleto: `${itemToSaveCopy.nombres || ''} ${itemToSaveCopy.apellidos || ''}`.trim()
-                    };
-                }
-                successMessage = 'Registro creado con éxito.';
             }
-
-            closeDialog();
-            // ✅ Retorna el éxito para que el padre lo notifique
-            return { success: true, message: successMessage }; 
+            
+            closeFormDialog(); 
+            return { success: true, message: 'Registro creado con éxito.' }; 
             
         } catch (err) {
-            console.error('Error al guardar el registro:', err);
+            console.error('Error al guardar el registro (POST):', err);
             // Rollback: Revertir la lista
             items.value = originalItems; 
             const errorMessage = err.response?.data?.error || 'Error desconocido al guardar el registro.';
+            return { success: false, message: errorMessage };
             
-            // ❌ ELIMINADA: showSnackbar(errorMessage, 'error');
-            // Retorna el error para que el padre lo notifique
+        } finally {
+            isSaving.value = false;
+        }
+    };
+    
+    /**
+     * 🟢 NUEVA FUNCIÓN: Maneja solo la lógica de Actualización (PUT).
+     * @param {object} itemToUpdate - El objeto a actualizar.
+     * Retorna { success: boolean, message: string }.
+     */
+    const updateItem = async (itemToUpdate) => {
+        isSaving.value = true;
+        let originalItems = [...items.value];
+        const itemToSaveCopy = { ...itemToUpdate }; 
+        const identifier = itemToSaveCopy.id || itemToSaveCopy.cedula;
+
+        try {
+            if (!identifier) {
+                throw new Error('No se puede actualizar. Falta el identificador (ID o Cédula).');
+            }
+
+            // Optimistic UI update
+            const index = items.value.findIndex(item => item.id === identifier || item.cedula === identifier);
+            if (index !== -1) {
+                items.value[index] = {
+                    ...items.value[index], 
+                    ...itemToSaveCopy, 
+                    nombreCompleto: `${itemToSaveCopy.nombres || ''} ${itemToSaveCopy.apellidos || ''}`.trim()
+                };
+            }
+
+            await apiClient.put(`${apiPath.value}/${identifier}`, itemToSaveCopy);
+            
+            closeFormDialog(); 
+            return { success: true, message: 'Registro actualizado con éxito.' };
+            
+        } catch (err) {
+            console.error('Error al actualizar el registro (PUT):', err);
+            // Rollback: Revertir la lista
+            items.value = originalItems; 
+            const errorMessage = err.response?.data?.error || 'Error desconocido al actualizar el registro.';
             return { success: false, message: errorMessage };
             
         } finally {
@@ -194,7 +240,6 @@ export function useCrudTable(apiPath, defaultItem) {
      */
     const deleteItem = async () => {
         if (!itemToDelete.value) {
-            // ❌ ELIMINADA: showSnackbar('Error: No se pudo identificar el registro a eliminar.', 'error');
             closeDeleteDialog();
             return { success: false, message: 'Error: No se pudo identificar el registro a eliminar.' };
         }
@@ -216,7 +261,6 @@ export function useCrudTable(apiPath, defaultItem) {
             }
             await apiClient.delete(`${apiPath.value}/${identifier}`);
             
-            // ❌ ELIMINADA: showSnackbar('Registro eliminado con éxito.', 'success');
             closeDeleteDialog();
             // ✅ Retorna el éxito para que el padre lo notifique
             return { success: true, message: 'Registro eliminado con éxito.' };
@@ -227,7 +271,6 @@ export function useCrudTable(apiPath, defaultItem) {
             items.value = originalItems;
             const errorMessage = err.response?.data?.error || 'Error desconocido al eliminar el registro.';
             
-            // ❌ ELIMINADA: showSnackbar(errorMessage, 'error');
             // Retorna el error para que el padre lo notifique
             return { success: false, message: errorMessage };
             
@@ -237,7 +280,6 @@ export function useCrudTable(apiPath, defaultItem) {
     };
 
     // === WATCHERS ===
-    // (Resto de la lógica de watchers sin cambios)
     watch(apiPath, () => {
         Object.assign(options, {
             page: 1,
@@ -263,20 +305,26 @@ export function useCrudTable(apiPath, defaultItem) {
         isLoading,
         isSaving,
         isDeleting,
-        dialog,
+        // PROPIEDADES NUEVAS
+        isAdding, 
+        isEditing,
         deleteDialog,
         editedItem,
-        isEditing,
         itemToDelete,
         searchTerm,
         options,
         showResetButton,
         loadItems,
-        openDialog,
-        closeDialog,
-        saveItem, // <-- Ahora retorna { success, message }
+        // MÉTODOS DE FORMULARIO SEPARADOS
+        openAddDialog,
+        closeAddDialog,
+        openEditDialog,
+        closeEditDialog,
+        // 🟢 MÉTODOS CRUD SEPARADOS
+        saveItem, // Para Creación (POST)
+        updateItem, // Para Actualización (PUT)
         confirmDeleteItem,
         closeDeleteDialog,
-        deleteItem, // <-- Ahora retorna { success, message }
+        deleteItem, 
     };
 }

@@ -1,70 +1,85 @@
 // src/stores/auth.js
 import { defineStore } from 'pinia';
 import authService from '@/services/auth.service';
+import { decodeToken } from '@/utils/token'; 
+
+// Función auxiliar para obtener el usuario decodificado al inicio
+const getInitialUser = () => {
+    const token = sessionStorage.getItem('accessToken');
+    return decodeToken(token);
+};
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    // Restaurar el estado del token y la autenticación desde sessionStorage
-    token: sessionStorage.getItem('accessToken') || null,
-    isLoggedIn: !!sessionStorage.getItem('accessToken'),
-    user: null,
-    authError: null,
-    isLoading: false,
-  }),
+    state: () => ({
+        // Restaurar el estado del token
+        token: sessionStorage.getItem('accessToken') || null,
+        user: getInitialUser(), 
+        authError: null,
+        isLoading: false,
+    }),
 
-  actions: {
-    async login(email, password) {
-      this.isLoading = true;
-      this.authError = null;
-      try {
-        const response = await authService.login(email, password);
-        this.token = response.token;
-        this.user = response.user;
-        this.isLoggedIn = true;
-        // Persistir el token en el sessionStorage
-        sessionStorage.setItem('accessToken', response.token);
-      } catch (error) {
-        this.authError = error;
-        this.isLoggedIn = false;
-        throw error;
-      } finally {
-        this.isLoading = false;
-      }
+    getters: {
+        isLoggedIn: (state) => !!state.token && !!state.user,
+        rol: (state) => state.user?.rol || 'guest',
+        isAdmin: (state) => state.user?.rol === 'administrador',
+        isEditor: (state) => state.user?.rol === 'editor',
+        userId: (state) => state.user?.id || null, 
     },
 
-    setUser(userData) {
-      this.user = userData;
-    },
+    actions: {
+        async login(email, password) {
+            this.isLoading = true;
+            this.authError = null;
+            try {
+                const response = await authService.login(email, password);
+                const newToken = response.token;
+                this.setToken(newToken);
+            } catch (error) {
+                this.authError = error;
+                this.logoutLocal(); 
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+        setToken(newToken) {
+            const decodedUser = decodeToken(newToken);
+            
+            if (!decodedUser) {
+                this.logoutLocal(); 
+                return;
+            }
 
-    // 🆕 Esta es la nueva acción que el interceptor necesita
-    setToken(newToken) {
-      this.token = newToken;
-      this.isLoggedIn = true;
-      sessionStorage.setItem('accessToken', newToken);
-    },
+            this.token = newToken;
+            this.user = decodedUser; 
+            sessionStorage.setItem('accessToken', newToken);
+        },
 
-    async logout() {
-      try {
-        await authService.logout();
-      } finally {
-        this.user = null;
-        this.token = null;
-        this.isLoggedIn = false;
-        // Limpiar el sessionStorage
-        sessionStorage.removeItem('accessToken');
-      }
-    },
+        logoutLocal() {
+            this.user = null;
+            this.token = null;
+            sessionStorage.removeItem('accessToken');
+        },
 
-    async refreshToken() {
-      try {
-        const response = await authService.refreshToken();
-        // 🔄 Usamos la nueva acción para actualizar el token de manera consistente
-        this.setToken(response.token);
-      } catch (error) {
-        console.error('No se pudo refrescar el token:', error);
-        this.logout(); // Redirige a login si el refresh falla
-        throw error;
-      }
+        async logout() {
+            try {
+                await authService.logout(); 
+            } catch (error) {
+                console.error('Error durante el logout del backend, limpiando localmente:', error);
+            } finally {
+                this.logoutLocal();
+            }
+        },
+
+        async refreshToken() {
+            try {
+                const response = await authService.refreshToken();
+                this.setToken(response.token);
+            } catch (error) {
+                console.error('No se pudo refrescar el token:', error);
+                this.logout(); // Redirige a login si el refresh falla
+                throw error;
+            }
+        },
     },
-  },
 });

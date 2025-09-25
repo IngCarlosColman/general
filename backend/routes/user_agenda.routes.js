@@ -1,30 +1,49 @@
+// user_agenda.routes.js
+
 const express = require('express');
 const router = express.Router();
 const userAgendaController = require('../controllers/user_agenda.controller');
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
 
-// Definimos los roles que tienen permiso para acceder a estas rutas
-// 🚨 CAMBIO DE ROL: Incluso los usuarios 'readonly' deberían poder ver SU PROPIA agenda.
-const allowedRoles = ['administrador', 'editor', 'readonly']; 
+// --- Definición de Roles ---
+const allValidRoles = ['administrador', 'editor'];
+// ----------------------------
 
 // Aplicamos el middleware de autenticación a todas las rutas del router
 router.use(authenticateJWT); 
-// 🚨 APLICACIÓN DE ROL: Se aplica el rol para que solo usuarios válidos accedan.
-router.use(checkRoles(allowedRoles)); 
 
-// Rutas para la agenda privada: El controlador DEBE usar req.user.id para forzar el acceso a SU propia agenda.
-// Esto garantiza que el editor A nunca toque la agenda del editor B.
+// Rutas de LECTURA (GET)
+// Permite que 'administrador' y 'editor' vean su propia agenda.
+router.get(
+    '/', 
+    checkRoles(allValidRoles), 
+    userAgendaController.getUserAgenda
+);
 
-// Leer agenda (solo la propia)
-router.get('/', userAgendaController.getUserAgenda);
+// Rutas de ESCRITURA (POST, PUT, DELETE)
+// No es necesario usar canAccessRecord aquí, porque el controlador usa 
+// req.user.id para forzar la propiedad en las tablas user_agendas y contact_notes.
+// Solo necesitas garantizar que sean roles con permiso de escritura.
 
-// Añadir contacto (solo a la propia)
-router.post('/', userAgendaController.addContactToUserAgenda);
+// Añadir contacto: Permite crear en 'general' (si no existe) y añadir a la agenda.
+router.post(
+    '/', 
+    checkRoles(allValidRoles), // Ambos pueden crear/añadir
+    userAgendaController.addContactToUserAgenda
+);
 
-// Actualizar contacto (solo en la propia)
-router.put('/:contact_cedula', userAgendaController.updateContactInUserAgenda);
+// Actualizar contacto: Ambos pueden actualizar SU PROPIA entrada de agenda (categoría, notas).
+router.put(
+    '/:contact_cedula', 
+    checkRoles(allValidRoles), 
+    userAgendaController.updateContactInUserAgenda
+);
 
-// Eliminar contacto (solo en la propia)
-router.delete('/:contact_cedula', userAgendaController.removeContactFromUserAgenda);
+// Eliminar contacto: Ambos pueden eliminar de SU PROPIA agenda.
+router.delete(
+    '/:contact_cedula', 
+    checkRoles(allValidRoles), 
+    userAgendaController.removeContactFromUserAgenda
+);
 
 module.exports = router;

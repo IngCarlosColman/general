@@ -36,18 +36,23 @@
       hide-details
       density="compact"
       class="me-2"
-      @keyup.enter="search && $emit('search')"       prepend-inner-icon="mdi-magnify"
+      @keyup.enter="search && $emit('search')" 
+      prepend-inner-icon="mdi-magnify"
     ></v-text-field>
 
     <v-btn
       color="blue"
       variant="flat"
-      @click="search && $emit('search')"       :disabled="!search"       prepend-icon="mdi-magnify"
+      @click="search && $emit('search')" 
+      :disabled="!search" 
+      prepend-icon="mdi-magnify"
       class="me-2"
     >
       Buscar
     </v-btn>
+    
     <v-btn
+      v-if="currentUserRol === 'administrador' || currentUserRol === 'editor'"
       color="green"
       variant="flat"
       @click="$emit('add')"
@@ -62,28 +67,28 @@
 import { defineProps, defineEmits } from 'vue';
 
 defineProps({
-  title: {
-    type: String,
-    default: 'Búsqueda',
-  },
-  // v-model:search
-  search: {
-    type: String,
-    default: '',
-  },
-  // v-model:selectedCategory
-  selectedCategory: {
-    type: String,
-    default: '',
-  },
-  categories: {
-    type: Array,
-    default: () => [],
-  },
+    title: {
+        type: String,
+        default: 'Búsqueda',
+    },
+    search: {
+        type: String,
+        default: '',
+    },
+    selectedCategory: {
+        type: String,
+        default: '',
+    },
+    categories: {
+        type: Array,
+        default: () => [],
+    },
+    // 🔑 Nueva Propiedad: Requerida para controlar la visibilidad del botón 'Añadir'
+    currentUserRol: {
+        type: String,
+        required: true,
+    },
 });
 
-// Emite 'update:selectedCategory' (para el v-model de categoría)
-// Emite 'update:search' (para el v-model de búsqueda)
-// Emite 'search' (para el botón de Buscar/Enter)
 defineEmits(['update:search', 'search', 'add', 'update:selectedCategory']);
 </script>

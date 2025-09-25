@@ -137,7 +137,6 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  // 🔑 PROPS DE PERMISOS
   currentUserId: {
     type: [Number, String],
     required: true,
@@ -146,7 +145,6 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  // 🎯 NUEVA PROP REQUERIDA PARA LA LÓGICA DE VISUALIZACIÓN
   selectedCategory: {
     type: String,
     required: true,
@@ -158,7 +156,6 @@ const emit = defineEmits([
   'toggle-private-agenda',
   'share-contact',
   'open-whatsapp',
-  // ❌ ELIMINADO: 'download-vcard',
   'edit',
   'delete',
 ]);
@@ -169,30 +166,22 @@ const isAddedToPrivateAgenda = (cedula) => {
 
 /**
  * Determina si el usuario logueado (administrador o editor) puede
- * realizar acciones de edición o eliminación en un item.
+ * realizar acciones de edición o eliminación en un item, independientemente
+ * de la categoría, siempre y cuando su rol lo permita.
  * @param {object} item - El objeto de contacto.
  * @returns {boolean} - true si el usuario tiene permiso, false en caso contrario.
  */
 const canAccess = (item) => {
-  // 1. Regla: El Administrador tiene acceso total, independientemente de la categoría.
-  if (props.currentUserRol === 'administrador') {
-    return true;
-  }
-  
-  // 2. Regla: La Guía General (otras categorías) es Read-Only para el Editor.
-  if (props.selectedCategory !== 'private-agenda') {
+    // Si el rol es administrador o editor, tiene acceso total a editar/eliminar en cualquier tabla.
+    if (props.currentUserRol === 'administrador' || props.currentUserRol === 'editor') {
+        return true;
+    }
+    
+    // Si el rol es otro (ej: 'visualizador'), no tiene acceso.
     return false;
-  }
 
-  // A partir de aquí, sabemos que la categoría es 'private-agenda' y el usuario NO es Administrador.
-
-  // 3. Regla: El Editor solo puede editar/eliminar sus propios registros de la agenda privada.
-  if (props.currentUserRol === 'editor') {
-    // Retorna true solo si el ID del creador coincide con el ID del usuario actual.
-    return item.created_by == props.currentUserId;
-  }
-
-  // 4. Por defecto (otros roles en la agenda privada), no tiene acceso.
-  return false;
+    // NOTA: Se ha eliminado la lógica de restricción por categoría (Guía General Read-Only)
+    // y la restricción de que el Editor solo puede editar sus propios registros en la Agenda Privada,
+    // ya que el requisito es permitir la edición en todas partes para estos roles.
 };
 </script>

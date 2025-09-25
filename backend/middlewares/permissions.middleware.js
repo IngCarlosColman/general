@@ -1,4 +1,5 @@
 // src/middlewares/permissions.middleware.js
+const { pool } = require('../db/db');
 
 // ... (imports y SAFE_FIELDS si usas la versión auditada) ...
 
