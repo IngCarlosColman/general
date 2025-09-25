@@ -1,9 +1,6 @@
 // departamentos.controller.js
 const { pool } = require('../db/db');
 
-/**
- * Obtiene los datos de la tabla de departamentos.
- */
 const getDepartamentosData = async (req, res) => {
     try {
         const { page = 1, itemsPerPage = 10, search = '' } = req.query;
@@ -23,7 +20,6 @@ const getDepartamentosData = async (req, res) => {
         if (search) {
             const searchTerms = search.split(/\s+/).filter(term => term);
             if (searchTerms.length > 0) {
-                // Se usa ILIKE para búsqueda simple en campos cod_dep y depart
                 const searchPattern = `%${searchTerms.join('%')}%`;
                 whereClause = `WHERE cod_dep ILIKE $${paramIndex} OR depart ILIKE $${paramIndex}`;
                 queryParams.push(searchPattern);
@@ -36,7 +32,6 @@ const getDepartamentosData = async (req, res) => {
             const sortOrder = sortBy[0].order === 'desc' ? 'DESC' : 'ASC';
             const validSortFields = ['id', 'cod_dep', 'depart'];
             if (validSortFields.includes(sortKey)) {
-                // Es crucial envolver los nombres de columna en comillas si no son minúsculas
                 orderByClause = `ORDER BY "${sortKey}" ${sortOrder}`;
             }
         }
@@ -70,17 +65,8 @@ const getDepartamentosData = async (req, res) => {
     }
 };
 
-// ------------------------------------
-//          FUNCIONES CUD BLINDADAS
-// ------------------------------------
-
-/**
- * Crea un nuevo registro de departamento.
- * (No requiere blindaje de rol/propiedad, solo validación de entrada).
- */
 const createDepartamento = async (req, res) => {
     const { cod_dep, depart } = req.body;
-    // Capturamos ID y ROL (aunque el rol no se usa aquí, es una buena práctica capturarlo)
     const { id: id_usuario } = req.user; 
 
     if (!cod_dep || !depart) {
@@ -105,16 +91,10 @@ const createDepartamento = async (req, res) => {
     }
 };
 
-/**
- * Actualiza un registro de departamento.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Se restringe la modificación del cod_dep para usuarios 'editor' que no son dueños.
- */
 const updateDepartamento = async (req, res) => {
     const { id } = req.params;
     const { cod_dep, depart } = req.body;
-    // Capturamos ID y ROL
-    const { id: id_usuario, rol: rol_usuario } = req.user; 
+    const { id: id_usuario } = req.user; 
     
     if (!cod_dep || !depart) {
         return res.status(400).json({ error: 'Faltan campos obligatorios (código y nombre) para actualizar el departamento.' });
@@ -125,10 +105,9 @@ const updateDepartamento = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. Obtener la información original y el dueño del registro
+        // El middleware ya verificó la autorización. Solo confirmamos que el registro exista.
         const checkQuery = `
-            SELECT cod_dep, created_by 
-            FROM departamentos 
+            SELECT id FROM departamentos 
             WHERE id = $1 FOR UPDATE;
         `;
         const checkResult = await client.query(checkQuery, [id]);
@@ -138,27 +117,15 @@ const updateDepartamento = async (req, res) => {
             return res.status(404).json({ error: 'Departamento no encontrado' });
         }
         
-        const { cod_dep: original_cod_dep, created_by: record_owner_id } = checkResult.rows[0];
-        const isOwner = record_owner_id === id_usuario;
-
-        // 2. RESTRICCIÓN DE CAMBIO DE CÓDIGO para EDITORES
-        if (rol_usuario === 'editor' && !isOwner) {
-            if (original_cod_dep !== cod_dep) {
-                await client.query('ROLLBACK');
-                return res.status(403).json({ 
-                    error: 'Acceso prohibido. No puedes modificar el código de un departamento creado por otro usuario.' 
-                });
-            }
-        }
-
-        // 3. Actualizar el registro
+        // ❌ Eliminada la RESTRICCIÓN DE CAMBIO DE CÓDIGO para EDITORES
+        
         const updateQuery = `
             UPDATE departamentos
             SET cod_dep = $1, depart = $2, updated_by = $3, updated_at = NOW()
             WHERE id = $4
             RETURNING *;
         `;
-        const result = await client.query(updateQuery, [cod_dep, depart, id_usuario, id]);
+        const result = await pool.query(updateQuery, [cod_dep, depart, id_usuario, id]);
         
         await client.query('COMMIT');
         
@@ -176,42 +143,25 @@ const updateDepartamento = async (req, res) => {
     }
 };
 
-/**
- * Elimina un registro de departamento.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Se restringe la eliminación para usuarios 'editor' que no son dueños.
- */
 const deleteDepartamento = async (req, res) => {
     const { id } = req.params;
-    // Capturamos ID y ROL
-    const { id: id_usuario, rol: rol_usuario } = req.user; 
     
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
         
-        // 1. Obtener el dueño del registro
-        const checkQuery = 'SELECT created_by FROM departamentos WHERE id = $1 FOR UPDATE;';
+        // El middleware ya verificó la autorización. Solo confirmamos que el registro exista.
+        const checkQuery = 'SELECT id FROM departamentos WHERE id = $1 FOR UPDATE;';
         const checkResult = await client.query(checkQuery, [id]);
         
         if (checkResult.rowCount === 0) {
-             await client.query('ROLLBACK');
-             return res.status(404).json({ error: 'Departamento no encontrado' });
-        }
-        
-        const record_owner_id = checkResult.rows[0].created_by;
-        const isOwner = record_owner_id === id_usuario;
-
-        // 2. RESTRICCIÓN DE ELIMINACIÓN para EDITORES
-        if (rol_usuario === 'editor' && !isOwner) {
             await client.query('ROLLBACK');
-            return res.status(403).json({ 
-                error: 'Acceso prohibido. No puedes eliminar un departamento creado por otro usuario.' 
-            });
+            return res.status(404).json({ error: 'Departamento no encontrado' });
         }
         
-        // 3. Eliminar el registro
+        // ❌ Eliminada la RESTRICCIÓN DE ELIMINACIÓN para EDITORES
+        
         const deleteQuery = `
             DELETE FROM departamentos WHERE id = $1 RETURNING *;
         `;

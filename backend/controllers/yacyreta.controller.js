@@ -1,6 +1,5 @@
 const { pool } = require('../db/db');
-const { upsertGeneral } = require('./general.controller');
-
+const { upsertGeneral } = require('./general.controller'); 
 
 /**
  * Obtiene los datos de la tabla de Yacyreta con paginación, búsqueda y ordenamiento.
@@ -21,6 +20,7 @@ const getYacyretaData = async (req, res) => {
         let whereClauses = [];
         const queryParams = [];
         let paramIndex = 1;
+        
         if (search) {
             const searchTerms = search.split(/\s+/).filter(term => term);
             if (searchTerms.length > 0) {
@@ -30,7 +30,9 @@ const getYacyretaData = async (req, res) => {
                 paramIndex++;
             }
         }
+        
         const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+        
         let orderByClause = 'ORDER BY g.nombres ASC';
         if (sortBy.length) {
             const sortKey = sortBy[0].key;
@@ -45,6 +47,7 @@ const getYacyretaData = async (req, res) => {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
         }
+        
         const countQuery = `
             SELECT COUNT(y.id)
             FROM yacyreta AS y
@@ -53,6 +56,7 @@ const getYacyretaData = async (req, res) => {
         `;
         const countResult = await pool.query(countQuery, queryParams);
         const totalItems = parseInt(countResult.rows[0].count);
+        
         const dataQuery = `
             SELECT
                 y.id,
@@ -78,6 +82,7 @@ const getYacyretaData = async (req, res) => {
         const dataParams = [...queryParams, limit, offset];
         const dataResult = await pool.query(dataQuery, dataParams);
         const items = dataResult.rows;
+        
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -89,7 +94,7 @@ const getYacyretaData = async (req, res) => {
 };
 
 // ------------------------------------
-//          FUNCIONES CUD BLINDADAS
+//          FUNCIONES CUD LIMPIAS
 // ------------------------------------
 
 /**
@@ -137,12 +142,12 @@ const createYacyreta = async (req, res) => {
 
 /**
  * Actualiza un registro de Yacyreta.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Restringe la modificación de la cédula para 'editor' que no es dueño.
+ * La lógica de permisos/propiedad debe ser manejada en el middleware de ruta.
  */
 const updateYacyreta = async (req, res) => {
-    const { id: id_usuario, rol: rol_usuario } = req.user;
+    const { id: id_usuario } = req.user;
     const { id } = req.params;
+    
     if (isNaN(parseInt(id))) {
         return res.status(400).json({ error: 'ID de registro no válido.' });
     }
@@ -156,8 +161,8 @@ const updateYacyreta = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. Obtener la información de propiedad y cédula original
-        const checkQuery = 'SELECT cedula, created_by FROM yacyreta WHERE id = $1 FOR UPDATE;';
+        // 1. Obtener la cédula original para el upsertGeneral y verificar existencia
+        const checkQuery = 'SELECT cedula FROM yacyreta WHERE id = $1 FOR UPDATE;';
         const checkResult = await client.query(checkQuery, [id]);
         
         if (checkResult.rowCount === 0) {
@@ -165,24 +170,13 @@ const updateYacyreta = async (req, res) => {
             return res.status(404).json({ error: 'Registro de Yacyreta no encontrado' });
         }
         
-        const { cedula: oldCedula, created_by: record_owner_id } = checkResult.rows[0];
-        const isOwner = record_owner_id === id_usuario;
-
-        // 2. RESTRICCIÓN DE CAMBIO DE CÉDULA para EDITORES
-        if (rol_usuario === 'editor' && !isOwner) {
-            if (oldCedula !== cedula) {
-                await client.query('ROLLBACK');
-                return res.status(403).json({ 
-                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
-                });
-            }
-        }
+        const { cedula: oldCedula } = checkResult.rows[0];
         
-        // 3. Usa la función centralizada para manejar la actualización de general y telefonos.
-        // Se pasa la cédula original (oldCedula) en caso de que haya cambiado.
+        // 2. Usa la función centralizada para manejar la actualización de general y telefonos.
+        // Se pasa la cédula original (oldCedula) para manejar el posible cambio de cédula.
         await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, oldCedula);
 
-        // 4. Actualiza el registro de Yacyreta
+        // 3. Actualiza el registro de Yacyreta
         const updateYacyretaQuery = `
             UPDATE yacyreta
             SET cedula = $1, salario = $2, updated_by = $3, updated_at = NOW()
@@ -191,10 +185,10 @@ const updateYacyreta = async (req, res) => {
         `;
         const resultYacyreta = await client.query(updateYacyretaQuery, [cedula, salario, id_usuario, id]);
         
-        // Esta doble verificación de rowCount=0 es redundante, pero se mantiene por si la actualización falla.
+        // Esta verificación es solo por seguridad contra un fallo inesperado, no por la búsqueda inicial.
         if (resultYacyreta.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Registro no encontrado en la tabla yacyreta.' });
+             await client.query('ROLLBACK');
+             return res.status(404).json({ error: 'Registro no encontrado en la tabla yacyreta.' });
         }
         
         await client.query('COMMIT');
@@ -214,12 +208,11 @@ const updateYacyreta = async (req, res) => {
 
 /**
  * Elimina un registro de Yacyreta.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Restringe la eliminación para usuarios 'editor' que no son dueños.
+ * La lógica de permisos/propiedad debe ser manejada en el middleware de ruta.
  */
 const deleteYacyreta = async (req, res) => {
     const { id } = req.params;
-    const { id: userId, rol: userRole } = req.user;
+    // Se elimina { rol: userRole } ya que la verificación se hace en el middleware.
 
     if (isNaN(parseInt(id))) {
         return res.status(400).json({ error: 'ID de registro no válido.' });
@@ -228,8 +221,8 @@ const deleteYacyreta = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. Verificar propiedad antes de eliminar
-        const checkQuery = 'SELECT created_by FROM yacyreta WHERE id = $1 FOR UPDATE;';
+        // 1. Verificar existencia del registro (la verificación de propiedad ya se hizo en el middleware)
+        const checkQuery = 'SELECT 1 FROM yacyreta WHERE id = $1 FOR UPDATE;';
         const checkResult = await client.query(checkQuery, [id]);
 
         if (checkResult.rowCount === 0) {
@@ -237,18 +230,7 @@ const deleteYacyreta = async (req, res) => {
             return res.status(404).json({ error: 'Registro de Yacyreta no encontrado' });
         }
         
-        const recordOwnerId = checkResult.rows[0].created_by;
-        const isOwner = recordOwnerId === userId;
-
-        // 2. RESTRICCIÓN DE ELIMINACIÓN para EDITORES
-        if (userRole === 'editor' && !isOwner) {
-            await client.query('ROLLBACK');
-            return res.status(403).json({ 
-                error: 'Acceso prohibido. No puedes eliminar un registro creado por otro usuario.' 
-            });
-        }
-        
-        // 3. Eliminar el registro de Yacyreta
+        // 2. Eliminar el registro de Yacyreta
         const deleteYacyretaQuery = 'DELETE FROM yacyreta WHERE id = $1 RETURNING *;';
         const resultYacyreta = await client.query(deleteYacyretaQuery, [id]);
         

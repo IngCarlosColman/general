@@ -2,9 +2,6 @@
 const { pool } = require('../db/db');
 const { upsertGeneral } = require('./general.controller');
 
-/**
- * Obtiene los datos de la tabla de docentes.
- */
 const getDocentesData = async (req, res) => {
     try {
         const { page = 1, itemsPerPage = 10, search = '' } = req.query;
@@ -86,13 +83,8 @@ const getDocentesData = async (req, res) => {
     }
 };
 
-/**
- * Crea un nuevo registro de docente.
- * 🚨 MEJORA DE SEGURIDAD: Se propaga el rol a upsertGeneral.
- */
 const createDocente = async (req, res) => {
     const { cedula, nombres, apellidos, salario, telefonos } = req.body;
-    // Capturamos ID y ROL
     const { id: id_usuario, rol: rol_usuario } = req.user; 
 
     if (!cedula || !nombres || !apellidos || salario === undefined) {
@@ -102,11 +94,8 @@ const createDocente = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. Usar la función centralizada, PROPAGANDO EL ROL
         await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
 
-        // 2. Insertar/Actualizar en funcpublic
-        // La tabla funcpublic no tiene una restricción estricta de propiedad/rol.
         const funcpublicQuery = `
             INSERT INTO funcpublic (cedula, salario, created_by) 
             VALUES ($1, $2, $3)
@@ -115,7 +104,6 @@ const createDocente = async (req, res) => {
         `;
         await client.query(funcpublicQuery, [cedula, salario, id_usuario]);
 
-        // 3. Insertar en docentes
         const docentesQuery = `
             INSERT INTO docentes (cedula) 
             VALUES ($1) 
@@ -135,16 +123,9 @@ const createDocente = async (req, res) => {
     }
 };
 
-/**
- * Actualiza un registro de docente.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Se añade la verificación de propiedad y la restricción de cédula para editores.
- */
 const updateDocente = async (req, res) => {
     const { id } = req.params;
-    // Cédula propuesta (puede ser la misma o una nueva)
     const { cedula: new_cedula, nombres, apellidos, salario, telefonos } = req.body;
-    // Capturamos ID y ROL
     const { id: id_usuario, rol: rol_usuario } = req.user;
     
     if (!new_cedula || !nombres || !apellidos || salario === undefined) {
@@ -155,11 +136,10 @@ const updateDocente = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. OBTENER CÉDULA ORIGINAL y created_by (Necesitamos JOIN para el created_by)
+        // 1. OBTENER CÉDULA ORIGINAL (necesario para el potencial UPDATE de la tabla 'docentes')
         const checkQuery = `
-            SELECT d.cedula AS original_cedula, g.created_by 
+            SELECT d.cedula AS original_cedula
             FROM docentes AS d
-            JOIN general AS g ON d.cedula = g.cedula
             WHERE d.id = $1 FOR UPDATE;
         `;
         const checkResult = await client.query(checkQuery, [id]);
@@ -169,40 +149,27 @@ const updateDocente = async (req, res) => {
             return res.status(404).json({ error: 'Registro de docente no encontrado' });
         }
         
-        const { original_cedula, created_by: record_owner_id } = checkResult.rows[0];
-        const isOwner = record_owner_id === id_usuario;
-        let final_cedula = new_cedula;
+        const { original_cedula } = checkResult.rows[0];
+        const final_cedula = new_cedula;
 
-        // 2. RESTRICCIÓN DE CÉDULA para EDITORES
-        if (rol_usuario === 'editor' && !isOwner) {
-            if (original_cedula !== new_cedula) {
-                await client.query('ROLLBACK');
-                return res.status(403).json({ 
-                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
-                });
-            }
-            // Si el editor edita un registro ajeno, pero NO modificó la cédula, puede continuar.
-        }
-
-        // 3. Ejecutar UPSERT en la tabla `general`, PROPAGANDO EL ROL
+        // ❌ Eliminada la RESTRICCIÓN DE CÉDULA para EDITORES (Delegada al middleware)
+        
+        // 2. Ejecutar UPSERT en la tabla `general`
         await upsertGeneral(final_cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
 
-        // 4. Actualizar funcpublic (Salario)
+        // 3. Actualizar funcpublic (Salario)
         const updateFuncPublicQuery = `
             UPDATE funcpublic
             SET salario = $1, updated_by = $2, updated_at = NOW()
             WHERE cedula = $3
             RETURNING *;
         `;
-        // Nota: La restricción de salario aquí asume que todos pueden cambiar el salario 
-        // una vez que se permite la actualización. Si el salario es sensible, se requeriría
-        // un chequeo de rol/propiedad *adicional* solo para ese campo.
         await client.query(updateFuncPublicQuery, [salario, id_usuario, final_cedula]);
         
-        // 5. Si la cédula CAMBIÓ, actualizar la tabla `docentes`
+        // 4. Si la cédula CAMBIÓ, actualizar la tabla `docentes`
         if (original_cedula !== final_cedula) {
-             const updateDocenteCedulaQuery = 'UPDATE docentes SET cedula = $1 WHERE id = $2;';
-             await client.query(updateDocenteCedulaQuery, [final_cedula, id]);
+            const updateDocenteCedulaQuery = 'UPDATE docentes SET cedula = $1 WHERE id = $2;';
+            await client.query(updateDocenteCedulaQuery, [final_cedula, id]);
         }
         
         await client.query('COMMIT');
@@ -216,16 +183,13 @@ const updateDocente = async (req, res) => {
     }
 };
 
-/**
- * Elimina un registro de docente.
- * (Se mantiene igual, la restricción de borrado debe estar en un middleware o capa de permisos superior).
- */
 const deleteDocente = async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
+        // Asumiendo que el middleware manejó la restricción de borrado.
         const deleteDocenteQuery = 'DELETE FROM docentes WHERE id = $1 RETURNING *;';
         const result = await client.query(deleteDocenteQuery, [id]);
         

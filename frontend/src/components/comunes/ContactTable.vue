@@ -75,20 +75,6 @@
           </template>
         </v-tooltip>
 
-        <v-tooltip text="Descargar vCard" location="top" v-if="item.telefonos?.length">
-          <template v-slot:activator="{ props }">
-            <v-icon
-              size="small"
-              class="me-2"
-              @click="$emit('download-vcard', item)"
-              color="purple"
-              v-bind="props"
-            >
-              mdi-card-account-details-outline
-            </v-icon>
-          </template>
-        </v-tooltip>
-
         <v-tooltip text="Editar" location="top">
           <template v-slot:activator="{ props }">
             <v-icon
@@ -172,7 +158,7 @@ const emit = defineEmits([
   'toggle-private-agenda',
   'share-contact',
   'open-whatsapp',
-  'download-vcard',
+  // ❌ ELIMINADO: 'download-vcard',
   'edit',
   'delete',
 ]);

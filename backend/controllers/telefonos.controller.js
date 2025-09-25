@@ -1,18 +1,7 @@
 // src/controllers/telefonos.controller.js
 
 const { pool } = require('../db/db');
-
-/**
- * Obtiene los números de teléfono asociados a una lista de cédulas.
- */
 const getTelefonosByCedulas = async (req, res) => {
-    // La verificación de rol ya es redundante si se usa checkRoles en el router, 
-    // pero la mantendremos como defensa en profundidad.
-    const { rol: rol_usuario } = req.user;
-    if (rol_usuario !== 'administrador' && rol_usuario !== 'editor') {
-        return res.status(403).json({ error: 'Acceso denegado.' });
-    }
-
     const { cedulas } = req.query;
 
     if (!cedulas) {
@@ -33,7 +22,6 @@ const getTelefonosByCedulas = async (req, res) => {
             if (!telefonosPorCedula[row.cedula_persona]) {
                 telefonosPorCedula[row.cedula_persona] = [];
             }
-            // Incluimos el ID para futuras operaciones de modificación/eliminación
             telefonosPorCedula[row.cedula_persona].push({
                 id: row.id,
                 numero: row.numero,
@@ -48,18 +36,9 @@ const getTelefonosByCedulas = async (req, res) => {
     }
 };
 
-/**
- * Función para crear un nuevo registro de teléfono.
- * (Restricto a Administradores para uso directo)
- */
 const createTelefono = async (req, res) => {
-    const { rol: rol_usuario, id: id_usuario } = req.user;
-    
-    if (rol_usuario !== 'administrador') {
-        return res.status(403).json({ 
-            error: 'Acceso denegado. Solo los administradores pueden crear teléfonos directamente.' 
-        });
-    }
+
+    const { id: id_usuario } = req.user;
     
     const { cedula_persona, numero, tipo } = req.body;
     
@@ -69,7 +48,7 @@ const createTelefono = async (req, res) => {
 
     try {
         const insertQuery = `
-            INSERT INTO telefonos (cedula_persona, numero, tipo, id_usuario)
+            INSERT INTO telefonos (cedula_persona, numero, tipo, created_by)
             VALUES ($1, $2, $3, $4)
             RETURNING *;
         `;
@@ -87,22 +66,14 @@ const createTelefono = async (req, res) => {
     }
 };
 
-// 🚨 FUNCIÓN FALTANTE 1: Actualizar Teléfono
-/**
- * Actualiza un número de teléfono. 
- * El middleware canAccessRecord ya verifica que el usuario sea dueño o admin.
- */
 const updateTelefono = async (req, res) => {
-    // El ID del registro se extrae de la URL
     const { id } = req.params; 
     const { numero, tipo } = req.body;
     
-    // Validar al menos un campo para actualizar
     if (!numero && !tipo) {
         return res.status(400).json({ error: 'Debe proporcionar el número o el tipo para actualizar.' });
     }
     
-    // Construir la consulta de forma dinámica para evitar errores de sintaxis con valores NULL
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -116,12 +87,11 @@ const updateTelefono = async (req, res) => {
         values.push(tipo);
     }
 
-    // El último valor es el ID del registro que se actualiza
     values.push(id); 
 
     try {
         const updateQuery = `
-            UPDATE telefonos SET ${updates.join(', ')}
+            UPDATE telefonos SET ${updates.join(', ')}, updated_at = NOW()
             WHERE id = $${paramIndex}
             RETURNING *;
         `;
@@ -142,11 +112,6 @@ const updateTelefono = async (req, res) => {
     }
 };
 
-// 🚨 FUNCIÓN FALTANTE 2: Eliminar Teléfono
-/**
- * Elimina un número de teléfono por su ID.
- * El middleware canAccessRecord ya verifica que el usuario sea dueño o admin.
- */
 const deleteTelefono = async (req, res) => {
     const { id } = req.params;
 
@@ -160,7 +125,6 @@ const deleteTelefono = async (req, res) => {
             return res.status(404).json({ error: 'Teléfono no encontrado o no autorizado para eliminar.' });
         }
 
-        // 204 No Content indica éxito sin cuerpo de respuesta.
         res.status(204).send(); 
     } catch (err) {
         console.error('Error al eliminar el teléfono:', err);
@@ -172,7 +136,6 @@ const deleteTelefono = async (req, res) => {
 module.exports = {
     getTelefonosByCedulas,
     createTelefono,
-    // 🚨 Exportaciones Faltantes: ¡Esto soluciona el TypeError!
     updateTelefono, 
     deleteTelefono,
 };

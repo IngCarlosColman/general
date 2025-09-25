@@ -1,12 +1,8 @@
 const { pool } = require('../db/db');
 
-// Función para insertar o actualizar datos geoespaciales (POST /geo-data)
-// Usa la clave compuesta (cod_dep, cod_ciu, tipo_propiedad, padron_ccc) para el UPSERT.
 const upsertGeoData = async (req, res) => {
-    // Desestructurar todos los campos necesarios de la tabla, excepto 'id' y 'updated_at'
     const { cod_dep, cod_ciu, tipo_propiedad, padron_ccc, geojson } = req.body;
 
-    // 1. Validación Corregida: Ahora exige los campos de la clave única y el geojson
     if (!cod_dep || !cod_ciu || !tipo_propiedad || !padron_ccc || !geojson) {
         return res.status(400).json({ 
             error: 'Faltan parámetros: cod_dep, cod_ciu, tipo_propiedad, padron_ccc, y geojson son obligatorios.' 
@@ -14,7 +10,6 @@ const upsertGeoData = async (req, res) => {
     }
 
     try {
-        // 2. Consulta Corregida: Usa todas las columnas de la clave única en el INSERT y en el ON CONFLICT
         const query = `
             INSERT INTO propiedades_geo (cod_dep, cod_ciu, tipo_propiedad, padron_ccc, geojson)
             VALUES ($1, $2, $3, $4, $5)
@@ -33,10 +28,8 @@ const upsertGeoData = async (req, res) => {
     }
 };
 
-// Función para obtener un geojson.
-// Asumimos que la ruta GET /geo-data/:id usa el ID PRIMARIO (id) de la tabla.
 const getGeoData = async (req, res) => {
-    const { id } = req.params; // ID primario (integer)
+    const { id } = req.params;
     try {
         const query = 'SELECT geojson FROM propiedades_geo WHERE id = $1;';
         const result = await pool.query(query, [id]);
@@ -44,7 +37,7 @@ const getGeoData = async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Datos geoespaciales no encontrados para el ID proporcionado.' });
         }
-        // PostgreSQL almacena jsonb, lo que devuelve result.rows[0].geojson como un objeto/array
+        
         res.status(200).json(result.rows[0].geojson); 
     } catch (err) {
         console.error('Error al obtener geojson:', err);
@@ -52,10 +45,8 @@ const getGeoData = async (req, res) => {
     }
 };
 
-// Función para eliminar un registro geoespacial.
-// Asumimos que la ruta DELETE /geo-data/:id usa el ID PRIMARIO (id) de la tabla.
 const deleteGeoData = async (req, res) => {
-    const { id } = req.params; // ID primario (integer)
+    const { id } = req.params;
     try {
         const query = 'DELETE FROM propiedades_geo WHERE id = $1 RETURNING *;';
         const result = await pool.query(query, [id]);

@@ -1,11 +1,7 @@
 // ciudades.controller.js
 const { pool } = require('../db/db');
 
-/**
- * Obtiene los datos de la tabla de ciudades.
- */
 const getCiudadesData = async (req, res) => {
-    // La validación de rol se ha movido al middleware
     try {
         const { page = 1, itemsPerPage = 10, search = '', cod_dep = null } = req.query;
         let sortBy = [];
@@ -79,13 +75,6 @@ const getCiudadesData = async (req, res) => {
     }
 };
 
-// ------------------------------------
-//          FUNCIONES CUD BLINDADAS
-// ------------------------------------
-
-/**
- * Crea un nuevo registro de ciudad.
- */
 const createCiudad = async (req, res) => {
     const { cod_dep, cod_ciu, ciudad } = req.body;
     const { id: id_usuario } = req.user;
@@ -114,16 +103,10 @@ const createCiudad = async (req, res) => {
     }
 };
 
-/**
- * Actualiza un registro de ciudad.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Se restringe la modificación de las claves compuestas (cod_dep, cod_ciu) para usuarios 'editor' que no son dueños.
- */
 const updateCiudad = async (req, res) => {
     const { id } = req.params;
     const { cod_dep, cod_ciu, ciudad } = req.body;
-    // Capturamos ID y ROL
-    const { id: id_usuario, rol: rol_usuario } = req.user; 
+    const { id: id_usuario } = req.user; 
     
     if (!cod_dep || cod_ciu === undefined || !ciudad) {
         return res.status(400).json({ error: 'Faltan campos obligatorios para actualizar la ciudad.' });
@@ -134,10 +117,10 @@ const updateCiudad = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. Obtener la información original y el dueño del registro
+        // El middleware (canAccessRecord) ya validó el rol y la propiedad.
+        // Solo verificamos si el registro existe (o bloqueamos la fila para la transacción).
         const checkQuery = `
-            SELECT cod_dep, cod_ciu, created_by 
-            FROM ciudades 
+            SELECT id FROM ciudades 
             WHERE id = $1 FOR UPDATE;
         `;
         const checkResult = await client.query(checkQuery, [id]);
@@ -147,25 +130,8 @@ const updateCiudad = async (req, res) => {
             return res.status(404).json({ error: 'Ciudad no encontrada' });
         }
         
-        const { 
-            cod_dep: original_cod_dep, 
-            cod_ciu: original_cod_ciu, 
-            created_by: record_owner_id 
-        } = checkResult.rows[0];
+        // ❌ Eliminada la lógica de RESTRICCIÓN DE CAMBIO DE CLAVES para EDITORES
         
-        const isOwner = record_owner_id === id_usuario;
-
-        // 2. RESTRICCIÓN DE CAMBIO DE CLAVES para EDITORES
-        if (rol_usuario === 'editor' && !isOwner) {
-            if (original_cod_dep !== cod_dep || original_cod_ciu !== cod_ciu) {
-                await client.query('ROLLBACK');
-                return res.status(403).json({ 
-                    error: 'Acceso prohibido. No puedes modificar los códigos (departamento o ciudad) de un registro creado por otro usuario.' 
-                });
-            }
-        }
-
-        // 3. Actualizar el registro
         const updateQuery = `
             UPDATE ciudades
             SET cod_dep = $1, cod_ciu = $2, ciudad = $3, updated_by = $4, updated_at = NOW()
@@ -192,42 +158,26 @@ const updateCiudad = async (req, res) => {
     }
 };
 
-/**
- * Elimina un registro de ciudad.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Se restringe la eliminación para usuarios 'editor' que no son dueños.
- */
 const deleteCiudad = async (req, res) => {
     const { id } = req.params;
-    // Capturamos ID y ROL
-    const { id: id_usuario, rol: rol_usuario } = req.user; 
     
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
         
-        // 1. Obtener el dueño del registro
-        const checkQuery = 'SELECT created_by FROM ciudades WHERE id = $1 FOR UPDATE;';
+        // El middleware (canAccessRecord) ya validó el rol y la propiedad.
+        // Solo verificamos si el registro existe (o bloqueamos la fila para la transacción).
+        const checkQuery = 'SELECT id FROM ciudades WHERE id = $1 FOR UPDATE;';
         const checkResult = await client.query(checkQuery, [id]);
         
         if (checkResult.rowCount === 0) {
-             await client.query('ROLLBACK');
-             return res.status(404).json({ error: 'Ciudad no encontrada' });
-        }
-        
-        const record_owner_id = checkResult.rows[0].created_by;
-        const isOwner = record_owner_id === id_usuario;
-
-        // 2. RESTRICCIÓN DE ELIMINACIÓN para EDITORES
-        if (rol_usuario === 'editor' && !isOwner) {
             await client.query('ROLLBACK');
-            return res.status(403).json({ 
-                error: 'Acceso prohibido. No puedes eliminar una ciudad creada por otro usuario.' 
-            });
+            return res.status(404).json({ error: 'Ciudad no encontrada' });
         }
         
-        // 3. Eliminar el registro
+        // ❌ Eliminada la lógica de RESTRICCIÓN DE ELIMINACIÓN para EDITORES
+        
         const deleteQuery = `
             DELETE FROM ciudades WHERE id = $1 RETURNING *;
         `;

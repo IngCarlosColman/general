@@ -1,9 +1,5 @@
 const { pool } = require('../db/db');
 
-/**
- * Obtiene los datos de la tabla de propiedades urbanas con paginación, búsqueda,
- * ordenamiento y filtros.
- */
 const getProurbanasData = async (req, res) => {
     try {
         const {
@@ -39,7 +35,6 @@ const getProurbanasData = async (req, res) => {
             queryParams.push(ciudad);
         }
 
-        // === LÓGICA DE FILTRADO PARA padron_ccc (MANTENIDA) ===
         if (padron_ccc) {
             const formattedCcc = padron_ccc.trim().toLowerCase();
             whereClauses.push(`(pu.zona || '-' || pu.manzana || '-' || pu.lote) LIKE $${paramIndex++}`);
@@ -57,7 +52,6 @@ const getProurbanasData = async (req, res) => {
         
         if (search) {
             const searchTerms = search.split(/\s+/).filter(term => term).map(t => `${t}:*`).join(' & ');
-            // Se combinan las búsquedas de texto completo en un solo WHERE
             whereClauses.push(`(g.search_vector @@ to_tsquery('spanish', $${paramIndex++}) OR pp.padron_ccc ILIKE $${paramIndex++})`);
             queryParams.push(searchTerms, `%${search}%`);
         }

@@ -1,8 +1,6 @@
 const { pool } = require('../db/db');
 
-// Obtiene los contactos de la agenda privada para el usuario autenticado
 const getUserAgenda = async (req, res) => {
-    console.log('Se ha llamado a la ruta GET /api/agenda');
     const { id: userId } = req.user;
     try {
         const query = `
@@ -24,41 +22,31 @@ const getUserAgenda = async (req, res) => {
             ORDER BY g.nombres ASC;
         `;
         const result = await pool.query(query, [userId]);
-        console.log('Datos de la agenda:', result.rows);
         res.status(200).json(result.rows);
     } catch (err) {
         console.error('Error al obtener la agenda del usuario:', err);
-        // Nota: La variable 'result' puede no estar definida en caso de error, 
-        // por lo que el console.log('Datos de la agenda:', result.rows) debe eliminarse
-        // o protegerse dentro del catch.
         res.status(500).json({ error: 'Error del servidor' });
     }
 };
 
-// Agrega un contacto de la tabla general a la agenda privada del usuario
 const addContactToUserAgenda = async (req, res) => {
     const { contact_cedula, categoria_id, notas } = req.body;
     const { id: userId } = req.user;
     const client = await pool.connect();
 
-    // Validación de entrada simple
     if (!contact_cedula) {
         return res.status(400).json({ error: 'La cédula del contacto es obligatoria.' });
     }
 
     try {
         await client.query('BEGIN');
-
-        // 1. Verificar si el contacto ya existe en la agenda del usuario
-        const checkQuery = `SELECT * FROM user_agendas WHERE user_id = $1 AND contact_cedula = $2`;
+        const checkQuery = `SELECT 1 FROM user_agendas WHERE user_id = $1 AND contact_cedula = $2`;
         const checkResult = await client.query(checkQuery, [userId, contact_cedula]);
 
         if (checkResult.rows.length > 0) {
             await client.query('ROLLBACK');
             return res.status(409).json({ error: 'Este contacto ya existe en tu agenda privada.' });
         }
-
-        // 2. Insertar el registro en user_agendas
         const insertAgendaQuery = `
             INSERT INTO user_agendas (user_id, contact_cedula, categoria_id)
             VALUES ($1, $2, $3)
@@ -66,7 +54,6 @@ const addContactToUserAgenda = async (req, res) => {
         `;
         const agendaResult = await client.query(insertAgendaQuery, [userId, contact_cedula, categoria_id]);
 
-        // 3. Insertar notas, si se proporcionan
         if (notas) {
             const insertNotesQuery = `
                 INSERT INTO contact_notes (user_id, contact_cedula, titulo, cuerpo)
@@ -82,7 +69,7 @@ const addContactToUserAgenda = async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al agregar contacto a la agenda:', err);
-        if (err.code === '23503') { // Violación de clave foránea
+        if (err.code === '23503') { 
              return res.status(400).json({ error: 'La cédula o categoría proporcionada no es válida.' });
         }
         res.status(500).json({ error: 'Error del servidor' });
@@ -91,7 +78,7 @@ const addContactToUserAgenda = async (req, res) => {
     }
 };
 
-// Elimina un contacto de la agenda privada del usuario
+
 const removeContactFromUserAgenda = async (req, res) => {
     const { contact_cedula } = req.params;
     const { id: userId } = req.user;
@@ -99,12 +86,9 @@ const removeContactFromUserAgenda = async (req, res) => {
     
     try {
         await client.query('BEGIN');
-        
-        // 1. Eliminar de la tabla contact_notes (si existe)
-        // Se puede hacer en una transacción separada o simplemente antes del commit final
+
         await client.query(`DELETE FROM contact_notes WHERE user_id = $1 AND contact_cedula = $2;`, [userId, contact_cedula]);
 
-        // 2. Eliminar de la tabla user_agendas
         const deleteAgendaQuery = `
             DELETE FROM user_agendas 
             WHERE user_id = $1 AND contact_cedula = $2 
@@ -129,57 +113,57 @@ const removeContactFromUserAgenda = async (req, res) => {
     }
 };
 
-/**
- * Actualiza un contacto en la agenda privada del usuario.
- * 🚨 CORRECCIÓN: Se garantiza que el campo 'titulo' de contact_notes se maneje correctamente 
- * durante el ON CONFLICT.
- */
 const updateContactInUserAgenda = async (req, res) => {
     const { contact_cedula } = req.params;
     const { categoria_id, notas } = req.body;
     const { id: userId } = req.user;
     const client = await pool.connect();
 
+    if (categoria_id === undefined && notas === undefined) {
+        return res.status(400).json({ error: 'Debe proporcionar al menos categoria_id o notas para actualizar.' });
+    }
+
     try {
         await client.query('BEGIN');
 
-        // 1. Actualizar la tabla user_agendas
-        const updateAgendaQuery = `
-            UPDATE user_agendas 
-            SET categoria_id = $1 
-            WHERE user_id = $2 AND contact_cedula = $3
-            RETURNING *;
-        `;
-        // Nota: Solo se actualiza categoria_id, por lo que categoria_id es el único campo obligatorio
-        const agendaResult = await client.query(updateAgendaQuery, [categoria_id, userId, contact_cedula]);
-
-        if (agendaResult.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Contacto no encontrado en tu agenda para actualizar.' });
-        }
-
-        // 2. Insertar o actualizar notas
-        if (notas && notas.trim() !== '') {
-            const upsertNotesQuery = `
-                INSERT INTO contact_notes (user_id, contact_cedula, titulo, cuerpo) 
-                VALUES ($1, $2, 'Notas de la agenda', $3)
-                ON CONFLICT (user_id, contact_cedula) DO UPDATE SET
-                cuerpo = EXCLUDED.cuerpo,
-                updated_at = NOW(); 
+        let agendaResult = { rowCount: 0 };
+        if (categoria_id !== undefined) {
+            const updateAgendaQuery = `
+                UPDATE user_agendas 
+                SET categoria_id = $1 
+                WHERE user_id = $2 AND contact_cedula = $3
+                RETURNING *;
             `;
-            await client.query(upsertNotesQuery, [userId, contact_cedula, notas]);
-        } else {
-            // Si las notas están vacías o son nulas, eliminarlas
-            await client.query(`DELETE FROM contact_notes WHERE user_id = $1 AND contact_cedula = $2;`, [userId, contact_cedula]);
+            agendaResult = await client.query(updateAgendaQuery, [categoria_id, userId, contact_cedula]);
+
+            if (agendaResult.rowCount === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'Contacto no encontrado en tu agenda para actualizar.' });
+            }
         }
 
+        if (notas !== undefined) {
+             if (notas && notas.trim() !== '') {
+                const upsertNotesQuery = `
+                    INSERT INTO contact_notes (user_id, contact_cedula, titulo, cuerpo) 
+                    VALUES ($1, $2, 'Notas de la agenda', $3)
+                    ON CONFLICT (user_id, contact_cedula) DO UPDATE SET
+                    cuerpo = EXCLUDED.cuerpo,
+                    updated_at = NOW(); 
+                `;
+                await client.query(upsertNotesQuery, [userId, contact_cedula, notas]);
+            } else {
+
+                await client.query(`DELETE FROM contact_notes WHERE user_id = $1 AND contact_cedula = $2;`, [userId, contact_cedula]);
+            }
+        }
         await client.query('COMMIT');
         res.status(200).json({ message: 'Contacto actualizado con éxito', updatedEntry: agendaResult.rows[0] });
 
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al actualizar contacto en la agenda:', err);
-        if (err.code === '23503') { // Violación de clave foránea
+        if (err.code === '23503') { 
              return res.status(400).json({ error: 'La categoría proporcionada no es válida.' });
         }
         res.status(500).json({ error: 'Error del servidor' });

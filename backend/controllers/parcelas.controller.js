@@ -2,15 +2,8 @@
 
 const { pool } = require('../db/db');
 
-/**
- * Función para guardar o actualizar la geometría y los datos de una propiedad.
- * Usa la lógica ON CONFLICT para manejar la upsertion de forma eficiente.
- */
 const guardarPropiedad = async (req, res) => {
-    // La autenticación ya se maneja en el middleware
-    const { id: id_usuario, rol: rol_usuario } = req.user;
 
-    // Aquí recibimos los datos que nos envía el front-end
     const {
         dpto, distrito, tipo_propiedad, propietario, cedula, hectareas, superficie_tierra, valor_tierra,
         padron, finca, zona, manzana, lote, geometriaGeoJSON
@@ -20,7 +13,6 @@ const guardarPropiedad = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // La consulta SQL con ON CONFLICT para insertar o actualizar la geometría
         const query = `
             INSERT INTO parcelas_catastro (
                 dpto, distrito, tipo_propiedad, propietario, cedula, hectareas, superficie_tierra, valor_tierra,
@@ -38,9 +30,7 @@ const guardarPropiedad = async (req, res) => {
                 valor_tierra = $8,
                 finca = $10,
                 geom = ST_GeomFromGeoJSON($14),
-                fecha_consulta = NOW()
-            WHERE
-                parcelas_catastro.dpto = $1 AND parcelas_catastro.distrito = $2 AND parcelas_catastro.padron = $9;
+                fecha_consulta = NOW();
         `;
         
         await client.query(query, [
@@ -54,24 +44,18 @@ const guardarPropiedad = async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error al guardar la propiedad:', err);
-        // Manejo de errores específico
         res.status(500).json({ error: 'Error del servidor al guardar la propiedad.', details: err.message });
     } finally {
         client.release();
     }
 };
 
-/**
- * Función para buscar propiedades ya guardadas en nuestra base de datos.
- */
 const buscarPropiedades = async (req, res) => {
-    // La autenticación y permisos se validan en el middleware
     const { dpto, distrito, padron, zona, manzana, lote } = req.query;
 
     let whereClause = '';
     const queryParams = [];
-    let paramIndex = 1;
-
+    
     try {
         if (padron) {
             whereClause = `WHERE dpto = $1 AND distrito = $2 AND padron = $3`;
@@ -102,7 +86,6 @@ const buscarPropiedades = async (req, res) => {
         
         const result = await pool.query(query, queryParams);
 
-        // ST_AsGeoJSON devuelve un string, debemos parsearlo
         const items = result.rows.map(row => ({
             ...row,
             geometria_geojson: JSON.parse(row.geometria_geojson)

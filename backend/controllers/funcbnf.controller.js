@@ -2,9 +2,6 @@
 const { pool } = require('../db/db');
 const { upsertGeneral } = require('./general.controller');
 
-/**
- * Retrieves data from the func_bnf and general tables with pagination, search, and sorting.
- */
 const getFuncBnfData = async (req, res) => {
     try {
         const { page = 1, itemsPerPage = 10, search = '' } = req.query;
@@ -87,17 +84,8 @@ const getFuncBnfData = async (req, res) => {
     }
 };
 
-// ------------------------------------
-//          FUNCIONES CUD BLINDADAS
-// ------------------------------------
-
-/**
- * Creates a new record in the general and func_bnf tables within a transaction.
- * 🚨 MEJORA DE SEGURIDAD: Se propaga el rol a upsertGeneral.
- */
 const createFuncBnf = async (req, res) => {
     const { nombres, apellidos, cedula, telefonos, salario } = req.body;
-    // Capturar ID y ROL
     const { id: id_usuario, rol: rol_usuario } = req.user; 
     const client = await pool.connect();
 
@@ -108,12 +96,8 @@ const createFuncBnf = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. Usar la función centralizada, PROPAGANDO EL ROL
         await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
         
-        // 2. Insertar en func_bnf (se asume que si ya existe en general, esta inserción fallaría
-        // si la restricción de cedula única en func_bnf se violara, aunque usamos DO NOTHING
-        // para permitir el flujo si ya fue ingresado por otro lado, pero no para este endpoint de 'creación').
         const insertFuncBnfQuery = `
             INSERT INTO func_bnf (cedula, salario, created_by)
             VALUES ($1, $2, $3)
@@ -123,7 +107,6 @@ const createFuncBnf = async (req, res) => {
         const resultFuncBnf = await client.query(insertFuncBnfQuery, [cedula, salario, id_usuario]);
         
         if (resultFuncBnf.rowCount === 0) {
-            // Esto significa que ON CONFLICT DO NOTHING fue ejecutado (la cédula ya existía en func_bnf)
             await client.query('ROLLBACK');
             return res.status(409).json({ error: 'Ya existe un registro con esa cédula en Funcionario BNF.' });
         }
@@ -139,16 +122,9 @@ const createFuncBnf = async (req, res) => {
     }
 };
 
-/**
- * Updates a record in the general and func_bnf tables within a transaction.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Se añade la verificación de propiedad y la restricción de cédula para editores.
- */
 const updateFuncBnf = async (req, res) => {
     const { id } = req.params;
-    // Cédula propuesta (nueva_cedula)
     const { nombres, apellidos, cedula: new_cedula, telefonos, salario } = req.body;
-    // Capturar ID y ROL
     const { id: id_usuario, rol: rol_usuario } = req.user;
     const client = await pool.connect();
 
@@ -159,11 +135,10 @@ const updateFuncBnf = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. OBTENER CÉDULA ORIGINAL y created_by de la tabla general (Necesitamos JOIN para el created_by)
+        // 1. OBTENER CÉDULA ORIGINAL 
         const checkQuery = `
-            SELECT bnf.cedula AS original_cedula, g.created_by 
+            SELECT bnf.cedula AS original_cedula
             FROM func_bnf AS bnf
-            JOIN general AS g ON bnf.cedula = g.cedula
             WHERE bnf.id = $1 FOR UPDATE;
         `;
         const checkResult = await client.query(checkQuery, [id]);
@@ -173,30 +148,16 @@ const updateFuncBnf = async (req, res) => {
             return res.status(404).json({ error: 'Registro de Func BNF no encontrado' });
         }
         
-        const { original_cedula, created_by: record_owner_id } = checkResult.rows[0];
-        const isOwner = record_owner_id === id_usuario;
-        let final_cedula = new_cedula;
+        const { original_cedula } = checkResult.rows[0];
+        const final_cedula = new_cedula;
 
-        // 2. RESTRICCIÓN DE CÉDULA para EDITORES
-        if (rol_usuario === 'editor' && !isOwner) {
-            if (original_cedula !== new_cedula) {
-                await client.query('ROLLBACK');
-                return res.status(403).json({ 
-                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
-                });
-            }
-        }
+        // ❌ Eliminada la RESTRICCIÓN DE CÉDULA para EDITORES (Delegada al middleware)
         
-        // 3. Ejecutar UPSERT en la tabla `general`, PROPAGANDO EL ROL
-        // Si la cédula cambió, se debe usar la NEW_CEDULA para actualizar general y luego func_bnf
+        // 2. Ejecutar UPSERT en la tabla `general`
         await upsertGeneral(final_cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
 
-        // 4. Actualizar func_bnf (salario y cédula si cambió)
-        // Si la cédula cambió, debemos usar la nueva cédula para hacer el update de salario en la tabla func_bnf, 
-        // y luego actualizar el ID del registro con la nueva cédula (si es que la tabla lo permite y si el ID no es la clave primaria)
-        
+        // 3. Actualizar func_bnf (salario y cédula si cambió)
         if (original_cedula !== final_cedula) {
-            // Si la cédula cambió, necesitamos actualizar la cédula en func_bnf antes de actualizar el salario.
             const updateFuncBnfCedulaQuery = `
                 UPDATE func_bnf
                 SET cedula = $1, salario = $2, updated_by = $3, updated_at = NOW()
@@ -205,8 +166,7 @@ const updateFuncBnf = async (req, res) => {
             `;
             await client.query(updateFuncBnfCedulaQuery, [final_cedula, salario, id_usuario, id]);
         } else {
-            // Si la cédula NO cambió, solo actualizamos el salario.
-             const updateFuncBnfSalarioQuery = `
+            const updateFuncBnfSalarioQuery = `
                 UPDATE func_bnf
                 SET salario = $1, updated_by = $2, updated_at = NOW()
                 WHERE id = $3
@@ -230,9 +190,6 @@ const updateFuncBnf = async (req, res) => {
     }
 };
 
-/**
- * Deletes a record from func_bnf.
- */
 const deleteFuncBnf = async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();

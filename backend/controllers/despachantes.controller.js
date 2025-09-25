@@ -2,10 +2,6 @@
 const { pool } = require('../db/db');
 const { upsertGeneral } = require('./general.controller'); 
 
-/**
- * Obtiene los datos de la tabla de despachantes.
- * (getDespachantesData se mantiene igual, no necesita verificación de rol de lectura)
- */
 const getDespachantesData = async (req, res) => {
     try {
         const { page = 1, itemsPerPage = 10, search = '' } = req.query;
@@ -86,24 +82,14 @@ const getDespachantesData = async (req, res) => {
     }
 };
 
-// ------------------------------------
-//          FUNCIONES CUD BLINDADAS
-// ------------------------------------
-
-/**
- * Crea un nuevo registro de despachante.
- * 🚨 MEJORA DE SEGURIDAD: Se propaga el rol a upsertGeneral.
- */
 const createDespachante = async (req, res) => {
     const { nombres, apellidos, cedula, telefonos } = req.body;
-    // Capturar el rol del usuario
     const { id: id_usuario, rol: rol_usuario } = req.user; 
     const client = await pool.connect();
     
     try {
         await client.query('BEGIN');
         
-        // Propagar el rol a la función centralizada
         await upsertGeneral(cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
 
         const insertDespachanteQuery = `
@@ -128,16 +114,9 @@ const createDespachante = async (req, res) => {
     }
 };
 
-/**
- * Actualiza un registro de despachante.
- * 🚨 IMPLEMENTACIÓN DE BLINDAJE DE SEGURIDAD CRÍTICO 🚨
- * Se añade la verificación de propiedad y la restricción de cédula para editores.
- */
 const updateDespachante = async (req, res) => {
     const { id } = req.params;
-    // La cédula aquí es la *nueva* cédula propuesta.
     const { nombres, apellidos, cedula: new_cedula, telefonos } = req.body;
-    // Capturar ID y rol del usuario
     const { id: id_usuario, rol: rol_usuario } = req.user;
     const client = await pool.connect();
     
@@ -148,11 +127,10 @@ const updateDespachante = async (req, res) => {
     try {
         await client.query('BEGIN');
         
-        // 1. OBTENER CÉDULA ORIGINAL y created_by
+        // 1. OBTENER CÉDULA ORIGINAL (Necesario para el potencial UPDATE en la tabla despachantes)
         const checkQuery = `
-            SELECT d.cedula AS original_cedula, g.created_by 
+            SELECT d.cedula AS original_cedula
             FROM despachantes AS d
-            JOIN general AS g ON d.cedula = g.cedula
             WHERE d.id = $1 FOR UPDATE;
         `;
         const checkResult = await client.query(checkQuery, [id]);
@@ -162,26 +140,15 @@ const updateDespachante = async (req, res) => {
             return res.status(404).json({ error: 'Registro de despachante no encontrado' });
         }
         
-        const { original_cedula, created_by: record_owner_id } = checkResult.rows[0];
-        const isOwner = record_owner_id === id_usuario;
-        let final_cedula = new_cedula;
+        const { original_cedula } = checkResult.rows[0];
+        const final_cedula = new_cedula;
 
-        // 2. RESTRICCIÓN DE CÉDULA para EDITORES
-        if (rol_usuario === 'editor' && !isOwner) {
-            // Si el editor intenta cambiar la cédula de un registro ajeno, se bloquea.
-            if (original_cedula !== new_cedula) {
-                await client.query('ROLLBACK');
-                return res.status(403).json({ 
-                    error: 'Acceso prohibido. No puedes modificar la cédula de un registro creado por otro usuario.' 
-                });
-            }
-            // Si no modificó la cédula, puede continuar con la actualización.
-        }
-
-        // 3. Ejecutar UPSERT en la tabla `general`, PROPAGANDO EL ROL
+        // ❌ Eliminada la RESTRICCIÓN DE CÉDULA para EDITORES (Delegada a middleware)
+        
+        // 2. Ejecutar UPSERT en la tabla `general`
         await upsertGeneral(final_cedula, `${apellidos}, ${nombres}`, telefonos, id_usuario, client, rol_usuario);
 
-        // 4. Si la cédula CAMBIÓ, actualizar la tabla `despachantes` 
+        // 3. Si la cédula CAMBIÓ, actualizar la tabla `despachantes` 
         if (original_cedula !== final_cedula) {
             const updateDespachanteCedulaQuery = `UPDATE despachantes SET cedula = $1 WHERE id = $2;`;
             await client.query(updateDespachanteCedulaQuery, [final_cedula, id]);
@@ -202,16 +169,14 @@ const updateDespachante = async (req, res) => {
     }
 };
 
-/**
- * Elimina un registro de despachante.
- * (Se mantiene igual, la restricción de borrado debe estar en un middleware o capa de permisos superior).
- */
 const deleteDespachante = async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
+    
     try {
         await client.query('BEGIN');
         
+        // El middleware ya debe haber verificado la autorización.
         const deleteDespachanteQuery = `
             DELETE FROM despachantes WHERE id = $1 RETURNING *;
         `;

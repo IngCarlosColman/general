@@ -53,7 +53,7 @@
       @click="$emit('add')"
       prepend-icon="mdi-plus"
     >
-      Adicionar Registro
+      Nuevo Contacto
     </v-btn>
   </v-toolbar>
 </template>

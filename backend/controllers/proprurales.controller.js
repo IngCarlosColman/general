@@ -1,10 +1,5 @@
 const { pool } = require('../db/db');
 
-/**
- * Obtiene los datos de la tabla de propiedades rurales con paginación, búsqueda,
- * ordenamiento y filtros.
- * La validación de permisos ahora se realiza en el middleware.
- */
 const getPropruralesData = async (req, res) => {
     try {
         const {
@@ -120,10 +115,9 @@ const getPropruralesData = async (req, res) => {
 
         const dataResult = await pool.query(dataQuery, dataParams);
         
-        // === CORRECCIÓN CLAVE: Mapea los resultados para unir los teléfonos en una cadena ===
         const items = dataResult.rows.map(row => ({
             ...row,
-            telefonos: row.telefonos ? row.telefonos.join(', ') : null // Cambia a null si no hay teléfonos
+            telefonos: row.telefonos ? row.telefonos.join(', ') : null
         }));
 
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -137,10 +131,6 @@ const getPropruralesData = async (req, res) => {
     }
 };
 
-/**
- * Crea un nuevo registro de propiedad rural.
- * La validación de permisos ahora se realiza en el middleware.
- */
 const createProprural = async (req, res) => {
     const { id: id_usuario } = req.user;
     const { cod_dep, cod_ciu, padron, has, mts2 } = req.body;
@@ -170,10 +160,6 @@ const createProprural = async (req, res) => {
     }
 };
 
-/**
- * Actualiza un registro de propiedad rural existente.
- * La validación de permisos ahora se realiza en el middleware.
- */
 const updateProprural = async (req, res) => {
     const { id: id_usuario } = req.user;
     const { id } = req.params;
@@ -209,10 +195,6 @@ const updateProprural = async (req, res) => {
     }
 };
 
-/**
- * Elimina un registro de propiedad rural.
- * La validación de permisos ahora se realiza en el middleware.
- */
 const deleteProprural = async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
