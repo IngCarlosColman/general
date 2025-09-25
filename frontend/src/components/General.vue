@@ -24,6 +24,7 @@
         @delete="handleDelete"
         @open-whatsapp="handleOpenWhatsApp"
         @toggle-private-agenda="togglePrivateAgenda"
+        @add-phone="handleAddPhone"
         :selected-category="selectedCategory"
         :current-user-id="currentUserId"
         :current-user-rol="currentUserRol"
@@ -60,6 +61,12 @@
       @confirm="handleConfirmDelete"
     />
 
+    <!-- NUEVO: Modal para añadir teléfono -->
+    <ContactAddPhoneDialog
+      ref="addPhoneDialogRef"
+      @phone-added="handlePhoneAdded"
+    />
+
   </v-container>
 </template>
 
@@ -70,6 +77,8 @@ import ContactTable from '@/components/comunes/ContactTable.vue';
 import ContactAddDialog from '@/components/comunes/ContactAddDialog.vue';
 import ContactEditDialog from '@/components/comunes/ContactEditDialog.vue';
 import ConfirmDeleteDialog from '@/components/comunes/ConfirmDeleteDialog.vue';
+// NUEVO: Importar el modal de añadir teléfono
+import ContactAddPhoneDialog from '@/components/comunes/ContactAddPhoneDialog.vue';
 
 import { useCrudTable } from '@/composables/useCrudTable';
 import { useSnackbar } from '@/composables/useSnackbar';
@@ -77,10 +86,10 @@ import { useContactUtilities } from '@/composables/useContactUtilities';
 import apiClient from '@/api/axiosClient';
 
 const useAuthStore = () => ({
-    user: {
-        id: 2,
-        rol: 'editor', 
-    }
+  user: {
+    id: 2,
+    rol: 'administrador', // CORREGIDO: Se establece el rol como administrador
+  }
 });
 
 const authStore = useAuthStore();
@@ -91,139 +100,139 @@ const isAdmin = computed(() => currentUserRol.value === 'administrador');
 const isEditor = computed(() => currentUserRol.value === 'editor');
 
 const defaultItem = {
-    nombres: '',
-    apellidos: '',
-    cedula: '',
-    telefonos: [],
-    salario: 0,
-    categoria_id: null,
-    notas: '',
+  nombres: '',
+  apellidos: '',
+  cedula: '',
+  telefonos: [],
+  salario: 0,
+  categoria_id: null,
+  notas: '',
 };
 
 const selectedCategory = ref('general');
 const privateAgendaCedulas = ref([]);
 const agendaCategories = ref([]);
 const pendingSearchTerm = ref('');
+const addPhoneDialogRef = ref(null); // Referencia al nuevo modal
 
 const categories = ref([
-    {
-        title: 'Guía General',
-        value: 'general',
-        icon: 'mdi-book-multiple',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Nombre Completo', key: 'completo' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
-    {
-        title: 'Mi Agenda Privada',
-        value: 'private-agenda',
-        icon: 'mdi-star',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Categoría', key: 'nombre_categoria', sortable: false },
-            { title: 'Notas', key: 'notas', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
-    // ... (El resto de tus categorías)
-    {
-        title: 'Abogados',
-        value: 'abogados',
-        icon: 'mdi-scale-balance',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
-    {
-        title: 'Despachantes',
-        value: 'despachantes',
-        icon: 'mdi-ferry',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
-    {
-        title: 'Docentes',
-        value: 'docentes',
-        icon: 'mdi-school',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Salario', key: 'salario' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
-    {
-        title: 'Funcionarios BNF',
-        value: 'funcbnf',
-        icon: 'mdi-bank',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Salario', key: 'salario' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
-    {
-        title: 'Funcionarios Públicos',
-        value: 'funcpublic',
-        icon: 'mdi-account-group',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Salario', key: 'salario' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
-    {
-        title: 'Itaipu',
-        value: 'itaipu',
-        icon: 'mdi-transmission-tower',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Ubicación', key: 'ubicacion' },
-            { title: 'Salario', key: 'salario' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
-    {
-        title: 'Yacyreta',
-        value: 'yacyreta',
-        icon: 'mdi-transmission-tower',
-        headers: [
-            { title: 'Cédula', key: 'cedula' },
-            { title: 'Nombres', key: 'nombres' },
-            { title: 'Apellidos', key: 'apellidos' },
-            { title: 'Salario', key: 'salario' },
-            { title: 'Teléfonos', key: 'telefonos', sortable: false },
-            { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
-        ],
-    },
+  {
+    title: 'Guía General',
+    value: 'general',
+    icon: 'mdi-book-multiple',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Nombre Completo', key: 'completo' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Mi Agenda Privada',
+    value: 'private-agenda',
+    icon: 'mdi-star',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Categoría', key: 'nombre_categoria', sortable: false },
+      { title: 'Notas', key: 'notas', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Abogados',
+    value: 'abogados',
+    icon: 'mdi-scale-balance',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Despachantes',
+    value: 'despachantes',
+    icon: 'mdi-ferry',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Docentes',
+    value: 'docentes',
+    icon: 'mdi-school',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Funcionarios BNF',
+    value: 'funcbnf',
+    icon: 'mdi-bank',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Funcionarios Públicos',
+    value: 'funcpublic',
+    icon: 'mdi-account-group',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Itaipu',
+    value: 'itaipu',
+    icon: 'mdi-transmission-tower',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Ubicación', key: 'ubicacion' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
+  {
+    title: 'Yacyreta',
+    value: 'yacyreta',
+    icon: 'mdi-transmission-tower',
+    headers: [
+      { title: 'Cédula', key: 'cedula' },
+      { title: 'Nombres', key: 'nombres' },
+      { title: 'Apellidos', key: 'apellidos' },
+      { title: 'Salario', key: 'salario' },
+      { title: 'Teléfonos', key: 'telefonos', sortable: false },
+      { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+    ],
+  },
 ]);
 
 
@@ -231,188 +240,203 @@ const { snackbarState, closeSnackbar, showSnackbar } = useSnackbar();
 const { openWhatsApp, shareContact } = useContactUtilities();
 
 const activeTablePath = computed(() => {
-    if (selectedCategory.value === 'private-agenda') {
-        return '/agenda';
-    } else {
-        return `/${selectedCategory.value}`;
-    }
+  if (selectedCategory.value === 'private-agenda') {
+    return '/agenda';
+  } else {
+    return `/${selectedCategory.value}`;
+  }
 });
 
-// 💡 Inicializamos el composable
 const activeTable = useCrudTable(activeTablePath, defaultItem);
 
-// ----------------------------------------------------
-// 🟢 MÉTODOS DE FORMULARIO: Implementación directa (ya que los estados y el cierre están en el composable)
-
-// 🔑 Manejo de la acción 'Agregar'
-const handleOpenCreate = () => {
-    if (isAdmin.value || isEditor.value) {
-        // Llama al openDialog del composable, que a su vez llama a openAddDialog
-        activeTable.openAddDialog(); 
-    } else {
-        showSnackbar('No tienes permiso para crear nuevos registros.', 'error');
-    }
-};
-
-// 🔑 Manejo de la acción 'Editar'
-const handleEdit = (item) => {
-    // Llama al openDialog del composable, que a su vez llama a openEditDialog
-    activeTable.openEditDialog(item);
-};
-
-
-/**
- * 🟢 NUEVA FUNCIÓN: Maneja el guardado del modal de CREACIÓN (POST).
- * Llama directamente a activeTable.saveItem.
- */
-const handleCreateSave = async (itemToSave) => {
-    const result = await activeTable.saveItem(itemToSave); // Esto llama al POST del composable
-    if (result.success) {
-        showSnackbar(result.message, 'success');
-        // El composable ya maneja el cierre del diálogo internamente al finalizar con éxito.
-    } else {
-        showSnackbar(result.message, 'error', 5000);
-    }
-};
-
-/**
- * 🟢 NUEVA FUNCIÓN: Maneja el guardado del modal de EDICIÓN (PUT).
- * Llama directamente a activeTable.updateItem.
- */
-const handleEditSave = async (itemToSave) => {
-    const result = await activeTable.updateItem(itemToSave); // Esto llama al PUT del composable
-    if (result.success) {
-        showSnackbar(result.message, 'success');
-        // El composable ya maneja el cierre del diálogo internamente al finalizar con éxito.
-    } else {
-        showSnackbar(result.message, 'error', 5000);
-    }
-    // Nota: Si el PUT tuviera que afectar la lista de cedulas privadas, la lógica para
-    // recargar 'fetchPrivateAgendaCedulas' debería ir aquí si el itemToSave es de la agenda privada.
-};
-
-// ----------------------------------------------------
-
 const activeTableHeaders = computed(() => {
-    const category = categories.value.find(c => c.value === selectedCategory.value);
-    return category?.headers || [];
+  const category = categories.value.find(c => c.value === selectedCategory.value);
+  return category?.headers || [];
 });
 
+// ----------------------------------------------------
+// MÉTODOS DE ACCIÓN Y DIÁLOGOS
+// ----------------------------------------------------
+
+// Manejo de la acción 'Agregar'
+const handleOpenCreate = () => {
+  if (isAdmin.value || isEditor.value) {
+    activeTable.openAddDialog(); 
+  } else {
+    showSnackbar('No tienes permiso para crear nuevos registros.', 'error');
+  }
+};
+
+// Manejo de la acción 'Editar'
+const handleEdit = (item) => {
+  activeTable.openEditDialog(item);
+};
+
+// Manejo de la acción 'Añadir Teléfono'
+const handleAddPhone = (item) => {
+  if (addPhoneDialogRef.value) {
+    addPhoneDialogRef.value.open(item);
+  }
+};
+
+// Maneja la recarga de datos cuando se ha añadido un teléfono
+const handlePhoneAdded = async (cedula) => {
+  try {
+    const response = await apiClient.get(`/${selectedCategory.value}/${cedula}`);
+    const updatedContact = response.data;
+    
+    // Encuentra el índice del contacto en la tabla
+    const index = activeTable.items.value.findIndex(item => item.cedula === cedula);
+    if (index !== -1) {
+      // Crea una copia del array para forzar la reactividad
+      const newItems = [...activeTable.items.value];
+      newItems[index] = { ...newItems[index], ...updatedContact };
+      activeTable.items.value = newItems; // Asigna el nuevo array a la referencia
+    }
+    
+    // La lista de la agenda privada debe actualizarse si es la categoría actual
+    if (selectedCategory.value === 'private-agenda') {
+      await fetchPrivateAgendaCedulas();
+    }
+  } catch (error) {
+    console.error('Error al actualizar el contacto:', error);
+    showSnackbar('No se pudo actualizar el contacto en la tabla.', 'error');
+  }
+};
+
+const handleCreateSave = async (itemToSave) => {
+  const result = await activeTable.saveItem(itemToSave);
+  if (result.success) {
+    showSnackbar(result.message, 'success');
+  } else {
+    showSnackbar(result.message, 'error', 5000);
+  }
+};
+
+const handleEditSave = async (itemToSave) => {
+  const result = await activeTable.updateItem(itemToSave);
+  if (result.success) {
+    showSnackbar(result.message, 'success');
+  } else {
+    showSnackbar(result.message, 'error', 5000);
+  }
+};
+
 const handleDelete = (item) => {
-    activeTable.confirmDeleteItem(item);
+  activeTable.confirmDeleteItem(item);
 };
 
 const handleConfirmDelete = async () => {
-    const result = await activeTable.deleteItem();
-    if (result.success) {
-        showSnackbar(result.message, 'success');
-    } else {
-        showSnackbar(result.message, 'error', 5000);
-    }
+  const result = await activeTable.deleteItem();
+  if (result.success) {
+    showSnackbar(result.message, 'success');
+  } else {
+    showSnackbar(result.message, 'error', 5000);
+  }
 };
 
 const handleOpenWhatsApp = (contact, phone) => {
-    const result = openWhatsApp(contact, phone);
-    if (!result.success) {
-        showSnackbar(result.message, result.color);
-    }
+  const result = openWhatsApp(contact, phone);
+  if (!result.success) {
+    showSnackbar(result.message, result.color);
+  }
 };
 
 const handleShareContact = async (contact) => {
-    const result = await shareContact(contact, contact.telefonos);
-    if (result.message) {
-        showSnackbar(result.message, result.success ? 'success' : result.color || 'error');
-    }
+  const result = await shareContact(contact, contact.telefonos);
+  if (result.message) {
+    showSnackbar(result.message, result.success ? 'success' : result.color || 'error');
+  }
 };
 
 const fetchPrivateAgendaCedulas = async () => {
-    try {
-        const response = await apiClient.get('/agenda');
-        if (response.data && Array.isArray(response.data)) {
-            privateAgendaCedulas.value = response.data.map(item => item.cedula);
-        } else {
-            privateAgendaCedulas.value = [];
-        }
-    } catch (err) {
-        console.error('Error al cargar la agenda privada:', err);
+  try {
+    const response = await apiClient.get('/agenda');
+    if (response.data && Array.isArray(response.data)) {
+      privateAgendaCedulas.value = response.data.map(item => item.cedula);
+    } else {
+      privateAgendaCedulas.value = [];
     }
+  } catch (err) {
+    console.error('Error al cargar la agenda privada:', err);
+  }
 };
 
 const fetchAgendaCategories = async () => {
-    try {
-        const response = await apiClient.get('/categorias');
-        agendaCategories.value = response.data;
-    } catch (err) {
-        console.error('Error al cargar las categorías:', err);
-        showSnackbar('Error al cargar las categorías de la agenda.', 'error');
-    }
+  try {
+    const response = await apiClient.get('/categorias');
+    agendaCategories.value = response.data;
+  } catch (err) {
+    console.error('Error al cargar las categorías:', err);
+    showSnackbar('Error al cargar las categorías de la agenda.', 'error');
+  }
 };
 
 const togglePrivateAgenda = async (item) => {
-    if (!item || !item.cedula) {
-        showSnackbar('Error: No se pudo identificar el contacto. La cédula está vacía.', 'error');
-        console.error('Cédula del contacto es undefined o nula:', item);
-        return;
+  if (!item || !item.cedula) {
+    showSnackbar('Error: No se pudo identificar el contacto. La cédula está vacía.', 'error');
+    console.error('Cédula del contacto es undefined o nula:', item);
+    return;
+  }
+  const cedula = item.cedula;
+  let result;
+  const isCurrentlyInAgenda = privateAgendaCedulas.value.includes(cedula);
+  
+  if (isCurrentlyInAgenda) {
+    try {
+      await apiClient.delete(`/agenda/${cedula}`);
+      result = { success: true, message: 'Contacto eliminado de tu agenda privada.' };
+    } catch (err) {
+      result = { success: false, message: err.response?.data?.error || 'Error al eliminar el contacto.' };
     }
-    const cedula = item.cedula;
-    let result;
-    const isCurrentlyInAgenda = privateAgendaCedulas.value.includes(cedula);
-    
-    if (isCurrentlyInAgenda) {
-        try {
-            await apiClient.delete(`/agenda/${cedula}`);
-            result = { success: true, message: 'Contacto eliminado de tu agenda privada.' };
-        } catch (err) {
-            result = { success: false, message: err.response?.data?.error || 'Error al eliminar el contacto.' };
-        }
-    } else {
-        try {
-            await apiClient.post('/agenda', { cedula: cedula }); 
-            result = { success: true, message: 'Contacto añadido a tu agenda privada.' };
-        } catch (err) {
-            result = { success: false, message: err.response?.data?.error || 'Error al añadir el contacto.' };
-        }
+  } else {
+    try {
+      await apiClient.post('/agenda', { cedula: cedula }); 
+      result = { success: true, message: 'Contacto añadido a tu agenda privada.' };
+    } catch (err) {
+      result = { success: false, message: err.response?.data?.error || 'Error al añadir el contacto.' };
     }
+  }
 
-    if (result.success) {
-        await fetchPrivateAgendaCedulas();
-        if (selectedCategory.value === 'private-agenda' && isCurrentlyInAgenda) {
-            activeTable.items.value = activeTable.items.value.filter(i => i.cedula !== cedula);
-            activeTable.totalItems.value = activeTable.totalItems.value - 1;
-        }
-        showSnackbar(result.message, 'success');
-    } else {
-        showSnackbar(result.message, 'error');
+  if (result.success) {
+    await fetchPrivateAgendaCedulas();
+    if (selectedCategory.value === 'private-agenda' && isCurrentlyInAgenda) {
+      activeTable.items.value = activeTable.items.value.filter(i => i.cedula !== cedula);
+      activeTable.totalItems.value = activeTable.totalItems.value - 1;
     }
+    showSnackbar(result.message, 'success');
+  } else {
+    showSnackbar(result.message, 'error');
+  }
 };
 
 const handleCategoryUpdate = (newCategoryValue) => {
-    if (newCategoryValue === null) {
-        selectedCategory.value = 'general';
-    } else {
-        selectedCategory.value = newCategoryValue;
-    }
+  if (newCategoryValue === null) {
+    selectedCategory.value = 'general';
+  } else {
+    selectedCategory.value = newCategoryValue;
+  }
 };
 
 const handleSearch = () => {
-    activeTable.searchTerm.value = pendingSearchTerm.value || '';
-    Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
-    activeTable.loadItems();
+  activeTable.searchTerm.value = pendingSearchTerm.value || '';
+  Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
+  activeTable.loadItems();
 };
 
 watch(selectedCategory, (newValue) => {
-    if (newValue) {
-        Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
-        pendingSearchTerm.value = '';
-        activeTable.searchTerm.value = '';
-        activeTable.loadItems();
-    }
+  if (newValue) {
+    Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
+    pendingSearchTerm.value = '';
+    activeTable.searchTerm.value = '';
+    activeTable.loadItems();
+  }
 });
 
 onMounted(() => {
-    fetchPrivateAgendaCedulas();
-    fetchAgendaCategories();
-    activeTable.loadItems();
+  fetchPrivateAgendaCedulas();
+  fetchAgendaCategories();
+  activeTable.loadItems();
 });
 </script>
 

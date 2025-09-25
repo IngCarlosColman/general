@@ -15,6 +15,7 @@ declare module 'vue' {
     ConfirmDeleteDialog: typeof import('./src/components/comunes/ConfirmDeleteDialog.vue')['default']
     Consulta: typeof import('./src/components/Consulta.vue')['default']
     ContactAddDialog: typeof import('./src/components/comunes/ContactAddDialog.vue')['default']
+    ContactAddPhoneDialog: typeof import('./src/components/comunes/ContactAddPhoneDialog.vue')['default']
     ContactCategories: typeof import('./src/components/agendautilities/ContactCategories.vue')['default']
     ContactDetails: typeof import('./src/components/agendautilities/ContactDetails.vue')['default']
     ContactDetailsModal: typeof import('./src/components/agendautilities/ContactDetailsModal.vue')['default']

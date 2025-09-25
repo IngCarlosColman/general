@@ -17,7 +17,8 @@ router.use(authenticateJWT);
 router.get('/general', checkRoles(allowedRoles), generalController.getGeneralData);
 router.get('/general/:cedula', checkRoles(allowedRoles), generalController.getGeneralById);
 router.post('/general', checkRoles(allowedRoles), generalController.createGeneral);
-
+router.patch('/general/:cedula/add-phone', checkRoles(allowedRoles), generalController.addGeneralPhone
+);
 // Rutas protegidas con validación de roles y de propiedad del registro
 // La ruta PUT usa el middleware canAccessRecord con la acción 'edit'
 router.put(
@@ -26,6 +27,7 @@ router.put(
     canAccessRecord('general', 'id', 'edit'),
     generalController.updateGeneral
 );
+
 
 // La ruta DELETE usa el middleware canAccessRecord con la acción 'delete'
 router.delete(

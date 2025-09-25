@@ -47,6 +47,21 @@
           </template>
         </v-tooltip>
 
+        <!-- 🟢 Nuevo botón para añadir teléfono -->
+        <v-tooltip text="Añadir Teléfono" location="top" v-if="userCanAddPhone()">
+          <template v-slot:activator="{ props }">
+            <v-icon
+              size="small"
+              class="me-2"
+              @click="$emit('add-phone', item)"
+              color="success"
+              v-bind="props"
+            >
+              mdi-phone-plus
+            </v-icon>
+          </template>
+        </v-tooltip>
+
         <v-tooltip text="Compartir contacto" location="top" v-if="item.telefonos?.length">
           <template v-slot:activator="{ props }">
             <v-icon
@@ -158,30 +173,23 @@ const emit = defineEmits([
   'open-whatsapp',
   'edit',
   'delete',
+  'add-phone' // 🟢 Nuevo evento
 ]);
 
 const isAddedToPrivateAgenda = (cedula) => {
   return props.privateAgendaCedulas.includes(cedula);
 };
 
-/**
- * Determina si el usuario logueado (administrador o editor) puede
- * realizar acciones de edición o eliminación en un item, independientemente
- * de la categoría, siempre y cuando su rol lo permita.
- * @param {object} item - El objeto de contacto.
- * @returns {boolean} - true si el usuario tiene permiso, false en caso contrario.
- */
-const canAccess = (item) => {
-    // Si el rol es administrador o editor, tiene acceso total a editar/eliminar en cualquier tabla.
-    if (props.currentUserRol === 'administrador' || props.currentUserRol === 'editor') {
-        return true;
-    }
-    
-    // Si el rol es otro (ej: 'visualizador'), no tiene acceso.
-    return false;
+const userCanAddPhone = () => {
+  const allowedRoles = ['administrador', 'editor'];
+  return allowedRoles.includes(props.currentUserRol);
+};
 
-    // NOTA: Se ha eliminado la lógica de restricción por categoría (Guía General Read-Only)
-    // y la restricción de que el Editor solo puede editar sus propios registros en la Agenda Privada,
-    // ya que el requisito es permitir la edición en todas partes para estos roles.
+const canAccess = (item) => {
+  if (props.currentUserRol === 'administrador' || props.currentUserRol === 'editor') {
+    return true;
+  }
+  
+  return false;
 };
 </script>

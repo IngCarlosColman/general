@@ -83,7 +83,7 @@
                                     ></v-textarea>
                                 </v-col>
                             </template>
-                                                        <v-col cols="12" v-if="isAdmin" class="pt-1">
+                                <v-col cols="12" v-if="isAdmin" class="pt-1">
                                 <v-divider class="my-3"></v-divider>
                                 <p class="text-subtitle-1 font-weight-medium text-blue-grey-darken-2 mb-2">Teléfonos de Contacto (Solo Admin)</p>
                                 <div v-for="(tel, index) in localItem.telefonos" :key="index" class="d-flex align-center mb-2">
