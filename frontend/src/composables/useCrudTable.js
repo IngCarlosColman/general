@@ -93,7 +93,7 @@ export function useCrudTable(apiPath, defaultItem) {
      * Abre el modal de creación.
      */
     const openAddDialog = () => {
-        editedItem.value = { ...defaultItem, telefonos: [] };
+       
         isEditing.value = false;
         isAdding.value = true;
     };

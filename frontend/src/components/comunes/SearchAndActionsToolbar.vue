@@ -83,7 +83,6 @@ defineProps({
         type: Array,
         default: () => [],
     },
-    // 🔑 Nueva Propiedad: Requerida para controlar la visibilidad del botón 'Añadir'
     currentUserRol: {
         type: String,
         required: true,
