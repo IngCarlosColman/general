@@ -11,13 +11,13 @@ const upsertGeneral = async (cedula, nombre, tel, id_usuario, client, rol_usuari
         const completo = `${nombre || ''}`.trim();
         let nombres = nombre;
         let apellidos = null;
-        
+
         if (nombre && nombre.includes(',')) {
             const parts = nombre.split(',').map(part => part.trim());
             apellidos = parts[0];
             nombres = parts[1];
         }
-        
+
         const upsertQuery = `
             INSERT INTO general (nombres, apellidos, cedula, completo, created_by)
             VALUES ($1, $2, $3, $4, $5)
@@ -32,7 +32,7 @@ const upsertGeneral = async (cedula, nombre, tel, id_usuario, client, rol_usuari
         const result = await client.query(upsertQuery, [nombres, apellidos, cedula, completo, id_usuario]);
 
         if (tel && Array.isArray(tel)) {
-            await upsertTelefonos(client, cedula, tel, id_usuario, rol_usuario); 
+            await upsertTelefonos(client, cedula, tel, id_usuario, rol_usuario);
         }
         return result.rows[0];
     } catch (error) {
@@ -74,22 +74,27 @@ const getGeneralData = async (req, res) => {
         if (sortBy.length) {
             const sortKey = sortBy[0].key;
             const sortOrder = sortBy[0].order === 'desc' ? 'DESC' : 'ASC';
+
+            // CAMBIOS AQUÍ: Agregando 'completo' e 'is_in_agenda' para ordenación eficiente
             const validSortFields = {
                 'id': 'g.id',
                 'nombres': 'g.nombres',
                 'apellidos': 'g.apellidos',
                 'cedula': 'g.cedula',
+                'completo': 'g.completo', // Usará el índice B-tree de la vista
+                'is_in_agenda': 'is_in_agenda', // Usará el alias del campo calculado
                 'created_by': 'g.created_by',
                 'created_at': 'g.created_at',
                 'updated_by': 'g.updated_by',
                 'updated_at': 'g.updated_at'
             };
+
             if (validSortFields[sortKey]) {
                 orderByClause = `ORDER BY ${validSortFields[sortKey]} ${sortOrder}`;
             }
         }
-        
-        const userIdParamIndex = paramIndex; 
+
+        const userIdParamIndex = paramIndex;
         const limitParamIndex = paramIndex + 1;
         const offsetParamIndex = paramIndex + 2;
 
@@ -118,7 +123,7 @@ const getGeneralData = async (req, res) => {
             ${orderByClause}
             LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex};
         `;
-        
+
         queryParams.push(userId);
         queryParams.push(limit);
         queryParams.push(offset);
@@ -188,10 +193,10 @@ const createGeneral = async (req, res) => {
         `;
         const result = await client.query(insertQuery, [nombres, apellidos, cedula, completo, id_usuario]);
         const newRecord = result.rows[0];
-        
+
         if (Array.isArray(telefonos) && telefonos.length > 0) {
             // Forzamos 'administrador' para asegurar que los teléfonos se puedan agregar inicialmente
-            await upsertTelefonos(client, cedula, telefonos, id_usuario, 'administrador'); 
+            await upsertTelefonos(client, cedula, telefonos, id_usuario, 'administrador');
         }
         await client.query('COMMIT');
         res.status(201).json(newRecord);
@@ -212,25 +217,25 @@ const updateGeneral = async (req, res) => {
     const { id } = req.params;
     const { nombres, apellidos, cedula: new_cedula, telefonos } = req.body;
     const { id: id_usuario, rol: rol_usuario } = req.user;
-    
+
     if (!new_cedula || !nombres) {
         return res.status(400).json({ error: 'Faltan campos obligatorios (cédula, nombres).' });
     }
 
     const client = await pool.connect();
-    
+
     try {
         await client.query('BEGIN');
-        
+
         // 1. OBTENER DATOS ORIGINALES
         const checkQuery = `SELECT cedula FROM general WHERE id = $1 FOR UPDATE;`;
         const checkResult = await client.query(checkQuery, [id]);
-        
+
         if (checkResult.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Registro no encontrado' });
         }
-        
+
         // ❌ Eliminada la verificación de propiedad y la restricción de cédula
         const final_cedula = new_cedula;
 
@@ -248,7 +253,7 @@ const updateGeneral = async (req, res) => {
             RETURNING *;
         `;
         const result = await client.query(updateQuery, [nombres, apellidos, final_cedula, completo, id_usuario, id]);
-        
+
         // 3. LÓGICA DE TELÉFONOS
         if (Array.isArray(telefonos)) {
             await upsertTelefonos(client, final_cedula, telefonos, id_usuario, rol_usuario);
@@ -272,7 +277,7 @@ const updateGeneral = async (req, res) => {
 // src/controllers/general.controller.js
 
 const addGeneralPhone = async (req, res) => {
-    const { cedula } = req.params; 
+    const { cedula } = req.params;
     const { telefono } = req.body;
     const { id: id_usuario } = req.user; // No necesitamos rol aquí
 
@@ -288,7 +293,7 @@ const addGeneralPhone = async (req, res) => {
         // 1. Verificación básica de existencia del contacto (Tu código es correcto aquí)
         const checkContactQuery = 'SELECT 1 FROM general WHERE cedula = $1;';
         const contactExists = await client.query(checkContactQuery, [cedula]);
-        
+
         if (contactExists.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Contacto no encontrado con la cédula proporcionada.' });
@@ -296,7 +301,7 @@ const addGeneralPhone = async (req, res) => {
 
         // 2. Insertar el nuevo teléfono con un TIPO genérico ('Secundario' o 'Telefono')
         const phoneType = 'Secundario'; // Usamos un tipo genérico para evitar conflictos con el principal
-        
+
         const addPhoneQuery = `
             INSERT INTO telefonos (cedula_persona, numero, tipo, created_by)
             VALUES ($1, $2, $3, $4)
@@ -315,7 +320,7 @@ const addGeneralPhone = async (req, res) => {
         const updatedTelefonos = updatedPhonesResult.rows[0]?.telefonos || [];
 
         await client.query('COMMIT');
-        
+
         // Devolvemos el registro completo de teléfonos para que el frontend actualice
         return res.json({ cedula, telefonos: updatedTelefonos, message: 'Teléfono añadido con éxito.' });
 
