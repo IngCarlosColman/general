@@ -38,7 +38,7 @@
       :selected-category="selectedCategory"
       :agenda-categories="agendaCategories"
       @close="activeTable.closeAddDialog"
-      @save="handleCreateSave" 
+      @save="handleCreateSave"
       :current-user-rol="currentUserRol"
     />
 
@@ -61,8 +61,7 @@
       @confirm="handleConfirmDelete"
     />
 
-    <!-- NUEVO: Modal para añadir teléfono -->
-    <ContactAddPhoneDialog
+        <ContactAddPhoneDialog
       ref="addPhoneDialogRef"
       @phone-added="handlePhoneAdded"
     />
@@ -99,11 +98,14 @@ const currentUserRol = computed(() => authStore.user?.rol);
 const isAdmin = computed(() => currentUserRol.value === 'administrador');
 const isEditor = computed(() => currentUserRol.value === 'editor');
 
+// MODIFICACIÓN: Se inicializa 'telefonos' con una estructura base para evitar errores
+// en el formulario hijo al intentar acceder a propiedades de un array vacío.
 const defaultItem = {
+  id: null, // Asegura que el diálogo sepa que es una creación
   nombres: '',
   apellidos: '',
   cedula: '',
-  telefonos: [],
+  telefonos: [{ codigo: '+595', numero: '' }], // Estructura base
   salario: 0,
   categoria_id: null,
   notas: '',
@@ -258,10 +260,13 @@ const activeTableHeaders = computed(() => {
 // MÉTODOS DE ACCIÓN Y DIÁLOGOS
 // ----------------------------------------------------
 
-// Manejo de la acción 'Agregar'
+// Manejo de la acción 'Agregar' - CORREGIDO
 const handleOpenCreate = () => {
   if (isAdmin.value || isEditor.value) {
-    activeTable.openAddDialog(); 
+    // 💡 SOLUCIÓN: Asignar una copia profunda del defaultItem para resetear el formulario
+    activeTable.editedItem.value = JSON.parse(JSON.stringify(defaultItem));
+
+    activeTable.openAddDialog();
   } else {
     showSnackbar('No tienes permiso para crear nuevos registros.', 'error');
   }
@@ -269,6 +274,8 @@ const handleOpenCreate = () => {
 
 // Manejo de la acción 'Editar'
 const handleEdit = (item) => {
+  // Se usa una copia profunda para editar sin mutar el objeto en la tabla
+  activeTable.editedItem.value = JSON.parse(JSON.stringify(item));
   activeTable.openEditDialog(item);
 };
 
@@ -284,7 +291,7 @@ const handlePhoneAdded = async (cedula) => {
   try {
     const response = await apiClient.get(`/${selectedCategory.value}/${cedula}`);
     const updatedContact = response.data;
-    
+
     // Encuentra el índice del contacto en la tabla
     const index = activeTable.items.value.findIndex(item => item.cedula === cedula);
     if (index !== -1) {
@@ -293,7 +300,7 @@ const handlePhoneAdded = async (cedula) => {
       newItems[index] = { ...newItems[index], ...updatedContact };
       activeTable.items.value = newItems; // Asigna el nuevo array a la referencia
     }
-    
+
     // La lista de la agenda privada debe actualizarse si es la categoría actual
     if (selectedCategory.value === 'private-agenda') {
       await fetchPrivateAgendaCedulas();
@@ -381,7 +388,7 @@ const togglePrivateAgenda = async (item) => {
   const cedula = item.cedula;
   let result;
   const isCurrentlyInAgenda = privateAgendaCedulas.value.includes(cedula);
-  
+
   if (isCurrentlyInAgenda) {
     try {
       await apiClient.delete(`/agenda/${cedula}`);
@@ -391,7 +398,7 @@ const togglePrivateAgenda = async (item) => {
     }
   } else {
     try {
-      await apiClient.post('/agenda', { cedula: cedula }); 
+      await apiClient.post('/agenda', { cedula: cedula });
       result = { success: true, message: 'Contacto añadido a tu agenda privada.' };
     } catch (err) {
       result = { success: false, message: err.response?.data?.error || 'Error al añadir el contacto.' };
