@@ -140,38 +140,37 @@
                           <v-list-item-subtitle>{{ persona.departamento_nombre }}</v-list-item-subtitle>
                         </v-list-item>
 
-                        <v-list-item v-if="persona.telefonos && persona.telefonos.length > 0">
+                        <v-list-item>
                           <template v-slot:prepend>
                             <v-icon color="primary">mdi-phone-in-talk-outline</v-icon>
                           </template>
-                          <v-list-item-title class="font-weight-bold">Teléfonos:</v-list-item-title>
-                          <v-list-item-subtitle>
-                            <v-chip-group>
-                              <v-chip
-                                v-for="(tel, telIndex) in persona.telefonos"
-                                :key="telIndex"
-                                size="small"
-                                variant="outlined"
-                                color="success"
-                                label
-                                class="mr-2"
-                              >
-                                <v-icon left>mdi-phone</v-icon>
-                                {{ tel }}
+                          <v-list-item-title class="font-weight-bold">Teléfonos Registrados:</v-list-item-title>
+                          <v-list-item-subtitle class="pt-1">
+                            <v-chip-group column>
+                              <template v-if="persona.telefonos && persona.telefonos.length > 0">
+                                <v-chip
+                                  v-for="(tel, telIndex) in persona.telefonos"
+                                  :key="telIndex"
+                                  size="small"
+                                  :color="tel.tipo?.toLowerCase().includes('principal') ? 'success' : 'info'"
+                                  label
+                                  variant="flat"
+                                  class="font-weight-bold me-2 mb-1"
+                                >
+                                  <v-icon start :icon="tel.tipo?.toLowerCase().includes('principal') ? 'mdi-star' : 'mdi-phone-dial'"></v-icon>
+                                  {{ tel.tipo || 'N/A' }}:
+                                  <span class="ml-1">{{ tel.numero || 'N/A' }}</span>
+                                </v-chip>
+                              </template>
+
+                              <v-chip v-else color="error" size="small" label>
+                                <v-icon start>mdi-phone-off</v-icon>
+                                No registra teléfonos
                               </v-chip>
                             </v-chip-group>
                           </v-list-item-subtitle>
                         </v-list-item>
-                        <v-list-item v-else>
-                          <template v-slot:prepend>
-                            <v-icon color="error">mdi-phone-off</v-icon>
-                          </template>
-                          <v-list-item-title class="font-weight-bold">Teléfonos:</v-list-item-title>
-                          <v-list-item-subtitle>
-                            <v-chip color="error" size="small" label>No registra teléfonos</v-chip>
-                          </v-list-item-subtitle>
-                        </v-list-item>
-                      </v-col>
+                        </v-col>
                     </v-row>
                   </v-list>
                 </v-card>
@@ -230,6 +229,8 @@ const consultarDatos = async () => {
     // 4. Fusiona los teléfonos con los datos del padrón
     const resultadoFinal = personas.map(persona => {
       // Agrega el array de teléfonos a cada objeto de persona
+      // Asegúrate de que los datos de teléfono vengan como un array de objetos:
+      // [{ numero: '123', tipo: 'Principal' }, { numero: '456', tipo: 'Secundario' }]
       persona.telefonos = telefonosPorCedula[persona.cedula] || [];
       return persona;
     });
@@ -263,8 +264,9 @@ const calcularEdad = (fechaNacimiento) => {
 
 const formatearAniversario = (fecha) => {
   if (!fecha) return 'N/A';
-  const opciones = { day: 'numeric', month: 'long' };
+  // Agregar 'T00:00:00' para evitar problemas de zona horaria
   const fechaObj = new Date(fecha + 'T00:00:00');
+  const opciones = { day: 'numeric', month: 'long' };
   return fechaObj.toLocaleDateString('es-ES', opciones);
 };
 
