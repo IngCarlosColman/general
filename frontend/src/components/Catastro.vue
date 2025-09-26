@@ -141,30 +141,6 @@
             </v-btn>
 
             <v-btn
-              :disabled="propiedades.length === 0"
-              color="teal-darken-2"
-              class="ma-2 font-weight-bold"
-              size="large"
-              variant="tonal"
-              @click="handleGetMaps"
-            >
-              <v-icon start>mdi-map-search-outline</v-icon>
-              Obtener Mapas
-            </v-btn>
-
-            <v-btn
-              color="blue-grey-darken-2"
-              class="ma-2 font-weight-bold"
-              size="large"
-              variant="tonal"
-              @click="handleViewMaps"
-              :disabled="mapaStore.propiedadesMapa.length === 0"
-            >
-              <v-icon start>mdi-map-marker-radius</v-icon>
-              Ver Mapas
-            </v-btn>
-
-            <v-btn
               color="grey-darken-2"
               class="ma-2 font-weight-bold"
               size="large"
@@ -175,12 +151,38 @@
               <v-icon start>mdi-close</v-icon>
               Limpiar
             </v-btn>
-          </v-card-actions>
+            </v-card-actions>
         </div>
       </v-expand-transition>
     </v-card>
 
     <v-card-text class="mt-8">
+      <div class="d-flex justify-end align-center mb-4">
+        <v-btn
+          :disabled="propiedades.length === 0"
+          color="teal-darken-2"
+          class="mx-2 font-weight-bold"
+          variant="tonal"
+          size="default"
+          @click="handleGetMaps"
+        >
+          <v-icon start>mdi-map-search-outline</v-icon>
+          Obtener Mapas
+        </v-btn>
+
+        <v-btn
+          color="blue-grey-darken-2"
+          class="mx-2 font-weight-bold"
+          variant="tonal"
+          size="default"
+          @click="handleViewMaps"
+          :disabled="mapaStore.propiedadesMapa.length === 0"
+        >
+          <v-icon start>mdi-map-marker-radius</v-icon>
+          Ver Mapas
+        </v-btn>
+      </div>
+
       <v-data-table-server
         :headers="headers"
         :items="propiedades"
@@ -301,6 +303,7 @@
 </template>
 
 <script setup>
+// ... (El bloque <script setup> se mantiene exactamente igual, no necesita cambios)
 import { ref, reactive, onMounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCatastroStore } from '../stores/catastro';
