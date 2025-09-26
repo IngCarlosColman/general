@@ -47,8 +47,7 @@
           </template>
         </v-tooltip>
 
-        <!-- 🟢 Nuevo botón para añadir teléfono -->
-        <v-tooltip text="Añadir Teléfono" location="top" v-if="userCanAddPhone()">
+                <v-tooltip text="Añadir Teléfono" location="top" v-if="userCanAddPhone()">
           <template v-slot:activator="{ props }">
             <v-icon
               size="small"
@@ -62,13 +61,13 @@
           </template>
         </v-tooltip>
 
-        <v-tooltip text="Compartir contacto" location="top" v-if="item.telefonos?.length">
+                <v-tooltip text="Compartir contacto" location="top" v-if="item.telefonos?.length">
           <template v-slot:activator="{ props }">
             <v-icon
               size="small"
               class="me-2"
               @click="$emit('share-contact', item)"
-              color="teal"
+                            color="teal"
               v-bind="props"
             >
               mdi-share-variant
@@ -81,7 +80,7 @@
             <v-icon
               size="small"
               class="me-2"
-              @click="$emit('open-whatsapp', item, item.telefonos[0])" 
+              @click="$emit('open-whatsapp', item, item.telefonos[0])"
               color="green-lighten-1"
               v-bind="props"
             >
@@ -166,6 +165,7 @@ const props = defineProps({
   },
 });
 
+// El evento 'share-contact' ya estaba declarado correctamente.
 const emit = defineEmits([
   'update:options',
   'toggle-private-agenda',
@@ -173,7 +173,7 @@ const emit = defineEmits([
   'open-whatsapp',
   'edit',
   'delete',
-  'add-phone' // 🟢 Nuevo evento
+  'add-phone'
 ]);
 
 const isAddedToPrivateAgenda = (cedula) => {
@@ -189,7 +189,7 @@ const canAccess = (item) => {
   if (props.currentUserRol === 'administrador' || props.currentUserRol === 'editor') {
     return true;
   }
-  
+
   return false;
 };
 </script>

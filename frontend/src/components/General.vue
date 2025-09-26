@@ -13,22 +13,22 @@
       />
       <v-divider></v-divider>
       <ContactTable
-        :headers="activeTableHeaders"
-        :items="activeTable.items.value"
-        :items-length="activeTable.totalItems.value"
-        :options="activeTable.options"
-        :loading="activeTable.isLoading.value"
-        :private-agenda-cedulas="privateAgendaCedulas"
-        @update:options="newOptions => Object.assign(activeTable.options, newOptions)"
-        @edit="handleEdit"
-        @delete="handleDelete"
-        @open-whatsapp="handleOpenWhatsApp"
-        @toggle-private-agenda="togglePrivateAgenda"
-        @add-phone="handleAddPhone"
-        :selected-category="selectedCategory"
-        :current-user-id="currentUserId"
-        :current-user-rol="currentUserRol"
-      />
+  :headers="activeTableHeaders"
+  :items="activeTable.items.value"
+  :items-length="activeTable.totalItems.value"
+  :options="activeTable.options"
+  :loading="activeTable.isLoading.value"
+  :private-agenda-cedulas="privateAgendaCedulas"
+  @update:options="newOptions => Object.assign(activeTable.options, newOptions)"
+  @edit="handleEdit"
+  @delete="handleDelete"
+  @open-whatsapp="handleOpenWhatsApp"
+  @toggle-private-agenda="togglePrivateAgenda"
+  @add-phone="handleAddPhone"
+  @share-contact="handleShareContact" :selected-category="selectedCategory"
+  :current-user-id="currentUserId"
+  :current-user-rol="currentUserRol"
+/>
     </v-card>
 
     <ContactAddDialog
