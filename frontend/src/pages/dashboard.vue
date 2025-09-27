@@ -2,9 +2,17 @@
   <v-app class="dashboard-layout">
     <v-app-bar app elevation="2" color="surface-container" flat>
       <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-toolbar-title class="font-weight-bold">Dashboard</v-toolbar-title>
-      <v-spacer></v-spacer>
-
+      <v-toolbar-title class="font-weight-bold d-flex align-center">
+    <!-- El espacio en blanco entre el v-img y el texto ayuda con la separación -->
+    <v-img 
+        :src="logoSrc" 
+        alt="Logo de la Aplicación" 
+        width="40" 
+        height="40" 
+        class="mr-5"
+    ></v-img>
+    <span>Agenda del Asesor Inmobiliario</span>
+</v-toolbar-title>
       <v-btn icon>
         <v-icon>mdi-white-balance-sunny</v-icon>
       </v-btn>
@@ -43,28 +51,45 @@
 
       <v-list density="compact" nav>
         <v-list-item
+          prepend-icon="mdi-view-dashboard"
+          title="Panel Principal"
+          :class="{ 'px-2': !drawer }"
+          @click="showComponent('dashboard-main')"
+          :active="currentComponent === 'dashboard-main'"
+          color="primary"
+        ></v-list-item>
+        
+        <v-list-item
           prepend-icon="mdi-book-multiple"
           title="Guía Telefónica"
           :class="{ 'px-2': !drawer }"
           @click="showComponent('general')"
+          :active="currentComponent === 'general'"
+          color="primary"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-card-account-details-outline"
           title="Consulta Datos Personales"
           :class="{ 'px-2': !drawer }"
           @click="showComponent('consulta-padron')"
+          :active="currentComponent === 'consulta-padron'"
+          color="primary"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-map-marker-radius"
           title="Catastro Dinámico"
           :class="{ 'px-2': !drawer }"
           @click="showComponent('catastro')"
+          :active="currentComponent === 'catastro'"
+          color="primary"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-account-multiple"
           title="Gestión de Usuarios"
           :class="{ 'px-2': !drawer }"
           @click="showComponent('users')"
+          :active="currentComponent === 'users'"
+          color="primary"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-logout"
@@ -102,10 +127,15 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import Panel from '@/components/Panel.vue'; 
 import General from '@/components/General.vue';
 import UsersProfiles from '@/components/usersprofiles.vue';
 import Catastro from '@/components/Catastro.vue';
 import Consulta from '@/components/Consulta.vue';
+import miImagen from '@/assets/logo.svg'; 
+
+
+const logoSrc = ref(miImagen);
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -114,13 +144,16 @@ const drawer = ref(true);
 const user = computed(() => authStore.user);
 
 const components = {
+  // AÑADIDO: Panel Principal
+  'dashboard-main': Panel, 
   general: General,
   users: UsersProfiles,
   catastro: Catastro,
   'consulta-padron': Consulta,
 };
 
-const currentComponent = ref('general');
+// MODIFICADO: Ahora el componente inicial es 'dashboard-main'
+const currentComponent = ref('dashboard-main'); 
 
 const showComponent = (name) => {
   currentComponent.value = name;
@@ -146,6 +179,12 @@ const handleLogout = async () => {
 
 .main-scroll-area {
   overflow-y: auto;
+  /* Altura: 100vh - AppBar(64px) - Footer(~40px) */
   height: calc(100vh - 64px - 40px);
+}
+
+/* Opcional: mejora la transición del sidebar */
+.transition-width {
+    transition: width 0.3s ease-in-out;
 }
 </style>

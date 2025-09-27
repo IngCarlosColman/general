@@ -15,6 +15,11 @@ router.use(authenticateJWT);
 
 // Rutas protegidas con validación de roles
 router.get('/proprurales', checkRoles(allowedRoles), propruralesController.getPropruralesData);
+router.get(
+    '/propiedades/count/rural', // 👈 Ruta que consume el Pinia store
+    checkRoles(allowedRoles),
+    propruralesController.countProprurales // 👈 Nueva función
+);
 router.post('/proprurales', checkRoles(allowedRoles), propruralesController.createProprural);
 
 // Rutas protegidas con validación de roles y de propiedad del registro

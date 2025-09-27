@@ -1,4 +1,3 @@
-// server.js
 require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
@@ -28,16 +27,18 @@ const categoriasRoutes = require('./routes/categorias.routes');
 const geoRoutes = require('./routes/geo.routes');
 const mapaRoutes = require('./routes/mapa.routes'); 
 const consultaPadronRoutes = require('./routes/consulta_padron.routes');
+// 📌 Importación del nuevo router para el Dashboard
+const dashboardRoutes = require('./routes/dashboard.routes'); 
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 
 // Middlewares
 app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -45,7 +46,7 @@ app.use(connectDbMiddleware);
 
 // Rutas API
 app.get('/', (req, res) => {
-    res.send('¡Servidor del backend en funcionamiento!');
+    res.send('¡Servidor del backend en funcionamiento!');
 });
 
 app.use('/api', authRoutes);
@@ -70,15 +71,17 @@ app.use('/api/categorias', categoriasRoutes);
 app.use('/api', geoRoutes);
 app.use('/api', mapaRoutes);
 app.use('/api', consultaPadronRoutes);
+// 📌 Uso del nuevo router para el Dashboard
+app.use('/api', dashboardRoutes);
 
 
 // Iniciar el servidor
 app.listen(PORT, () => {
-    console.log(`Servidor Express corriendo en el puerto ${PORT}`);
+    console.log(`Servidor Express corriendo en el puerto ${PORT}`);
 });
 
 // Cierre limpio del servidor
 process.on('SIGINT', () => {
-    console.log('Servidor cerrado.');
-    process.exit(0);
+    console.log('Servidor cerrado.');
+    process.exit(0);
 });

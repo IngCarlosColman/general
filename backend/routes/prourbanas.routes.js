@@ -15,6 +15,11 @@ router.use(authenticateJWT);
 
 // Rutas protegidas con validación de roles
 router.get('/prourbanas', checkRoles(allowedRoles), prourbanasController.getProurbanasData);
+router.get(
+    '/propiedades/count/urbana', // 👈 Ruta que consume el Pinia store
+    checkRoles(allowedRoles),
+    prourbanasController.countProurbanas // 👈 Nueva función
+);
 router.post('/prourbanas', checkRoles(allowedRoles), prourbanasController.createProurbana);
 
 // Rutas protegidas con validación de roles y de propiedad del registro

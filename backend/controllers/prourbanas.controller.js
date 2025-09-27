@@ -226,10 +226,28 @@ const deleteProurbana = async (req, res) => {
         client.release();
     }
 };
+const countProurbanas = async (req, res) => { // 👈 NUEVA FUNCIÓN
+    try {
+        const countQuery = `
+            SELECT COUNT(*) FROM prourbanas;
+        `;
+        const countResult = await pool.query(countQuery);
+        const count = parseInt(countResult.rows[0].count);
+
+        // Respuesta esperada por Pinia: { count: N }
+        res.setHeader('Cache-Control', 'no-cache');
+        res.json({ count });
+    } catch (err) {
+        console.error('Error al contar propiedades urbanas:', err);
+        res.status(500).json({ error: 'Error del servidor al contar propiedades urbanas' });
+    }
+};
+
 
 module.exports = {
     getProurbanasData,
     createProurbana,
     updateProurbana,
-    deleteProurbana
+    deleteProurbana,
+    countProurbanas
 };

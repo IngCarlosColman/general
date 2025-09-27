@@ -223,9 +223,27 @@ const deleteProprural = async (req, res) => {
     }
 };
 
+const countProprurales = async (req, res) => { // 👈 NUEVA FUNCIÓN
+    try {
+        const countQuery = `
+            SELECT COUNT(*) FROM proprurales;
+        `;
+        const countResult = await pool.query(countQuery);
+        const count = parseInt(countResult.rows[0].count);
+
+        // Respuesta esperada por Pinia: { count: N }
+        res.setHeader('Cache-Control', 'no-cache');
+        res.json({ count });
+    } catch (err) {
+        console.error('Error al contar propiedades rurales:', err);
+        res.status(500).json({ error: 'Error del servidor al contar propiedades rurales' });
+    }
+};
+
 module.exports = {
     getPropruralesData,
     createProprural,
     updateProprural,
-    deleteProprural
+    deleteProprural,
+    countProprurales
 };
