@@ -2,6 +2,13 @@ import { defineStore } from 'pinia';
 import { ref, reactive } from 'vue';
 import axiosClient from '../api/axiosClient';
 
+// 🔑 Función para normalizar/limpiar la cédula (Reintroducido)
+const cleanCedula = (cedula) => {
+  if (!cedula) return null;
+  // Elimina cualquier carácter que no sea alfanumérico (puntos, guiones, espacios, etc.)
+  return String(cedula).replace(/[^a-zA-Z0-9]/g, '');
+};
+
 export const useCatastroStore = defineStore('catastro', () => {
   // === ESTADO (STATE) ===
   const departamentos = ref([]);
@@ -119,7 +126,8 @@ export const useCatastroStore = defineStore('catastro', () => {
       cod_dep: item.cod_dep,
       cod_ciu: item.cod_ciu,
       tipo_propiedad: isRural ? 'rural' : 'urbana',
-      cedula_propietario: p.propNroDocumento || null,
+      // Aplicar cleanCedula aquí
+      cedula_propietario: cleanCedula(p.propNroDocumento) || null,
       nombre_propietario: p.propNombre || 'Sin Datos',
       padron_ccc: padronCccValue,
     }));
@@ -195,29 +203,54 @@ export const useCatastroStore = defineStore('catastro', () => {
         let nombrePropietario;
         let cedulaPropietario;
         let telefonosPropietario = '';
+        let telefonosArray = [];
 
         if (propietarios.length > 0) {
           nombrePropietario = propietarios.map(p => p.propNombre || 'Sin Datos').join(' / ');
-          cedulaPropietario = propietarios.map(p => p.propNroDocumento || 'Sin Datos').join(' / ');
 
-          const cedulas = propietarios.map(p => p.propNroDocumento).filter(Boolean).join(',');
+          // Generar la lista de cédulas limpias para la consulta de teléfonos
+          const cedulas = propietarios
+              .map(p => cleanCedula(p.propNroDocumento))
+              .filter(Boolean)
+              .join(',');
+
+          // Mostrar la cédula limpia (o "Sin Datos")
+          cedulaPropietario = propietarios
+              .map(p => cleanCedula(p.propNroDocumento) || 'Sin Datos')
+              .join(' / ');
 
           if (cedulas) {
-            const responseTelefonos = await axiosClient.get(`/telefonos?cedulas=${cedulas}`);
-            const telefonosUnicos = new Set();
-            for (const cedula in responseTelefonos.data) {
-              responseTelefonos.data[cedula].forEach(numero => {
-                telefonosUnicos.add(numero);
-              });
-            }
-            telefonosPropietario = Array.from(telefonosUnicos).join(' / ');
+             try {
+                const responseTelefonos = await axiosClient.get(`/telefonos?cedulas=${cedulas}`);
+                const telefonosUnicos = new Set();
+
+                for (const cedula in responseTelefonos.data) {
+                    if (responseTelefonos.data[cedula] && Array.isArray(responseTelefonos.data[cedula])) {
+                        responseTelefonos.data[cedula].forEach(telefonoObj => {
+                            if (telefonoObj && telefonoObj.numero) {
+                                telefonosUnicos.add(telefonoObj.numero);
+                            }
+                        });
+                    }
+                }
+
+                telefonosArray = Array.from(telefonosUnicos);
+                telefonosPropietario = telefonosArray.length > 0 ? telefonosArray.join(' / ') : 'Sin Datos';
+
+             } catch (telefonoErr) {
+                console.error('[ERROR: Telefonos] Fallo al consultar la API /telefonos:', telefonoErr);
+                telefonosPropietario = 'Error de consulta';
+                telefonosArray = [];
+             }
           } else {
             telefonosPropietario = 'Sin Datos';
+            telefonosArray = [];
           }
         } else {
           nombrePropietario = 'Sin Datos';
           cedulaPropietario = 'Sin Datos';
           telefonosPropietario = 'Sin Datos';
+          telefonosArray = [];
         }
 
         const updatedItem = {
@@ -225,10 +258,13 @@ export const useCatastroStore = defineStore('catastro', () => {
           propietario_completo: nombrePropietario,
           cedula_propietario: cedulaPropietario,
           telefono: telefonosPropietario,
+          telefonos_list: telefonosArray,
         };
         const index = propiedades.value.findIndex(p => p.id === item.id);
         if (index !== -1) {
-          propiedades.value[index] = updatedItem;
+          // 🚀 CORRECCIÓN DE REACTIVIDAD: Usar Object.assign para modificar
+          // las propiedades del objeto existente en el array, forzando la actualización.
+          Object.assign(propiedades.value[index], updatedItem);
         }
       }
       return batchResult;
@@ -239,7 +275,7 @@ export const useCatastroStore = defineStore('catastro', () => {
       loadingCadastre[item.id] = false;
     }
   };
-  
+
   const updateGeneralData = async (cedula, data) => {
     try {
       await axiosClient.put(`/general/${cedula}`, data);

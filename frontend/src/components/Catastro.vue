@@ -104,20 +104,20 @@
                     <v-col cols="6">
                       <v-text-field
                         v-model="form.m2_min"
-                        label="m² Mínimos"
+                        label="m2 Mínimos"
                         type="number"
                         clearable
-                        hint="Ej: 360 a 5000 m²"
+                        hint="Ej: 360 a 5000 m2"
                         persistent-hint
                       ></v-text-field>
                     </v-col>
                     <v-col cols="6">
                       <v-text-field
                         v-model="form.m2_max"
-                        label="m² Máximos"
+                        label="m2 Máximos"
                         type="number"
                         clearable
-                        hint="Ej: 360 a 5000 m²"
+                        hint="Ej: 360 a 5000 m2"
                         persistent-hint
                       ></v-text-field>
                     </v-col>
@@ -234,7 +234,16 @@
             </v-btn>
           </div>
         </template>
-      </v-data-table-server>
+
+        <template #item.telefonos_list="{ item }">
+          <v-chip-group v-if="item.telefonos_list && item.telefonos_list.length > 0">
+            <v-chip v-for="tel in item.telefonos_list" :key="tel" size="small" variant="tonal" color="blue-grey">
+              {{ tel }}
+            </v-chip>
+          </v-chip-group>
+          <span v-else class="text-caption text-grey-darken-1">Sin Datos</span>
+        </template>
+        </v-data-table-server>
     </v-card-text>
 
     <v-dialog v-model="showMap" max-width="1200px" fullscreen>
@@ -303,7 +312,6 @@
 </template>
 
 <script setup>
-// ... (El bloque <script setup> se mantiene exactamente igual, no necesita cambios)
 import { ref, reactive, onMounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCatastroStore } from '../stores/catastro';
@@ -352,6 +360,7 @@ const form = reactive({
 const tiposPropiedad = ref(['Rural', 'Urbana']);
 const lastOptions = ref({ page: 1, itemsPerPage: 10, sortBy: [] });
 
+// ✅ HEADER RURAL CORREGIDO: Usando 'telefonos_list'
 const ruralHeaders = [
   { title: 'Departamento', key: 'cod_dep' },
   { title: 'Ciudad', key: 'cod_ciu' },
@@ -359,20 +368,21 @@ const ruralHeaders = [
   { title: 'Hectáreas', key: 'has' },
   { title: 'Propietario/s', key: 'propietario_completo' },
   { title: 'Cédula/s', key: 'cedula_propietario' },
-  { title: 'Teléfono', key: 'telefono' },
+  { title: 'Teléfono', key: 'telefonos_list' }, // <-- MODIFICADO
   { title: 'Acciones', key: 'acciones', sortable: false },
 ];
 
+// ✅ HEADER URBANO CORREGIDO: Usando 'telefonos_list'
 const urbanaHeaders = [
   { title: 'Departamento', key: 'cod_dep' },
   { title: 'Ciudad', key: 'cod_ciu' },
   { title: 'Zona', key: 'zona' },
   { title: 'Manzana', key: 'manzana' },
   { title: 'Lote', key: 'lote' },
-  { title: 'mts²', key: 'mts2' },
+  { title: 'mts2', key: 'mts2' },
   { title: 'Propietario/s', key: 'propietario_completo' },
   { title: 'Cédula/s', key: 'cedula_propietario' },
-  { title: 'Teléfono', key: 'telefono' },
+  { title: 'Teléfono', key: 'telefonos_list' }, // <-- MODIFICADO
   { title: 'Acciones', key: 'acciones', sortable: false },
 ];
 
