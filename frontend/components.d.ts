@@ -40,6 +40,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SearchAndActionsToolbar: typeof import('./src/components/comunes/SearchAndActionsToolbar.vue')['default']
+    UserSplashScreen: typeof import('./src/components/UserSplashScreen.vue')['default']
     Usersprofiles: typeof import('./src/components/usersprofiles.vue')['default']
   }
 }

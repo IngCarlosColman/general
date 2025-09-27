@@ -20,14 +20,31 @@
         </v-btn>
       </template>
     </v-snackbar>
+
+    <UserSplashScreen v-if="showInitialSplash" />
+
   </v-app>
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'; // 👈 Importamos ref y onMounted
+import UserSplashScreen from './components/UserSplashScreen.vue'; // 👈 Importa el nuevo componente
 import { useSnackbar } from './composables/useSnackbar';
 
-// Importa tanto el estado de solo lectura como la función para cerrarlo
 const { snackbarState, closeSnackbar } = useSnackbar();
+
+// === LÓGICA DEL SPLASH SCREEN ===
+// 1. Estado para controlar la visibilidad. Empieza en true (visible).
+const showInitialSplash = ref(true);
+
+onMounted(() => {
+  // 2. Establecemos un temporizador de 3000 ms (3 segundos)
+  setTimeout(() => {
+    // 3. Después de 3 segundos, ocultamos el splash screen
+    showInitialSplash.value = false;
+  }, 3000); // 3 segundos
+});
+// =================================
 </script>
 
 <style>
