@@ -159,7 +159,7 @@
     <v-card-text class="mt-8">
       <div class="d-flex justify-end align-center mb-4">
         <v-btn
-          :disabled="propiedades.length === 0"
+          :disabled="isGettingMaps || isCooldownActive"
           color="teal-darken-2"
           class="mx-2 font-weight-bold"
           variant="tonal"
@@ -167,7 +167,7 @@
           @click="handleGetMaps"
         >
           <v-icon start>mdi-map-search-outline</v-icon>
-          Obtener Mapas
+          {{ isCooldownActive ? 'Enfriamiento...' : 'Obtener Mapas' }}
         </v-btn>
 
         <v-btn
@@ -188,6 +188,7 @@
         :items="propiedades"
         :items-length="totalPropiedades"
         :loading="isLoading"
+        :items-per-page-options="itemsPerPageOptions"
         item-value="id"
         @update:options="handleTableUpdate"
       >
@@ -342,6 +343,13 @@ const {
   error,
 } = storeToRefs(store);
 
+// 🔑 AÑADIDO: Destructuramos los estados necesarios para el botón de mapas
+const {
+  isGettingMaps,
+  isCooldownActive
+} = storeToRefs(mapaStore);
+
+
 // === ESTADO LOCAL DEL COMPONENTE ===
 const isFormCollapsed = ref(false);
 
@@ -359,6 +367,11 @@ const form = reactive({
 
 const tiposPropiedad = ref(['Rural', 'Urbana']);
 const lastOptions = ref({ page: 1, itemsPerPage: 10, sortBy: [] });
+
+// 🚀 AÑADIDO: Opciones para limitar la paginación a solo 10 registros
+const itemsPerPageOptions = [
+  { value: 10, title: '10' }
+];
 
 // ✅ HEADER RURAL CORREGIDO: Usando 'telefonos_list'
 const ruralHeaders = [

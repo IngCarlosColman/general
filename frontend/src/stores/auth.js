@@ -16,6 +16,8 @@ export const useAuthStore = defineStore('auth', {
         user: getInitialUser(), 
         authError: null,
         isLoading: false,
+        // 🟢 ESTADO PARA CONTROLAR EL SPLASH SCREEN
+        showPostLoginSplash: false, 
     }),
 
     getters: {
@@ -24,6 +26,19 @@ export const useAuthStore = defineStore('auth', {
         isAdmin: (state) => state.user?.rol === 'administrador',
         isEditor: (state) => state.user?.rol === 'editor',
         userId: (state) => state.user?.id || null, 
+        
+        // 🟢 NUEVO GETTER: Combina first_name y last_name para el splash
+        fullName: (state) => {
+            const firstName = state.user?.first_name || '';
+            const lastName = state.user?.last_name || '';
+            
+            if (firstName || lastName) {
+                // Junta first_name y last_name, asegurando un espacio y eliminando espacios extra
+                return `${firstName} ${lastName}`.trim();
+            }
+            // Si no tiene nombre ni apellido, usa el username
+            return state.user?.username || 'Usuario'; 
+        },
     },
 
     actions: {
@@ -33,7 +48,16 @@ export const useAuthStore = defineStore('auth', {
             try {
                 const response = await authService.login(email, password);
                 const newToken = response.token;
+                
                 this.setToken(newToken);
+                
+                // 🟢 ACTIVAR Y TEMPORIZAR SPLASH AL LOGRAR EL LOGIN EXITOSO
+                this.showPostLoginSplash = true; 
+                
+                setTimeout(() => {
+                    this.showPostLoginSplash = false;
+                }, 3000); // 3000 ms = 3 segundos
+
             } catch (error) {
                 this.authError = error;
                 this.logoutLocal(); 

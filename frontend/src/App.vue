@@ -21,30 +21,24 @@
       </template>
     </v-snackbar>
 
-    <UserSplashScreen v-if="showInitialSplash" />
+    <UserSplashScreen v-if="authStore.showPostLoginSplash" />
 
   </v-app>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'; // 👈 Importamos ref y onMounted
-import UserSplashScreen from './components/UserSplashScreen.vue'; // 👈 Importa el nuevo componente
+// ❌ ELIMINAMOS: import { ref, onMounted } from 'vue';
+import UserSplashScreen from './components/UserSplashScreen.vue'; // Asume que la ruta es correcta
 import { useSnackbar } from './composables/useSnackbar';
+import { useAuthStore } from '@/stores/auth'; // 🟢 NUEVA IMPORTACIÓN
 
 const { snackbarState, closeSnackbar } = useSnackbar();
+// 🟢 Inicializamos el store para acceder al estado
+const authStore = useAuthStore(); 
 
-// === LÓGICA DEL SPLASH SCREEN ===
-// 1. Estado para controlar la visibilidad. Empieza en true (visible).
-const showInitialSplash = ref(true);
-
-onMounted(() => {
-  // 2. Establecemos un temporizador de 3000 ms (3 segundos)
-  setTimeout(() => {
-    // 3. Después de 3 segundos, ocultamos el splash screen
-    showInitialSplash.value = false;
-  }, 3000); // 3 segundos
-});
-// =================================
+// ❌ ELIMINAMOS: 
+// const showInitialSplash = ref(true);
+// onMounted(() => { ... });
 </script>
 
 <style>

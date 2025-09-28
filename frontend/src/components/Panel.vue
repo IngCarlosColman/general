@@ -1,12 +1,8 @@
 <template>
-  <v-container fluid class="pa-4 panel-dashboard">
+    <v-container fluid class="pa-4 panel-dashboard">
     <h1 class="text-h4 font-weight-bold mb-6 text-primary">
       Panel de Control Principal
     </h1>
-
-    <v-overlay :model-value="isLoadingKpis || isLoadingDetails" contained class="align-center justify-center">
-      <v-progress-circular color="primary" indeterminate size="64"></v-progress-circular>
-    </v-overlay>
 
     <v-row class="mb-4" v-if="!isLoadingKpis">
       <v-col cols="12" sm="6" md="3">

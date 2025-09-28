@@ -11,7 +11,7 @@
         height="40" 
         class="mr-5"
     ></v-img>
-    <span>Agenda del Asesor Inmobiliario</span>
+    <span>Agenda Inmobiliaria</span>
 </v-toolbar-title>
       <v-btn icon>
         <v-icon>mdi-white-balance-sunny</v-icon>
