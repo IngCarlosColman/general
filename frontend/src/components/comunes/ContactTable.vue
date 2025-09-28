@@ -12,7 +12,7 @@
       @update:page="$emit('update:options', { ...options, page: $event })"
       @update:sort-by="$emit('update:options', { ...options, sortBy: $event })"
       loading-text="Cargando datos..."
-      no-data-text="No se encontraron resultados. Realice una búsqueda."
+      :no-data-text="noDataText"
       :items-per-page-options="[
         { value: 10, title: '10' },
         { value: 25, title: '25' },
@@ -163,9 +163,12 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  noDataText: { // NUEVO PROP para el mensaje dinámico
+    type: String,
+    default: 'No se encontraron resultados.',
+  },
 });
 
-// El evento 'share-contact' ya estaba declarado correctamente.
 const emit = defineEmits([
   'update:options',
   'toggle-private-agenda',

@@ -13,22 +13,24 @@
       />
       <v-divider></v-divider>
       <ContactTable
-  :headers="activeTableHeaders"
-  :items="activeTable.items.value"
-  :items-length="activeTable.totalItems.value"
-  :options="activeTable.options"
-  :loading="activeTable.isLoading.value"
-  :private-agenda-cedulas="privateAgendaCedulas"
-  @update:options="newOptions => Object.assign(activeTable.options, newOptions)"
-  @edit="handleEdit"
-  @delete="handleDelete"
-  @open-whatsapp="handleOpenWhatsApp"
-  @toggle-private-agenda="togglePrivateAgenda"
-  @add-phone="handleAddPhone"
-  @share-contact="handleShareContact" :selected-category="selectedCategory"
-  :current-user-id="currentUserId"
-  :current-user-rol="currentUserRol"
-/>
+        :headers="activeTableHeaders"
+        :items="activeTable.items.value"
+        :items-length="activeTable.totalItems.value"
+        :options="activeTable.options"
+        :loading="activeTable.isLoading.value"
+        :private-agenda-cedulas="privateAgendaCedulas"
+        :no-data-text="noDataMessage"
+        @update:options="newOptions => Object.assign(activeTable.options, newOptions)"
+        @edit="handleEdit"
+        @delete="handleDelete"
+        @open-whatsapp="handleOpenWhatsApp"
+        @toggle-private-agenda="togglePrivateAgenda"
+        @add-phone="handleAddPhone"
+        @share-contact="handleShareContact"
+        :selected-category="selectedCategory"
+        :current-user-id="currentUserId"
+        :current-user-rol="currentUserRol"
+      />
     </v-card>
 
     <ContactAddDialog
@@ -76,7 +78,6 @@ import ContactTable from '@/components/comunes/ContactTable.vue';
 import ContactAddDialog from '@/components/comunes/ContactAddDialog.vue';
 import ContactEditDialog from '@/components/comunes/ContactEditDialog.vue';
 import ConfirmDeleteDialog from '@/components/comunes/ConfirmDeleteDialog.vue';
-// NUEVO: Importar el modal de añadir teléfono
 import ContactAddPhoneDialog from '@/components/comunes/ContactAddPhoneDialog.vue';
 
 import { useCrudTable } from '@/composables/useCrudTable';
@@ -87,7 +88,7 @@ import apiClient from '@/api/axiosClient';
 const useAuthStore = () => ({
   user: {
     id: 2,
-    rol: 'administrador', // CORREGIDO: Se establece el rol como administrador
+    rol: 'administrador',
   }
 });
 
@@ -98,14 +99,12 @@ const currentUserRol = computed(() => authStore.user?.rol);
 const isAdmin = computed(() => currentUserRol.value === 'administrador');
 const isEditor = computed(() => currentUserRol.value === 'editor');
 
-// MODIFICACIÓN: Se inicializa 'telefonos' con una estructura base para evitar errores
-// en el formulario hijo al intentar acceder a propiedades de un array vacío.
 const defaultItem = {
-  id: null, // Asegura que el diálogo sepa que es una creación
+  id: null,
   nombres: '',
   apellidos: '',
   cedula: '',
-  telefonos: [{ codigo: '+595', numero: '' }], // Estructura base
+  telefonos: [{ codigo: '+595', numero: '' }],
   salario: 0,
   categoria_id: null,
   notas: '',
@@ -115,7 +114,10 @@ const selectedCategory = ref('general');
 const privateAgendaCedulas = ref([]);
 const agendaCategories = ref([]);
 const pendingSearchTerm = ref('');
-const addPhoneDialogRef = ref(null); // Referencia al nuevo modal
+const addPhoneDialogRef = ref(null);
+
+// NUEVO: Estado para controlar si es la carga inicial
+const isInitialLoad = ref(true);
 
 const categories = ref([
   {
@@ -256,14 +258,23 @@ const activeTableHeaders = computed(() => {
   return category?.headers || [];
 });
 
+// NUEVO: Propiedad computada para el mensaje de la tabla
+const noDataMessage = computed(() => {
+  // Si es la carga inicial, mostramos el mensaje de instrucción
+  if (isInitialLoad.value) {
+    return "Realiza tu búsqueda por cédula o nombre de contacto.";
+  }
+
+  // Si no es la carga inicial (ya se buscó o se cambió de categoría)
+  return "No se encontraron resultados.";
+});
+
 // ----------------------------------------------------
 // MÉTODOS DE ACCIÓN Y DIÁLOGOS
 // ----------------------------------------------------
 
-// Manejo de la acción 'Agregar' - CORREGIDO
 const handleOpenCreate = () => {
   if (isAdmin.value || isEditor.value) {
-    // 💡 SOLUCIÓN: Asignar una copia profunda del defaultItem para resetear el formulario
     activeTable.editedItem.value = JSON.parse(JSON.stringify(defaultItem));
 
     activeTable.openAddDialog();
@@ -272,36 +283,29 @@ const handleOpenCreate = () => {
   }
 };
 
-// Manejo de la acción 'Editar'
 const handleEdit = (item) => {
-  // Se usa una copia profunda para editar sin mutar el objeto en la tabla
   activeTable.editedItem.value = JSON.parse(JSON.stringify(item));
   activeTable.openEditDialog(item);
 };
 
-// Manejo de la acción 'Añadir Teléfono'
 const handleAddPhone = (item) => {
   if (addPhoneDialogRef.value) {
     addPhoneDialogRef.value.open(item);
   }
 };
 
-// Maneja la recarga de datos cuando se ha añadido un teléfono
 const handlePhoneAdded = async (cedula) => {
   try {
     const response = await apiClient.get(`/${selectedCategory.value}/${cedula}`);
     const updatedContact = response.data;
 
-    // Encuentra el índice del contacto en la tabla
     const index = activeTable.items.value.findIndex(item => item.cedula === cedula);
     if (index !== -1) {
-      // Crea una copia del array para forzar la reactividad
       const newItems = [...activeTable.items.value];
       newItems[index] = { ...newItems[index], ...updatedContact };
-      activeTable.items.value = newItems; // Asigna el nuevo array a la referencia
+      activeTable.items.value = newItems;
     }
 
-    // La lista de la agenda privada debe actualizarse si es la categoría actual
     if (selectedCategory.value === 'private-agenda') {
       await fetchPrivateAgendaCedulas();
     }
@@ -428,6 +432,8 @@ const handleCategoryUpdate = (newCategoryValue) => {
 const handleSearch = () => {
   activeTable.searchTerm.value = pendingSearchTerm.value || '';
   Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
+  // IMPORTANTE: Una vez que el usuario busca, ya no es la carga inicial.
+  isInitialLoad.value = false;
   activeTable.loadItems();
 };
 
@@ -436,6 +442,8 @@ watch(selectedCategory, (newValue) => {
     Object.assign(activeTable.options, { page: 1, itemsPerPage: 10, sortBy: [] });
     pendingSearchTerm.value = '';
     activeTable.searchTerm.value = '';
+    // Al cambiar de categoría, sí cargamos los items, y ya no es la carga inicial.
+    isInitialLoad.value = false;
     activeTable.loadItems();
   }
 });
@@ -443,7 +451,7 @@ watch(selectedCategory, (newValue) => {
 onMounted(() => {
   fetchPrivateAgendaCedulas();
   fetchAgendaCategories();
-  activeTable.loadItems();
+  // ELIMINADO: activeTable.loadItems(); para evitar la carga inicial.
 });
 </script>
 
