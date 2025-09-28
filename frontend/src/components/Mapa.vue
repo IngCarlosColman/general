@@ -3,7 +3,7 @@
     <div class="map-controls">
       <v-switch
         v-model="showCatastroLayer"
-        label="Mostrar Parcelas (Todas)"
+        label="Parcelas Pais (Todas)"
         color="primary"
         hide-details
         density="compact"
@@ -11,12 +11,22 @@
       ></v-switch>
       <v-switch
         v-model="showFilteredParcelsLayer"
-        label="Mostrar Parcelas Filtradas"
+        :label="`Mostrar Resultados (${totalFeatures})`"
         color="teal-darken-2"
         hide-details
         density="compact"
         class="map-switch"
       ></v-switch>
+      <v-btn
+        :color="isDrawing ? 'error' : 'warning'"
+        :loading="mapStore.isQueryingSpatial"
+        @click="toggleDrawingMode"
+        prepend-icon="mdi-selection-drag"
+        size="small"
+        class="mt-2"
+      >
+        {{ isDrawing ? 'Cancelar Dibujo' : 'Filtrar por Área' }}
+      </v-btn>
     </div>
     <div ref="mapContainer" class="map-container"></div>
     <div class="map-zoom-bar">
@@ -57,7 +67,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, computed } from 'vue';
+import { onMounted, ref, watch, computed, onUnmounted } from 'vue';
+import { useMapaStore } from '../stores/mapa.js';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import TileLayer from 'ol/layer/Tile.js';
@@ -69,7 +80,8 @@ import TileWMS from 'ol/source/TileWMS.js';
 import XYZ from 'ol/source/XYZ.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
 import { defaults as defaultControls } from 'ol/control.js';
-import { Fill, Stroke, Style, Text } from 'ol/style.js';
+import { Fill, Stroke, Style, Text, Circle as CircleStyle } from 'ol/style.js';
+import Draw from 'ol/interaction/Draw.js';
 import proj4 from 'proj4';
 import { register } from 'ol/proj/proj4';
 import 'ol/ol.css';
@@ -77,6 +89,9 @@ import 'ol/ol.css';
 // === REGISTRO DE PROYECCIÓN EPSG:32721 ===
 proj4.defs('EPSG:32721', '+proj=utm +zone=21 +south +datum=WGS84 +units=m +no_defs');
 register(proj4);
+
+// === STORE ===
+const mapStore = useMapaStore();
 
 // === PROPS ===
 const props = defineProps({
@@ -89,7 +104,7 @@ const props = defineProps({
 // === ESTADO LOCAL ===
 const mapContainer = ref(null);
 const map = ref(null);
-
+const drawInteraction = ref(null);
 const showCatastroLayer = ref(false);
 const showFilteredParcelsLayer = ref(false);
 const coordinates = ref({ lat: 0, lon: 0 });
@@ -98,6 +113,10 @@ const minZoomLevel = 2.5;
 const maxZoomLevel = 18;
 const initialZoomLevel = 6.5;
 const selectedZoom = ref(initialZoomLevel);
+const isDrawing = ref(false);
+const totalFeatures = computed(() => {
+  return filteredPropertiesSource.getFeatures().length;
+});
 
 const buttonText = computed(() => {
   return currentBaseMap.value === 'OpenStreetMap' ? 'Satélite' : 'Mapa';
@@ -126,11 +145,35 @@ const catastroLayer = new TileLayer({
 });
 catastroLayer.set('name', 'catastro_layer');
 
+// Fuente y Capa para el Dibujo del Usuario
+const drawSource = new VectorSource({ wrapX: false });
+const drawLayer = new VectorLayer({
+  source: drawSource,
+  style: new Style({
+    fill: new Fill({
+      color: 'rgba(25, 118, 210, 0.2)' // Azul menos oscuro
+    }),
+    stroke: new Stroke({
+      color: '#1976D2',
+      width: 4
+    }),
+    image: new CircleStyle({
+      radius: 7,
+      fill: new Fill({
+        color: '#1976D2'
+      })
+    })
+  })
+});
+drawLayer.set('name', 'draw_layer');
+
+// Fuente y capa para las propiedades filtradas por ATRIBUTO (EXISTENTE)
 const filteredPropertiesSource = new VectorSource();
 const filteredPropertiesLayer = new VectorLayer({
   source: filteredPropertiesSource,
   style: (feature) => {
     const nombre = feature.get('propietario_completo');
+    // Estilo para los resultados de FILTRO POR ATRIBUTO o ESPACIAL
     return new Style({
       stroke: new Stroke({
         color: 'rgba(255, 0, 0, 1.0)',
@@ -165,34 +208,120 @@ const zoomOut = () => {
   if (map.value) map.value.getView().setZoom(map.value.getView().getZoom() - 1);
 };
 
-// === FUNCIÓN CLAVE: ACTUALIZA Y RENDERIZA LOS DATOS ===
-const updateMapData = () => {
+/**
+ * Maneja el inicio y fin de la interacción de dibujo para la consulta espacial.
+ */
+const toggleDrawingMode = () => {
+  if (!map.value) return;
+
+  if (isDrawing.value) {
+    // Detener el modo de dibujo
+    map.value.removeInteraction(drawInteraction.value);
+    drawInteraction.value = null;
+    drawSource.clear(); // Limpiar el dibujo
+    isDrawing.value = false;
+    console.log('🛑 Modo de dibujo desactivado.');
+  } else {
+    // Iniciar el modo de dibujo
+    isDrawing.value = true;
+    drawSource.clear(); // Asegurar que no haya geometrías previas
+    filteredPropertiesSource.clear(); // Limpiar resultados de filtros anteriores
+    mapStore.queryResults = []; // Limpiar resultados del store
+
+    // Usamos 'Polygon' para el filtro de área
+    drawInteraction.value = new Draw({
+      source: drawSource,
+      type: 'Polygon',
+      freehand: true, // Permite dibujo a mano alzada
+    });
+
+    // Evento que se dispara al finalizar el dibujo
+    drawInteraction.value.on('drawend', handleDrawEnd);
+
+    map.value.addInteraction(drawInteraction.value);
+    console.log('✏️ Modo de dibujo activado. Dibuja un polígono para filtrar.');
+  }
+};
+
+/**
+ * Se ejecuta cuando el usuario termina de dibujar el polígono.
+ */
+const handleDrawEnd = async (event) => {
+  if (!map.value) return;
+
+  // 1. Detener la interacción de dibujo inmediatamente
+  map.value.removeInteraction(drawInteraction.value);
+  isDrawing.value = false;
+
+  const drawnFeature = event.feature;
+  const geometry = drawnFeature.getGeometry();
+
+  // 2. Convertir la geometría de 'EPSG:3857' (mapa) a 'EPSG:4326' (backend/PostGIS espera)
+  geometry.transform('EPSG:3857', 'EPSG:4326');
+
+  // 3. Crear el GeoJSON de la geometría dibujada
+  const geoJsonFormat = new GeoJSON();
+  const geoJson = geoJsonFormat.writeGeometryObject(geometry); // El objeto GeoJSON de la geometría
+
+  // 4. Crear el payload de la consulta.
+  const payload = {
+    geojson_search: geoJson,
+    filters: {
+      // Aquí se pueden añadir filtros atributivos adicionales (ej: tipo_propiedad: 'rural')
+    }
+  };
+
+  // 🚀 LOG AÑADIDO: Muestra exactamente lo que se va a enviar
+  console.log('--- [FRONTEND LOG] Payload de consulta enviado ---');
+  console.log(payload);
+  console.log('-------------------------------------------------');
+
+  // 5. Llamar a la acción del store para ejecutar la consulta espacial
+  const result = await mapStore.queryGeoSpatial(payload);
+
+  if (result.success) {
+    console.log('✅ Consulta espacial enviada. Resultados en el store.');
+  } else {
+    // Si falla, limpiar el dibujo y dar feedback
+    drawSource.clear();
+    alert(result.message || 'Error desconocido al realizar la consulta espacial.');
+  }
+};
+
+// === FUNCIÓN CLAVE: ACTUALIZA Y RENDERIZA LOS DATOS (EXISTENTE) ===
+const updateMapData = (sourceArray) => {
   if (!map.value) return;
   filteredPropertiesSource.clear();
 
   const SOURCE_PROJ = 'EPSG:32721';
   const TARGET_PROJ = 'EPSG:3857';
 
-  const allFeatures = props.properties.flatMap(item => {
+  const allFeatures = sourceArray.flatMap(item => {
     // Verificación robusta: GeoJSON debe ser un objeto y tener datos de geometría.
     if (!item.geojson) {
       return [];
     }
-    
-
     try {
       // 1. Leer las features del GeoJSON
+      // OpenLayers puede leer una GeoJSON Geometry o FeatureCollection.
       const features = new GeoJSON().readFeatures(item.geojson);
 
       features.forEach(f => {
-        // 2. Transformar la proyección (vital para que se muestre correctamente en el mapa)
-        f.getGeometry().transform(SOURCE_PROJ, TARGET_PROJ); 
-        f.setProperties({ ...item });
+        // 2. Determinar la proyección de origen y transformar a la del mapa (EPSG:3857)
+        // Asumimos 32721 para WFS/Cache (prop.padron_ccc) y 4326 para PostGIS Query.
+        const isWFSorCache = item.geojson.crs?.properties?.name?.includes('32721') || !!item.padron_ccc;
+        const inputProjection = isWFSorCache ? SOURCE_PROJ : 'EPSG:4326';
+
+        f.getGeometry().transform(inputProjection, TARGET_PROJ);
+        f.setProperties({
+          ...item,
+          propietario_completo: item.propietario_completo || 'Sin Nombre' // Asegurar que tenga un nombre para la etiqueta
+        });
       });
-      
+
       return features;
     } catch (e) {
-      console.warn('❌ Error al convertir o transformar GeoJSON:', item.id, e);
+      console.warn('❌ Error al convertir o transformar GeoJSON:', item.id_display || item.id, e);
       return [];
     }
   });
@@ -201,10 +330,10 @@ const updateMapData = () => {
   filteredPropertiesSource.addFeatures(allFeatures);
 
   if (allFeatures.length > 0) {
-    // 🔑 MEJORA: Hacemos la capa explícitamente visible y actualizamos el switch
-    filteredPropertiesLayer.setVisible(true); 
+    // Hacemos la capa explícitamente visible
+    filteredPropertiesLayer.setVisible(true);
     showFilteredParcelsLayer.value = true;
-    
+
     // Desactivar la capa de Catastro completa si activamos las filtradas
     catastroLayer.setVisible(false);
     showCatastroLayer.value = false;
@@ -221,6 +350,7 @@ const updateMapData = () => {
     }
   } else {
     // Si no hay features, limpiamos y ocultamos la capa
+    filteredPropertiesSource.clear();
     filteredPropertiesLayer.setVisible(false);
     showFilteredParcelsLayer.value = false;
   }
@@ -242,7 +372,8 @@ onMounted(() => {
         osmLayer,
         sentinelLayer,
         catastroLayer,
-        filteredPropertiesLayer, // La capa de datos filtrados
+        filteredPropertiesLayer, // La capa de datos filtrados (atributos O espacial)
+        drawLayer, // Capa para dibujar
       ],
       view: mapView,
       controls: defaultControls({ zoom: false, attribution: false })
@@ -255,11 +386,22 @@ onMounted(() => {
     map.value.on('moveend', () => {
       selectedZoom.value = mapView.getZoom();
     });
-    
+
     // Si ya hay propiedades al montar (ej: navegando hacia atrás), las renderiza
     if (props.properties.length > 0) {
-        updateMapData();
+        updateMapData(props.properties);
     }
+  }
+});
+
+// Limpieza al desmontar para evitar fugas de memoria, especialmente con interacciones
+onUnmounted(() => {
+  if (map.value && drawInteraction.value) {
+    map.value.removeInteraction(drawInteraction.value);
+  }
+  if (map.value) {
+    map.value.setTarget(null);
+    map.value = null;
   }
 });
 
@@ -281,13 +423,36 @@ watch(showFilteredParcelsLayer, (newValue) => {
   if (newValue) showCatastroLayer.value = false;
 });
 
+// WATCHER EXISTENTE: Reacciona a las propiedades filtradas por ATRIBUTO (prop)
 watch(() => props.properties, (newPropiedades) => {
-  // 2. Log en el Watcher (confirma que se están recibiendo datos)
-  updateMapData();
+  // Esta función sigue siendo válida para las consultas por atributos.
+  updateMapData(newPropiedades);
+}, { deep: true });
+
+// NUEVO WATCHER: Reacciona a los resultados de la CONSULTA ESPACIAL (store)
+watch(() => mapStore.queryResults, (newResults) => {
+  // Si hay resultados de la consulta espacial, renderizarlos y limpiar el dibujo
+  if (newResults.length > 0) {
+    updateMapData(newResults);
+    drawSource.clear(); // Limpiar el polígono dibujado
+  } else if (newResults.length === 0 && !mapStore.isQueryingSpatial && !isDrawing.value) {
+    // Si la consulta terminó sin resultados, limpiamos la capa de resultados
+    filteredPropertiesSource.clear();
+    showFilteredParcelsLayer.value = false;
+  }
 }, { deep: true });
 
 watch(selectedZoom, (newZoom) => {
   if (map.value) map.value.getView().setZoom(newZoom);
+});
+
+// Watcher para limpiar resultados y dibujo si se desactiva el modo filtrado
+watch(showFilteredParcelsLayer, (newValue) => {
+  if (!newValue) {
+    filteredPropertiesSource.clear();
+    // También limpiamos el store, para que al reactivar la capa (toggle) no reaparezcan
+    mapStore.queryResults = [];
+  }
 });
 </script>
 

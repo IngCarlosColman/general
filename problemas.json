@@ -1,0 +1,76 @@
+A. Tabla Existente: users (Identidad y Acceso)
+Recomendación de Alteración: Alterar la columna rol y la obligatoriedad de campos.
+
+Campo	Tipo	Nullable	Valor Inicial/Cambio Sugerido	Propósito
+id	INTEGER	NOT NULL		PK
+email	VARCHAR	NOT NULL		Login/Contacto principal.
+rol	VARCHAR(50)	NOT NULL	MODIFICACIÓN: Inicia como 'PENDIENTE_PAGO' o 'VISUALIZADOR_LIMITADO'. Solo cambia a 'editor' tras la verificación del pago.	
+first_name	VARCHAR	NOT NULL	ALTERACIÓN: Poner como NOT NULL.	
+last_name	VARCHAR	NOT NULL	ALTERACIÓN: Poner como NOT NULL.	
+telefono	VARCHAR(20)	NOT NULL	ALTERACIÓN: Poner como NOT NULL.	
+direccion	TEXT	NOT NULL	ALTERACIÓN: Poner como NOT NULL.	
+cedula	TEXT	NOT NULL	ALTERACIÓN: Poner como NOT NULL.	
+ruc	VARCHAR(20)	NULL	MANTENER/AÑADIR: Opcional en registro, obligatorio en facturación.	
+
+Exportar a Hojas de cálculo
+B. Tabla Nueva: planes (Estructura de Precios)
+Define la lógica de costos y cuentas.
+
+Campo	Tipo	Ejemplo de Dato	Propósito
+id_plan	SERIAL PRIMARY KEY	1	Identificador único del plan.
+nombre_plan	VARCHAR	"Mini Broker Anual"	Nombre del plan agrupado.
+recurrencia	VARCHAR	'Anual', 'Mensual'	Período de facturación.
+costo_total	NUMERIC(10, 2)	18270000	Precio final que el usuario debe pagar.
+max_cuentas	INTEGER	1, 5, 10...	Límite de usuarios (editores) que este plan incluye.
+
+Exportar a Hojas de cálculo
+C. Tabla Nueva: usuarios_suscripciones (Control de Pedidos y Activación/Desactivación)
+Esta es la tabla central del flujo de pago y renovación, diseñada para el control manual del administrador.
+
+Campo	Tipo	Propósito
+id_suscripcion	SERIAL PRIMARY KEY	ID de la transacción.
+id_usuario_principal	INTEGER (FK)	El usuario que realiza el pago.
+id_plan	INTEGER (FK)	Enlace al plan y costo adquirido.
+monto_transferido	NUMERIC(10, 2)	El monto reportado por el usuario.
+comprobante_url	VARCHAR(255)	Ruta/URL del comprobante de depósito digital. (Módulo de Subida).
+estado	VARCHAR(30)	CLAVE para el panel de control: PENDIENTE_VERIFICACION, ACTIVO, EXPIRADO, CANCELADO.
+fecha_pago_reportada	DATE	Fecha que el usuario dice haber pagado.
+fecha_habilitacion	TIMESTAMP	Inicio del período de servicio (Activación por Admin).
+fecha_vencimiento	DATE	Fin del período. Usada para la Desactivación Automática (si NOW() > fecha_vencimiento, el sistema cambia users.rol a 'EXPIRADO').
+id_admin_verificador	INTEGER (FK)	ID del administrador que verificó el pago.
+
+Exportar a Hojas de cálculo
+D. Tabla Nueva: facturacion_datos (Datos Fiscales)
+Almacena los datos necesarios para emitir la Nota Fiscal, desvinculándolos de la tabla users para mayor flexibilidad.
+
+Campo	Tipo	Nullable	Propósito
+id_usuario	INTEGER (PK/FK)	NOT NULL	Enlace al usuario principal (1:1).
+ruc_fiscal	VARCHAR(20)	NOT NULL	RUC para la facturación.
+razon_social	VARCHAR(255)	NOT NULL	Nombre o razón social.
+direccion_fiscal	TEXT	NULL	Dirección para el envío físico.
+metodo_entrega	VARCHAR(50)	NOT NULL	'Digital', 'Postal', 'Correo Convencional'.
+email_facturacion	VARCHAR(100)	NULL	Email dedicado a la factura.
+
+Exportar a Hojas de cálculo
+E. Tabla Nueva: suscripcion_cuentas_gestion (Gestión de Multi-Cuentas)
+Permite al administrador principal del plan invitar o gestionar sus cuentas secundarias.
+
+Campo	Tipo	Nullable	Propósito
+id_registro	SERIAL PRIMARY KEY	NOT NULL	ID del registro.
+id_suscripcion	INTEGER (FK)	NOT NULL	El pago que habilita esta cuenta.
+id_usuario_secundario	INTEGER (FK)	NULL	Enlace a users.id si ya existe.
+email_invitado	VARCHAR(100)	NOT NULL	Email para la invitación.
+estado_invitacion	VARCHAR(30)	NOT NULL	'PENDIENTE_INVITACION', 'ACEPTADA', 'RECHAZADA'.
+
+Exportar a Hojas de cálculo
+2. 🛡️ Flujo de Control para el Administrador
+El sistema requiere un Panel de Control simple para gestionar el cuello de botella de la verificación bancaria.
+
+Módulo del Panel	Propósito	Tablas Utilizadas	Acciones del Admin
+Pedidos Pendientes	Muestra todos los registros con estado = 'PENDIENTE_VERIFICACION'.	usuarios_suscripciones, users, planes	1. Descargar comprobante_url. 2. Verificar el banco. 3. Activar/Rechazar.
+Activación	Se ejecuta al confirmar el pago.	users, usuarios_suscripciones	1. usuarios_suscripciones.estado → 'ACTIVO'. 2. users.rol → 'editor'. 3. Disparo de Notificación (Email/SMS/WhatsApp).
+Cuentas por Vencer	Muestra suscripciones donde fecha_vencimiento está cerca (e.g., próximos 15 días).	usuarios_suscripciones	Permite enviar recordatorios de renovación al id_usuario_principal.
+Desactivación	Automatizada (Cron Job).	users, usuarios_suscripciones	Si NOW() > fecha_vencimiento Y estado = 'ACTIVO', el sistema automáticamente: users.rol → 'EXPIRADO'.
+
+Exportar a Hojas de cálculo
+Este diseño asegura que el rol 'editor' solo se asigne si hay una suscripción ACTIVA y un registro de pago verificado asociado.

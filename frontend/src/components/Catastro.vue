@@ -151,15 +151,30 @@
               <v-icon start>mdi-close</v-icon>
               Limpiar
             </v-btn>
-            </v-card-actions>
+            
+            <!-- 🔑 NUEVO BOTÓN MAPA EN LAS ACCIONES DEL FORMULARIO -->
+            <v-btn
+              color="info"
+              class="ma-2 font-weight-bold"
+              size="large"
+              variant="tonal"
+              @click="vermapas"
+            >
+              <v-icon start>mdi-map</v-icon>
+              Mapa
+            </v-btn>
+            
+          </v-card-actions>
         </div>
       </v-expand-transition>
     </v-card>
 
     <v-card-text class="mt-8">
+      <!-- Mantenemos los botones en la sección de la tabla, pero el botón principal
+           "Ver Mapas" (que ahora es handleViewMaps) está también en el formulario. -->
       <div class="d-flex justify-end align-center mb-4">
         <v-btn
-          :disabled="isGettingMaps || isCooldownActive"
+          :disabled="isGettingMaps"
           color="teal-darken-2"
           class="mx-2 font-weight-bold"
           variant="tonal"
@@ -167,9 +182,11 @@
           @click="handleGetMaps"
         >
           <v-icon start>mdi-map-search-outline</v-icon>
-          {{ isCooldownActive ? 'Enfriamiento...' : 'Obtener Mapas' }}
+          {{ 'Obtener Mapas' }}
         </v-btn>
-
+        
+        <!-- El botón "Ver Mapas" se hace redundante aquí ya que lo movimos arriba,
+             pero lo dejaremos para mantener la funcionalidad de la tabla. -->
         <v-btn
           color="blue-grey-darken-2"
           class="mx-2 font-weight-bold"
@@ -179,7 +196,7 @@
           :disabled="mapaStore.propiedadesMapa.length === 0"
         >
           <v-icon start>mdi-map-marker-radius</v-icon>
-          Ver Mapas
+          Ver Mapas (Tabla)
         </v-btn>
       </div>
 
@@ -346,7 +363,6 @@ const {
 // 🔑 AÑADIDO: Destructuramos los estados necesarios para el botón de mapas
 const {
   isGettingMaps,
-  isCooldownActive
 } = storeToRefs(mapaStore);
 
 
@@ -501,10 +517,13 @@ const handleViewMaps = () => {
   if (mapaStore.propiedadesMapa.length > 0) {
     showMap.value = true;
   } else {
-    showSnackbar('No hay propiedades con coordenadas para mostrar en el mapa.', 'warning');
+    showSnackbar('No hay propiedades con coordenadas para mostrar en el mapa. Intente usar "Obtener Mapas".', 'warning');
   }
 };
-
+const vermapas = () => {
+  // 🚀 ¡Activación directa y sin restricciones!
+  showMap.value = true;
+};
 const saveEditedItem = async () => {
   const result = await store.updateGeneralData(editingItem.cedula, {
     nombres: editingItem.propietario,

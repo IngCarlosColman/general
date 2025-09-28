@@ -1,38 +1,49 @@
-// src/routes/geo.routes.js
 const express = require('express');
 const router = express.Router();
 const geoController = require('../controllers/geo.controller');
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
 
 // Definimos los roles que tienen permiso para acceder a las rutas estándar
-const allowedRoles = ['administrador', 'editor'];
+const allowedRoles = ['administrador', 'editor', 'visualizador']; 
+// NOTA: Se añade 'visualizador' para consultas, aunque 'administrador' y 'editor' también pueden.
 
 // Aplicamos el middleware de autenticación a todas las rutas del router
 router.use(authenticateJWT);
 
-// Rutas protegidas con validación de roles
+// ====================================================================
+// RUTAS DE ESCRITURA (REQUIEREN ADMINISTRADOR/EDITOR)
+// ====================================================================
 
-// POST: 1. Ruta para insertar/actualizar una propiedad (Almacenamiento de GeoJSON)
-router.post('/geo-data', checkRoles(allowedRoles), geoController.upsertGeoData);
+// 1. POST (UPSERT): Ruta para insertar/actualizar una propiedad con su geometría.
+router.post('/geo-data', checkRoles(['administrador', 'editor']), geoController.upsertGeoData);
 
-// POST: 2. ⚡ NUEVA RUTA TURBO para consultar la caché de múltiples padrones (Batch Check)
+// 2. DELETE (POR ID): Ruta para eliminar un registro por su ID de la base de datos.
+router.delete('/geo-data/:id', checkRoles(['administrador', 'editor']), geoController.deleteGeoData);
+
+
+// ====================================================================
+// RUTAS DE LECTURA / CONSULTA (CACHÉ Y ESPACIAL)
+// ====================================================================
+
+// 3. POST (BATCH-CHECK): Ruta para consultar la caché de múltiples padrones a la vez.
+// Es un POST porque se envían datos (el array de padrones) en el body.
 router.post('/geo-data/batch-check', checkRoles(allowedRoles), geoController.batchCheckGeoData);
 
-// GET: 3. Ruta para obtener geojson por ID (o por query, si el controlador lo soporta)
-// Ajustada para usar ID en el parámetro de ruta (asumiendo que getGeoData utiliza req.params.id)
-router.get('/geo-data/:id', checkRoles(allowedRoles), geoController.getGeoData);
+// 4. POST (QUERY ESPACIAL): 🔑 NUEVA RUTA. Realiza una búsqueda espacial por polígono
+// y filtros atributivos (área, tipo_propiedad). Es POST porque la geometría va en el body.
+router.post('/geo-data/query', checkRoles(allowedRoles), geoController.queryGeoData);
 
-// DELETE: 4. Ruta para eliminar geojson por ID
-// Ajustada para usar ID en el parámetro de ruta (asumiendo que deleteGeoData utiliza req.params.id)
-router.delete('/geo-data/:id', checkRoles(allowedRoles), geoController.deleteGeoData);
+// 5. GET (DETALLE): Ruta para obtener el detalle de un registro por su clave de negocio
+// (cod_dep, cod_ciu, tipo_propiedad, padron_ccc) usando query parameters.
+// Ejemplo de llamada: GET /geo-data?cod_dep=X&cod_ciu=Y&padron_ccc=Z
+router.get('/geo-data', checkRoles(allowedRoles), geoController.getGeoData);
 
 
 // ====================================================================
-// 🧹 RUTA CRON JOB
+// RUTA CRON JOB (REQUIERE MÁXIMOS PERMISOS)
 // ====================================================================
 
-// DELETE: 5. Nueva ruta para la limpieza de registros antiguos (Cron Job)
-// Requiere rol de 'administrador' y es la que debe ser llamada por tu servicio de programación.
+// 6. DELETE (LIMPIEZA): Ruta para la limpieza de registros antiguos (Cron Job).
 router.delete('/geo-data/clean', checkRoles(['administrador']), geoController.cleanGeoDataCache);
 
 module.exports = router;
