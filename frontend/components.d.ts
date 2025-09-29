@@ -9,6 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Abogados: typeof import('./src/components/especializaciones/Abogados.vue')['default']
+    Ad: typeof import('./src/components/ad.vue')['default']
     AddContactDialog: typeof import('./src/components/agendautilities/AddContactDialog.vue')['default']
     AppFooter: typeof import('./src/components/AppFooter.vue')['default']
     Catastro: typeof import('./src/components/Catastro.vue')['default']
@@ -36,11 +37,16 @@ declare module 'vue' {
     Mapa: typeof import('./src/components/Mapa.vue')['default']
     Panel: typeof import('./src/components/Panel.vue')['default']
     PropertyMap: typeof import('./src/components/PropertyMap.vue')['default']
+    Requests: typeof import('./src/components/requests.vue')['default']
     RoleGuard: typeof import('./src/components/auth/RoleGuard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SearchAndActionsToolbar: typeof import('./src/components/comunes/SearchAndActionsToolbar.vue')['default']
-    SuscripcionPlanes: typeof import('./src/components/SuscripcionPlanes.vue')['default']
+    SolicitudesSuscripcion: typeof import('./src/components/SolicitudesSuscripcion.vue')['default']
+    SubscriptionRequestsManagement: typeof import('./src/components/SubscriptionRequestsManagement.vue')['default']
+    SuscripcionPlanes: typeof import('./src/pages/SuscripcionPlanes.vue')['default']
+    UnauthorizedSplash: typeof import('./src/components/UnauthorizedSplash.vue')['default']
+    UsersManagement: typeof import('./src/components/UsersManagement.vue')['default']
     UserSplashScreen: typeof import('./src/components/UserSplashScreen.vue')['default']
     Usersprofiles: typeof import('./src/components/usersprofiles.vue')['default']
   }

@@ -153,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useSuscripcionStore } from '@/stores/suscripcion';
 import { useAuthStore } from '@/stores/auth';
 
@@ -189,6 +189,7 @@ const getRoleColor = (rol) => {
  */
 const handleSubmitProof = async () => {
     store.uploadError = null; // Limpiar errores antes de intentar
+    store.uploadSuccess = false; // Limpiar éxito previo
     
     // Si ya está PENDIENTE_REVISION, evitamos cualquier acción.
     if (authStore.rol === 'PENDIENTE_REVISION') {
@@ -215,10 +216,12 @@ const handleSubmitProof = async () => {
     const result = await store.submitPaymentProof(selectedPlan.value, file);
 
     // Si la subida fue exitosa, limpiamos el campo. El rol de authStore se actualiza 
-    // dentro de submitPaymentProof, lo que hará que el componente se re-renderice
-    // y muestre la alerta de PENDIENTE_REVISION.
+    // dentro de submitPaymentProof (vía authStore.fetchUser), lo que hará que el componente 
+    // se re-renderice y muestre la alerta de PENDIENTE_REVISION.
     if (result.success) {
+        // Limpiamos el campo de archivo y la selección para una interfaz limpia
         comprobanteFile.value = null; 
+        selectedPlan.value = null; 
     }
 };
 

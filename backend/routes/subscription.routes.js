@@ -1,19 +1,18 @@
 const express = require('express');
 const router = express.Router();
 
-// 💡 userSubscriptionController: Maneja las solicitudes de PAGO del USUARIO (la subida del comprobante).
+// 💡 userSubscriptionController: Maneja las solicitudes de PAGO del USUARIO (la subida del comprobante y su revisión).
 const userSubscriptionController = require('../controllers/subscription.controller');
-// 💡 corporateSubscriptionController: Maneja la GESTIÓN de las entidades de suscripción (activación, listados).
+// 💡 corporateSubscriptionController: Maneja la GESTIÓN de las entidades de suscripción (activación, listados corporativos).
 const corporateSubscriptionController = require('../controllers/subscriptions.controller'); 
 
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
 const { uploadProof } = require('../middlewares/upload.middleware');
 // NOTA: Se asume que el middleware 'uploadProof' está correctamente configurado con Multer o similar
 
-// Roles permitidos para ver las solicitudes pendientes
+// Roles permitidos para las rutas de Administración
 const adminRole = ['administrador']; 
-// Roles permitidos para realizar la subida de comprobante
-// El rol PENDIENTE_PAGO es esencial.
+// Roles permitidos para realizar la subida de comprobante (PENDIENTE_PAGO es crucial aquí).
 const allowedRoles = ['administrador', 'editor', 'visualizador', 'PENDIENTE_PAGO', 'PENDIENTE_REVISION']; 
 
 
@@ -31,15 +30,14 @@ router.use(authenticateJWT);
 router.post(
     '/upload-proof', 
     checkRoles(allowedRoles), 
-    uploadProof, 
+    uploadProof, // Middleware Multer para manejar el archivo
     userSubscriptionController.uploadPaymentProof
 );
 
 
 // ==========================================================
-// --- Rutas de Administración (Revisión de Solicitudes) ---
-// Usan userSubscriptionController
-// Estas rutas requieren el rol 'administrador'
+// --- Rutas de ADMINISTRACIÓN (Revisión de Solicitudes) ---
+// Usan userSubscriptionController (Revisión de comprobantes)
 // ==========================================================
 
 // 2. GET: Obtener todas las solicitudes pendientes de revisión.
@@ -65,7 +63,8 @@ router.post('/admin/reject/:id', checkRoles(adminRole), (req, res) => {
 
 // ==========================================================
 // --- Rutas de ADMINISTRACIÓN (Gestión de Suscripciones Corporativas) ---
-// Usan corporateSubscriptionController
+// Usan corporateSubscriptionController (Gestión de la tabla principal de suscripciones)
+// Estas rutas son más para la gestión de entidades de suscripción ya existentes/activadas.
 // ==========================================================
 
 // 5. GET: Obtener lista de suscripciones corporativas o activas.
@@ -73,10 +72,10 @@ router.post('/admin/reject/:id', checkRoles(adminRole), (req, res) => {
 router.get(
     '/admin/list-subscriptions', 
     checkRoles(adminRole), 
-    corporateSubscriptionController.getPendingSubscriptions 
+    corporateSubscriptionController.getPendingSubscriptions // La función genérica de listado
 );
 
-// 6. POST: Activar una suscripción corporativa específica.
+// 6. POST: Activar una suscripción corporativa específica (Ej: para renovaciones manuales).
 // RUTA FINAL: /api/subscription/admin/activate-subscription/:id
 router.post(
     '/admin/activate-subscription/:id', 

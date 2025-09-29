@@ -2,14 +2,16 @@ const { pool } = require('../db/db');
 const fs = require('fs/promises');
 const path = require('path');
 
+
 // ==========================================================
 // Funciones Internas de Lógica de Negocio
 // ==========================================================
 
 /**
- * 🔑 Determina la duración del plan basado en el ID del plan detallado.
- * @param {string} planOptionId - ID de la opción del plan (ej: 'agente_mensual', 'mb_anual_5').
- * @returns {number} daysToAdd - Número de días a añadir a la fecha actual.
+ * @function getPlanDurationDays
+ * @description Mapea el ID de un plan a su duración en días.
+ * @param {string} planOptionId - ID del plan (e.g., 'agente_mensual').
+ * @returns {number} Duración del plan en días.
  */
 const getPlanDurationDays = (planOptionId) => {
     // Se mapean los días a la nueva estructura de planes:
@@ -31,119 +33,139 @@ const getPlanDurationDays = (planOptionId) => {
         case 'inm_anual_50':
             return 365; // 1 año (la duración es la misma, solo varía el cupo de usuarios/características)
         
-        case 'basic': // Casos heredados o simplificados del front-end
-        case 'standard':
-        case 'pro':
-             // Usaremos una lógica simple si el plan ID no es detallado
-             if (planOptionId === 'basic') return 30;
-             if (planOptionId === 'standard') return 90;
-             if (planOptionId === 'pro') return 365;
-
         default:
-            console.warn(`[PlanDuration] Plan ID no reconocido: ${planOptionId}`);
-            return 30; // 1 mes por defecto si no se reconoce
+            console.error(`[WARN] Plan ID desconocido: ${planOptionId}`);
+            return 30; // Valor por defecto para planes no mapeados
     }
 };
 
-
 /**
- * 🔑 Actualiza el rol del usuario a 'editor' y establece la fecha de expiración.
- * Esta función es crítica para el proceso de aprobación de pagos.
+ * 🔑 Actualiza el rol del usuario y establece la fecha de expiración si el rol es 'editor'.
  * @param {object} client - Cliente de DB (usar dentro de una transacción).
  * @param {number} userId - ID del usuario a actualizar.
- * @param {string} planOptionId - ID del plan seleccionado (ej: 'agente_mensual').
- * @returns {object} { expirationDate, updatedUser } - Fecha de expiración calculada y datos de usuario actualizados.
+ * @param {string} newRole - Nuevo rol del usuario.
+ * @param {string} [planOptionId] - ID del plan (solo necesario si newRole es 'editor').
+ * @returns {{updatedUser: object|null, expirationDate: Date|null}} - Usuario actualizado y fecha de expiración.
  */
-const updateUserRoleAndExpiration = async (client, userId, planOptionId) => {
-    const daysToAdd = getPlanDurationDays(planOptionId);
-    
-    // Calcula la fecha de expiración
-    const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + daysToAdd);
+const updateUserRoleAndExpiration = async (client, userId, newRole, planOptionId = null) => {
+    let expirationDate = null;
+    let expirationQueryPart = '';
 
-    // Formato YYYY-MM-DD para PostgreSQL DATE column
-    const formattedExpirationDate = expirationDate.toISOString().split('T')[0];
+    // Si el rol es 'editor', calculamos la fecha de vencimiento.
+    if (newRole === 'editor' && planOptionId) {
+        const daysToAdd = getPlanDurationDays(planOptionId);
+        expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + daysToAdd);
+        
+        // El $4 se usa en la consulta SQL para el campo suscripcion_vence
+        expirationQueryPart = `, suscripcion_vence = $4`; 
+    } else {
+        // Si no es 'editor', aseguramos que la fecha de vencimiento sea NULL si la tabla lo requiere,
+        // o simplemente omitimos la columna. Aquí omitiremos para simplificar ya que PENDIENTE_PAGO
+        // y PENDIENTE_REVISION no necesitan fecha de vencimiento.
+    }
 
-    // Actualiza el rol y la fecha de vencimiento en la tabla de usuarios
+    // Consulta que actualiza el rol
     const updateQuery = `
         UPDATE users 
-        SET rol = 'editor', 
-            suscripcion_vence = $1,
+        SET rol = $1, 
             updated_at = NOW()
+            ${expirationQueryPart} 
         WHERE id = $2
         RETURNING id, rol, first_name, last_name, email, telefono, direccion, suscripcion_vence;
     `;
-    const userUpdateResult = await client.query(updateQuery, [formattedExpirationDate, userId]);
 
-    if (userUpdateResult.rowCount === 0) {
-        throw new Error(`Usuario con ID ${userId} no encontrado.`);
+    const values = [newRole, userId];
+    if (expirationQueryPart) {
+        values.push(expirationDate); // Agregamos la fecha de expiración al array de valores para $4
     }
 
-    return { 
-        expirationDate: expirationDate, // Devuelve el objeto Date original
-        updatedUser: userUpdateResult.rows[0] // Devuelve los datos actualizados del usuario
+    const result = await client.query(updateQuery, values);
+    return {
+        updatedUser: result.rows[0] || null,
+        expirationDate: expirationDate
     };
 };
 
 
 // ==========================================================
-// 1. POST: Subir Comprobante de Pago (Endpoint de Usuario)
+// 1. Subida de Comprobante (Usuario)
 // ==========================================================
-const uploadPaymentProof = async (req, res) => {
-    // Esta función asume que `req.file` contiene el archivo subido
-    const planId = req.body.plan_id; 
-    const userId = req.user.id; // Asume que el middleware auth.middleware adjunta el user en req.user
-    const comprobantePath = req.file ? req.file.path : null; 
 
-    if (!planId || !comprobantePath) {
-        // Si el archivo no se subió o el plan no se envió, borramos el archivo si existe
-        if (comprobantePath) {
-            await fs.unlink(comprobantePath).catch(err => console.error('Error al borrar el archivo:', err));
+/**
+ * @function uploadPaymentProof
+ * @description Inserta una nueva solicitud de activación y actualiza el rol del usuario a 'PENDIENTE_REVISION'.
+ * @param {object} req - Objeto de solicitud (debe contener req.user.id, req.body.plan_id, req.file.path).
+ * @param {object} res - Objeto de respuesta.
+ */
+const uploadPaymentProof = async (req, res) => {
+    const userId = req.user.id; 
+    const { plan_id } = req.body;
+    // req.file.path es la ruta relativa del archivo guardado por Multer
+    const comprobante_path = req.file ? req.file.path : null; 
+
+    if (!plan_id || !comprobante_path) {
+        // Si falta plan_id o el archivo, intentamos limpiar el archivo por si acaso se subió
+        if (comprobante_path) {
+            await fs.unlink(path.join(process.cwd(), comprobante_path)).catch(err => {
+                console.warn(`[WARN] No se pudo eliminar el archivo subido sin datos completos: ${comprobante_path}`, err);
+            });
         }
-        return res.status(400).json({ error: 'Debe seleccionar un plan y adjuntar un comprobante.' });
+        return res.status(400).json({ error: 'El ID del plan y el comprobante de pago son obligatorios.' });
     }
 
     const client = await pool.connect();
+
     try {
         await client.query('BEGIN');
 
-        // 1. Insertar la solicitud de activación
+        // 1. Insertar la solicitud de activación con estado PENDIENTE_REVISION
         const insertQuery = `
             INSERT INTO solicitudes_activacion (
-                usuario_id, 
+                id_usuario, 
                 plan_id, 
                 comprobante_path, 
-                estado
-            )
-            VALUES ($1, $2, $3, 'PENDIENTE_REVISION')
-            RETURNING *;
+                estado,
+                fecha_solicitud
+            ) VALUES ($1, $2, $3, $4, NOW())
+            RETURNING id, id_usuario, plan_id, comprobante_path, estado, fecha_solicitud;
         `;
-        const result = await client.query(insertQuery, [userId, planId, comprobantePath]);
+        const solicitudResult = await client.query(insertQuery, [
+            userId,
+            plan_id,
+            comprobante_path,
+            'PENDIENTE_REVISION'
+        ]);
 
         // 2. Actualizar el rol del usuario a PENDIENTE_REVISION
-        const updateUserRoleQuery = `
-            UPDATE users 
-            SET rol = 'PENDIENTE_REVISION', 
-                updated_at = NOW()
-            WHERE id = $1;
-        `;
-        await client.query(updateUserRoleQuery, [userId]);
+        const { updatedUser } = await updateUserRoleAndExpiration(
+            client,
+            userId,
+            'PENDIENTE_REVISION',
+            null // No se pasa planId
+        );
 
         await client.query('COMMIT');
 
-        res.status(201).json({ 
-            message: 'Comprobante subido y solicitud registrada con éxito. Su cuenta está ahora PENDIENTE DE REVISIÓN.',
-            solicitud: result.rows[0]
+        // 3. Respuesta exitosa
+        res.status(201).json({
+            message: 'Comprobante de pago subido con éxito y solicitud registrada. Su cuenta está ahora PENDIENTE DE REVISIÓN.',
+            solicitud: solicitudResult.rows[0],
+            user: updatedUser // Devuelve el usuario para actualizar el estado en el frontend (rol)
         });
 
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error('[FAIL] Error en uploadPaymentProof:', err);
-        // Si falló la DB, intentamos borrar el archivo subido
-        if (comprobantePath) {
-            await fs.unlink(comprobantePath).catch(unlinkErr => console.warn(`No se pudo eliminar el archivo ${comprobantePath} tras error DB.`, unlinkErr));
+
+        // Intentar eliminar el archivo subido si falla la DB
+        if (comprobante_path) {
+            await fs.unlink(path.join(process.cwd(), comprobante_path)).catch(unlinkErr => {
+                console.warn(`[WARN] No se pudo eliminar el archivo ${comprobante_path} tras error de DB.`, unlinkErr);
+            });
         }
-        res.status(500).json({ error: 'Error interno del servidor al registrar la solicitud.' });
+
+        console.error('[🔥 FAIL] Error al subir comprobante en transacción:', err);
+        res.status(500).json({ error: 'Error interno del servidor al procesar la solicitud de pago.' });
     } finally {
         client.release();
     }
@@ -151,185 +173,132 @@ const uploadPaymentProof = async (req, res) => {
 
 
 // ==========================================================
-// 2. GET: Obtener Solicitudes Pendientes (Endpoint de Admin)
+// 2. Obtener Solicitudes Pendientes (Admin)
 // ==========================================================
+
+/**
+ * @function getPendingRequests
+ * @description Obtiene todas las solicitudes con estado 'PENDIENTE_REVISION'.
+ * @param {object} req - Objeto de solicitud.
+ * @param {object} res - Objeto de respuesta.
+ */
 const getPendingRequests = async (req, res) => {
     try {
-        // Solo administradores pueden acceder (protegido por middleware)
         const query = `
             SELECT 
                 sa.id, 
-                sa.usuario_id, 
-                u.username,
-                u.email,
-                u.first_name,
-                u.last_name,
                 sa.plan_id, 
                 sa.comprobante_path,
-                sa.fecha_creacion,
-                sa.estado
+                sa.fecha_solicitud,
+                sa.estado,
+                u.id AS user_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.telefono,
+                u.direccion
             FROM solicitudes_activacion sa
-            JOIN users u ON sa.usuario_id = u.id
+            JOIN users u ON sa.id_usuario = u.id
             WHERE sa.estado = 'PENDIENTE_REVISION'
-            ORDER BY sa.fecha_creacion ASC;
+            ORDER BY sa.fecha_solicitud ASC;
         `;
         const result = await pool.query(query);
-        res.status(200).json(result.rows);
-    } catch (err) {
-        console.error('[FAIL] Error en getPendingRequests:', err);
-        res.status(500).json({ error: 'Error interno del servidor al obtener las solicitudes.' });
-    }
-};
 
-
-// ==========================================================
-// 3. GET: Servir Archivo Comprobante (Endpoint de Admin)
-// ==========================================================
-// NOTA: Es crucial que esta ruta esté protegida por middleware de autenticación y roles de administrador.
-const serveProofFile = async (req, res) => {
-    try {
-        const { id } = req.params; // ID de la solicitud, no del archivo
-        
-        // 1. Buscar la ruta del archivo en la DB
-        const result = await pool.query(
-            'SELECT comprobante_path FROM solicitudes_activacion WHERE id = $1',
-            [id]
-        );
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Solicitud no encontrada.' });
-        }
-
-        const filePath = result.rows[0].comprobante_path;
-        
-        if (!filePath) {
-            return res.status(404).json({ error: 'Ruta de comprobante no disponible.' });
-        }
-
-        // 2. Enviar el archivo
-        // Usamos path.resolve para asegurar que la ruta sea absoluta y segura
-        const absolutePath = path.resolve(filePath);
-        
-        // Verificación de seguridad básica (evitar Path Traversal)
-        if (!absolutePath.startsWith(path.resolve('uploads/proofs'))) {
-            console.error(`[SECURITY ALERT] Intento de acceso fuera del directorio de uploads: ${absolutePath}`);
-            return res.status(403).json({ error: 'Acceso al archivo denegado.' });
-        }
-        
-        // Usamos path.basename para determinar el nombre de archivo a descargar
-        const fileName = path.basename(filePath);
-
-        // Envía el archivo con el nombre original como sugerencia de descarga
-        res.download(absolutePath, fileName, (err) => {
-            if (err) {
-                // Si ocurre un error (ej: archivo no encontrado en disco)
-                console.error(`[FAIL] Error al servir el archivo ${absolutePath}:`, err);
-                // Si el error es ENOENT (No such file or directory)
-                if (err.code === 'ENOENT') {
-                    res.status(404).send('El archivo comprobante no fue encontrado en el servidor.');
-                } else if (!res.headersSent) {
-                    // Si el error es otro y no hemos enviado headers aún
-                    res.status(500).send('Error interno del servidor al servir el archivo.');
-                }
-            }
+        res.status(200).json({
+            message: 'Solicitudes pendientes de revisión obtenidas con éxito.',
+            solicitudes: result.rows
         });
 
     } catch (err) {
-        console.error('[FAIL] Error en serveProofFile:', err);
-        res.status(500).json({ error: 'Error interno del servidor.' });
+        console.error('[🔥 FAIL] Error al obtener solicitudes pendientes:', err);
+        res.status(500).json({ error: 'Error interno del servidor al obtener solicitudes.' });
     }
 };
 
 
 // ==========================================================
-// 4. POST: Manejar Aprobación/Rechazo de Solicitud (Endpoint de Admin)
+// 3. Manejo de Acción de Solicitud (Admin)
 // ==========================================================
+
+/**
+ * @function handleRequestAction
+ * @description Aprueba o rechaza una solicitud de activación, actualizando la solicitud y el rol del usuario.
+ * @param {object} req - Objeto de solicitud (req.params.id, req.body.action, req.user.id).
+ * @param {object} res - Objeto de respuesta.
+ */
 const handleRequestAction = async (req, res) => {
     const { id: solicitudId } = req.params;
     const { action } = req.body; // 'APPROVE' o 'REJECT'
-    const adminId = req.user.id; // ID del administrador logueado
+    const adminId = req.user.id;
 
     if (!['APPROVE', 'REJECT'].includes(action)) {
-        return res.status(400).json({ error: 'Acción no válida.' });
+        return res.status(400).json({ error: 'Acción inválida. Debe ser APPROVE o REJECT.' });
     }
 
     const client = await pool.connect();
 
     try {
-        await client.query('BEGIN'); // Inicia la transacción
+        await client.query('BEGIN');
 
-        // 1. Obtener la solicitud actual
-        const requestQuery = `
-            SELECT usuario_id, plan_id, comprobante_path, estado 
+        // 1. Obtener la solicitud actual y verificar el estado
+        const getRequestQuery = `
+            SELECT id_usuario, comprobante_path, plan_id, estado
             FROM solicitudes_activacion 
-            WHERE id = $1 FOR UPDATE;
+            WHERE id = $1 AND estado = 'PENDIENTE_REVISION';
         `;
-        const requestResult = await client.query(requestQuery, [solicitudId]);
+        const requestResult = await client.query(getRequestQuery, [solicitudId]);
 
-        if (requestResult.rowCount === 0) {
+        if (requestResult.rows.length === 0) {
             await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Solicitud no encontrada.' });
+            return res.status(404).json({ error: 'Solicitud no encontrada o no está pendiente de revisión.' });
         }
 
-        const { usuario_id, plan_id, comprobante_path, estado } = requestResult.rows[0];
-
-        if (estado !== 'PENDIENTE_REVISION') {
-            await client.query('ROLLBACK');
-            return res.status(400).json({ error: `La solicitud ya fue ${estado}.` });
-        }
+        const { id_usuario: userId, comprobante_path, plan_id } = requestResult.rows[0];
 
         let newStatus;
         let responseMessage;
         let expirationDate = null;
         let updatedUser = null;
 
-        // 2. Lógica de Aprobación/Rechazo
+        // 2. Determinar el nuevo estado y actualizar el rol del usuario
         if (action === 'APPROVE') {
-            newStatus = 'APROBADO';
-            responseMessage = 'Solicitud aprobada. El usuario ha sido actualizado a editor.';
-            
-            // 2a. Actualizar el rol del usuario y la fecha de expiración.
-            const userUpdate = await updateUserRoleAndExpiration(client, usuario_id, plan_id);
-            expirationDate = userUpdate.expirationDate;
-            updatedUser = userUpdate.updatedUser;
+            newStatus = 'APROBADA';
+            responseMessage = 'Solicitud de activación aprobada.';
 
-            // 2b. Opcional: Registrar una entrada en la tabla de 'suscripciones_corporativas'
-            // Esto es necesario si el plan es corporativo y requiere gestión de cupos, 
-            // pero para esta implementación inicial, solo actualizamos el rol del usuario
-            // y la fecha de vencimiento. Si se necesita la tabla corporativa, se implementaría aquí.
-            
-        } else { // action === 'REJECT'
-            newStatus = 'RECHAZADO';
-            responseMessage = 'Solicitud rechazada.';
+            // CLAVE: Actualizar el rol a 'editor' y establecer la fecha de expiración
+            const updateResult = await updateUserRoleAndExpiration(
+                client,
+                userId,
+                'editor',
+                plan_id // Pasamos el plan_id para calcular la expiración
+            );
+            updatedUser = updateResult.updatedUser;
+            expirationDate = updateResult.expirationDate;
 
-            // 2c. Revertir el rol del usuario a 'PENDIENTE_PAGO' si fue rechazado
-            const revertRoleQuery = `
-                UPDATE users
-                SET rol = 'PENDIENTE_PAGO',
-                    updated_at = NOW()
-                WHERE id = $1
-                RETURNING id, rol;
-            `;
-            const revertResult = await client.query(revertRoleQuery, [usuario_id]);
-            if (revertResult.rowCount > 0) {
-                updatedUser = revertResult.rows[0];
-            }
-        }
-        
-        // 3. Limpieza de Archivo si se aprueba o se rechaza (es opcional, pero buena práctica si no se requiere el historial completo)
-        // NOTA: Para auditoría, es mejor mantener el archivo. Solo se eliminará el registro de la DB si se implementa un control de versiones de solicitudes.
-        if (action === 'REJECT' || action === 'APROVE') {
+        } else if (action === 'REJECT') {
+            newStatus = 'RECHAZADA';
+            responseMessage = 'Solicitud de activación rechazada. El usuario ha sido revertido a rol "PENDIENTE_PAGO".';
+
+            // CLAVE: Actualizar el rol a 'PENDIENTE_PAGO'
+            const updateResult = await updateUserRoleAndExpiration(
+                client,
+                userId,
+                'PENDIENTE_PAGO',
+                null
+            );
+            updatedUser = updateResult.updatedUser;
+
+            // 3. Eliminar el archivo de comprobante subido si es rechazado
             if (comprobante_path) {
                 try {
-                    await fs.unlink(path.resolve(comprobante_path));
-                    console.log(`[LOG] Archivo comprobante eliminado: ${comprobante_path}`);
+                    await fs.unlink(path.join(process.cwd(), comprobante_path));
+                    console.log(`[LOG] Archivo de comprobante eliminado: ${comprobante_path}`);
                 } catch (unlinkErr) {
-                    // Solo advertir si falla la eliminación, no abortar la transacción DB
-                    console.warn(`No se pudo eliminar el archivo ${comprobante_path}.`, unlinkErr);
+                    // Sólo advertir, no detener la transacción
+                    console.warn(`[WARN] No se pudo eliminar el archivo ${comprobante_path}.`, unlinkErr);
                 }
             }
         }
-
 
         // 4. Actualizar la solicitud
         const updateRequestQuery = `
@@ -350,10 +319,12 @@ const handleRequestAction = async (req, res) => {
             solicitud: updatedRequestResult.rows[0]
         };
         if (expirationDate) {
-            responseData.message += ` Rol actualizado a 'editor' hasta el ${expirationDate.toISOString().split('T')[0]}.`;
+            // Formatear la fecha para la respuesta del frontend
+            const formattedExpiration = expirationDate.toISOString().split('T')[0];
+            responseData.message += ` Rol actualizado a 'editor' hasta el ${formattedExpiration}.`;
         }
         if (updatedUser) {
-            // Adjuntamos los datos actualizados del usuario para que el frontend pueda recargar el store
+            // Adjuntamos los datos actualizados del usuario (esencial para el frontend)
             responseData.user = updatedUser; 
         }
 
@@ -372,6 +343,5 @@ const handleRequestAction = async (req, res) => {
 module.exports = {
     uploadPaymentProof,
     getPendingRequests,
-    serveProofFile,
-    handleRequestAction,
+    handleRequestAction
 };
