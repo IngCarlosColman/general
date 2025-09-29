@@ -16,17 +16,27 @@ const REFRESH_COOKIE_OPTIONS = {
 };
 
 
-// Registro de usuario
+// ===================================================================
+// 1. REGISTRO DE USUARIO PÚBLICO (Asigna rol PENDIENTE_PAGO)
+// ===================================================================
 const register = async (req, res) => {
     const { username, email, password, first_name, last_name, telefono, direccion } = req.body;
 
+    // 🔑 CAMBIO CLAVE: El rol por defecto es ahora PENDIENTE_PAGO
+    const defaultRole = 'PENDIENTE_PAGO'; 
+
+    if (!email || !password || !first_name) {
+        return res.status(400).json({ error: 'Email, Contraseña y Nombre son obligatorios.' });
+    }
+
     try {
         const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
-        const defaultRole = 'editor'; // Asignación de rol por defecto segura
 
         const result = await pool.query(
+            // El campo username no es estrictamente obligatorio si se usa email/nombre,
+            // pero lo mantenemos si existe en su esquema.
             'INSERT INTO users (username, email, password_hash, rol, first_name, last_name, telefono, direccion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [username, email, password_hash, defaultRole, first_name, last_name, telefono, direccion]
+            [username, email.toLowerCase(), password_hash, defaultRole, first_name, last_name, telefono, direccion]
         );
         
         const newUser = result.rows[0];
@@ -34,7 +44,10 @@ const register = async (req, res) => {
         // 🚨 MEJORA DE SEGURIDAD: Eliminar el hash antes de enviar la respuesta
         delete newUser.password_hash; 
 
-        res.status(201).json({ message: 'Usuario registrado con éxito', user: newUser });
+        res.status(201).json({ 
+            message: 'Registro exitoso. Debe completar el flujo de suscripción para activar su cuenta.', 
+            user: newUser 
+        });
     } catch (err) {
         if (err.code === '23505') {
             console.error('Error: El email ya está registrado.', err);
@@ -45,12 +58,14 @@ const register = async (req, res) => {
     }
 };
 
-// Login de usuario
+// ===================================================================
+// 2. LOGIN DE USUARIO (Verifica rol y pendiente de invitación)
+// ===================================================================
 const login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const userResult = await pool.query('SELECT id, username, email, rol, first_name, last_name, telefono, direccion, password_hash FROM users WHERE email = $1', [email]);
+        const userResult = await pool.query('SELECT id, username, email, rol, first_name, last_name, telefono, direccion, password_hash FROM users WHERE email = $1', [email.toLowerCase()]);
         const user = userResult.rows[0];
         if (!user) {
             return res.status(400).json({ error: 'Credenciales inválidas.' });
@@ -61,9 +76,39 @@ const login = async (req, res) => {
             return res.status(400).json({ error: 'Credenciales inválidas.' });
         }
 
+        // --- Lógica de Flujo de Suscripción (Multi-Cuenta) ---
+        // 🔑 NUEVO: Si el rol es PENDIENTE_PAGO o visualizador, chequeamos invitaciones.
+        if (user.rol === 'PENDIENTE_PAGO' || user.rol === 'visualizador') {
+            const checkInvitationQuery = `
+                SELECT 1 FROM suscripcion_cuentas_gestion 
+                WHERE email_invitado = $1 AND estado_invitacion = 'PENDIENTE_INVITACION'
+                LIMIT 1;
+            `;
+            const invitationResult = await pool.query(checkInvitationQuery, [email.toLowerCase()]);
+
+            if (invitationResult.rowCount > 0) {
+                // Si hay una invitación pendiente, generamos un token temporal
+                const tempToken = jwt.sign(
+                    { id: user.id, email: user.email, rol: user.rol }, 
+                    process.env.JWT_SECRET, 
+                    { expiresIn: '1h' }
+                );
+
+                // Señal al frontend para que fuerce la aceptación de la licencia
+                return res.status(200).json({
+                    message: 'Invitación pendiente de aceptación.',
+                    action: 'ACCEPT_INVITATION', // Señal al frontend
+                    token: tempToken,
+                    user: { id: user.id, email: user.email, rol: user.rol }
+                });
+            }
+        }
+        // --- Fin de Lógica de Flujo de Suscripción ---
+
+
         await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
-        // Verificación de secretos (Mantenido para chequeo de entorno)
+        // Verificación de secretos
         if (!process.env.JWT_SECRET || !process.env.REFRESH_SECRET) {
              console.error('❌ Una o ambas variables de secreto (JWT_SECRET/REFRESH_SECRET) no están definidas.');
              return res.status(500).json({ error: 'Configuración de seguridad inválida del servidor.' });
@@ -83,7 +128,7 @@ const login = async (req, res) => {
 
         const refreshToken = jwt.sign({ id: user.id }, process.env.REFRESH_SECRET, { expiresIn: '7d' }); // Token de larga duración
 
-        // Establecer la cookie de refresco usando la constante de opciones
+        // Establecer la cookie de refresco
         res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
 
         res.status(200).json({
@@ -105,7 +150,9 @@ const login = async (req, res) => {
     }
 };
 
-// Refresh token
+// ===================================================================
+// 3. REFRESH TOKEN (Se mantiene sin cambios, solo genera un nuevo token)
+// ===================================================================
 const refreshToken = async (req, res) => {
     const token = req.cookies.refreshToken;
     if (!token) {
@@ -146,10 +193,11 @@ const refreshToken = async (req, res) => {
     }
 };
 
-// Logout
+// ===================================================================
+// 4. LOGOUT (Se mantiene sin cambios)
+// ===================================================================
 const logout = (req, res) => {
     // Limpia la cookie del refresh token
-    // Se usa un objeto de opciones modificado para el borrado (maxAge 0)
     const logoutOptions = {
         httpOnly: REFRESH_COOKIE_OPTIONS.httpOnly,
         secure: REFRESH_COOKIE_OPTIONS.secure,

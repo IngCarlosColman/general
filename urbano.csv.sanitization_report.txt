@@ -1,0 +1,12 @@
+🧼 Reporte de Sanitización
+Archivo: urbano.csv
+Longitud original: 12637375
+Longitud sanitizada: 12144444
+
+Caracteres invisibles eliminados:
+  U+FEFF ('\ufeff'): 1
+
+Caracteres no imprimibles eliminados:
+  U+000D ('\r'): 492930
+
+Líneas con espacios al final: 0

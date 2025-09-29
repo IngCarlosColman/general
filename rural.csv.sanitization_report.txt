@@ -1,0 +1,12 @@
+🧼 Reporte de Sanitización
+Archivo: rural.csv
+Longitud original: 14680100
+Longitud sanitizada: 14008506
+
+Caracteres invisibles eliminados:
+  U+FEFF ('\ufeff'): 1
+
+Caracteres no imprimibles eliminados:
+  U+000D ('\r'): 671593
+
+Líneas con espacios al final: 0

@@ -74,3 +74,47 @@ Desactivación	Automatizada (Cron Job).	users, usuarios_suscripciones	Si NOW() >
 
 Exportar a Hojas de cálculo
 Este diseño asegura que el rol 'editor' solo se asigne si hay una suscripción ACTIVA y un registro de pago verificado asociado.
+-------------
+management.routes.js
+
+billing.routes.js
+
+admin.routes.js
+
+necesito agregar estas rutas.. o ya estan en el index.js
+----
+¡Excelente decisión! Con el backend listo, podemos enfocarnos en la experiencia de usuario.
+
+El objetivo del frontend será guiar al usuario a través de todos los estados del ciclo de vida de la aplicación: Registro/Login, Suscripción/Pago (como usuario PENDIENTE_PAGO), Espera de Verificación (como usuario PENDIENTE_VERIFICACION), y finalmente, la Aplicación Principal (como usuario EDITOR).
+
+A continuación, te presento un resumen del plan y los archivos esenciales que necesitaremos, utilizando React para la arquitectura, ya que permite una gestión de estado y componentes muy limpia para este tipo de flujos complejos.
+
+🧭 Resumen del Flujo y Estados de Usuario en el Frontend
+El frontend debe manejar la lógica de enrutamiento basada en el Rol del usuario (obtenido del token JWT) para mostrar la vista correcta:
+
+Rol de Usuario (Backend)	Vista Requerida (Frontend)	Descripción de la Tarea
+PENDIENTE_PAGO	SubscriptionPage	Debe ver los planes, los datos bancarios y el formulario para subir el comprobante.
+PENDIENTE_VERIFICACION	StatusPage	Debe ver un mensaje de espera indicando que su pago está siendo revisado por un administrador.
+EDITOR	MainApp/Dashboard	Acceso completo a la funcionalidad principal de la aplicación.
+ADMINISTRADOR	AdminPage	Acceso al panel para ver y aprobar/rechazar solicitudes_activacion.
+(Sin Token)	LoginPage/RegisterPage	Vistas de autenticación pública.
+
+Exportar a Hojas de cálculo
+📁 Lista de Archivos y Componentes a Crear
+Para mantener la regla de un solo archivo de la plataforma, crearemos un único archivo App.jsx que contendrá toda la lógica, el manejo de rutas y los componentes funcionales necesarios.
+
+Componente/Sección	Archivo	Descripción de la Tarea
+Componente Principal	app.jsx	Contendrá el componente principal App, que gestiona la autenticación, el estado del usuario (user, token, status) y el manejo de rutas (switch/case).
+Vistas de Autenticación	app.jsx	Componentes Login y Register para las rutas públicas.
+Página de Suscripción	app.jsx	Componente SubscriptionPage para usuarios PENDIENTE_PAGO. Incluye getAllPlans y submitPaymentProof.
+Página de Estatus	app.jsx	Componente StatusPage para usuarios PENDIENTE_VERIFICACION. Llama a getSubscriptionStatus.
+Página Principal	app.jsx	Componente Dashboard (o MainApp) para usuarios EDITOR.
+Página de Administrador	app.jsx	Componente AdminDashboard para usuarios ADMINISTRADOR. Incluye la gestión de solicitudes.
+Utilidades de API	app.jsx	Implementación de las funciones fetch (con manejo de tokens y errores de expiración) para llamar a tus endpoints de backend.
+
+Exportar a Hojas de cálculo
+🚀 Propuesta de Implementación Inicial
+Comenzaremos creando el archivo principal app.jsx que establecerá el layout base, la lógica de autenticación y los componentes de Login y Registro. Esto nos permitirá establecer el flujo inicial antes de implementar las vistas específicas de pago y administración.
+
+¿Quieres que generemos el esqueleto del app.jsx con React y Tailwind CSS?
+

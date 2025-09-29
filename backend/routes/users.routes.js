@@ -24,16 +24,15 @@ router.get('/users', checkRoles(adminRole), usersController.getAllUsers);
 
 
 // ==========================================================
-// --- Rutas que solo requieren Autenticación ---
+// --- Rutas de Perfil (Solo requieren Autenticación) ---
 // ==========================================================
 
-// Ruta para obtener los datos del usuario autenticado
-router.get('/user', usersController.getAuthenticatedUser);
+// 1. Obtener los datos del usuario autenticado
+router.get('/me', usersController.getAuthenticatedUser);
 
-// 🚨 RUTA BLINDADA: Actualización de Perfil Propio
-// Solo requiere autenticación. La clave de seguridad está en el CONTROLADOR:
-// Debe usar req.user.id para la actualización e ignorar cualquier ID en req.body/params.
-// Además, el controlador debe filtrar campos sensibles (como 'rol').
-router.put('/users', usersController.updateUserProfile); 
+// 2. 🔑 RUTA RECOMENDADA: Actualización de Perfil Propio
+// Usamos '/me/profile' para indicar que se actualiza el recurso propio.
+// El controlador usa req.user.id, lo que garantiza que solo el usuario se actualice a sí mismo.
+router.put('/me/profile', usersController.updateUserProfile); 
 
 module.exports = router;
