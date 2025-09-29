@@ -7,191 +7,255 @@ const path = require('path');
 // ==========================================================
 
 /**
+ * 🔑 Determina la duración del plan basado en el ID del plan detallado.
+ * @param {string} planOptionId - ID de la opción del plan (ej: 'agente_mensual', 'mb_anual_5').
+ * @returns {number} daysToAdd - Número de días a añadir a la fecha actual.
+ */
+const getPlanDurationDays = (planOptionId) => {
+    // Se mapean los días a la nueva estructura de planes:
+    switch (planOptionId) {
+        // --- PLAN AGENTES (Individuales) ---
+        case 'agente_mensual':
+            return 30; // 1 mes
+        case 'agente_semestral':
+            return 182; // 6 meses (aprox.)
+        case 'agente_anual':
+            return 365; // 1 año
+
+        // --- PLANES MINI BROKER / INMOBILIARIAS (Todos son anuales) ---
+        case 'mb_anual_5':
+        case 'mb_anual_10':
+        case 'mb_anual_15':
+        case 'inm_anual_20':
+        case 'inm_anual_30':
+        case 'inm_anual_50':
+            return 365; // 1 año
+            
+        default:
+            console.warn(`[PlanDuration] Plan desconocido: ${planOptionId}. Usando 30 días por defecto.`);
+            return 30; // Por defecto 1 mes
+    }
+};
+
+/**
  * 🔑 Actualiza el rol del usuario a 'editor' y establece la fecha de expiración.
  * @param {object} client - Cliente de DB (usar dentro de una transacción).
  * @param {number} userId - ID del usuario a actualizar.
- * @param {string} planId - ID del plan ('basic', 'standard', 'pro').
+ * @param {string} planId - ID de la opción del plan (ej: 'agente_anual').
  * @returns {Date} - Fecha de expiración calculada.
  */
 const updateUserRoleAndExpiration = async (client, userId, planId) => {
     // Lógica para determinar la duración del plan
-    let daysToAdd;
-    switch (planId) {
-        case 'basic':
-            daysToAdd = 30; // 1 mes
-            break;
-        case 'standard':
-            daysToAdd = 90; // 3 meses
-            break;
-        case 'pro':
-            daysToAdd = 365; // 1 año
-            break;
-        default:
-            daysToAdd = 30; // Por defecto 1 mes
-    }
+    const daysToAdd = getPlanDurationDays(planId);
 
     // Calcula la fecha de expiración
     const expirationDate = new Date();
     expirationDate.setDate(expirationDate.getDate() + daysToAdd);
 
+    // Actualizamos el rol a 'editor' (o el rol final que corresponda)
     const updateQuery = `
         UPDATE users 
         SET rol = 'editor', 
-            suscripcion_expira_el = $2
-        WHERE id = $1;
+            suscripcion_vence = $1, 
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING rol, id, suscripcion_vence;
     `;
-    await client.query(updateQuery, [userId, expirationDate]);
-    
+    // La fecha en formato ISO (YYYY-MM-DD) es ideal para PostgreSQL DATE
+    const expirationDateStr = expirationDate.toISOString().split('T')[0];
+    await client.query(updateQuery, [expirationDateStr, userId]);
+
     return expirationDate;
 };
 
 
 // ==========================================================
-// 1. Manejar Subida de Comprobante de Pago
+// 1. USUARIO: Subir Comprobante de Pago
 // ==========================================================
-const uploadPaymentProof = async (req, res) => {
-    
-    const { plan_id } = req.body;
-    const userId = req.user.id;
-    const uploadedFile = req.file;
 
-    if (!plan_id || !uploadedFile) {
-        if (uploadedFile) {
-            // Si el plan falta, pero el archivo subió, lo eliminamos por limpieza
-            const UPLOADS_DIR = path.join(__dirname, '../../uploads');
-            await fs.unlink(uploadedFile.path).catch(console.error);
-        }
-        return res.status(400).json({ error: 'Faltan datos (plan o comprobante).' });
+const uploadPaymentProof = async (req, res) => {
+    const client = await pool.connect();
+    const userId = req.user.id; // Asumimos que el usuario está autenticado
+    const { plan_id } = req.body; // El planId ahora es el option_id (ej: 'agente_mensual')
+    const comprobanteFile = req.file; // Archivo subido (via Multer en el middleware)
+
+    if (!comprobanteFile) {
+        return res.status(400).json({ error: 'Comprobante de pago es obligatorio.' });
+    }
+    if (!plan_id) {
+        // En una app real, verificaríamos que el plan_id sea uno de los válidos.
+        return res.status(400).json({ error: 'Debe seleccionar un plan de suscripción.' });
     }
 
-    const comprobantePath = uploadedFile.path;
-    const client = await pool.connect();
-
     try {
-        await client.query('BEGIN'); // Inicia la transacción
+        await client.query('BEGIN');
 
-        // 1. Registrar la solicitud en la base de datos
-        // Usamos ON CONFLICT para prevenir duplicados si el usuario intenta subir varias veces
+        // 1. Guardar la solicitud en la tabla 'solicitudes_activacion'
         const insertQuery = `
             INSERT INTO solicitudes_activacion 
-                (id_usuario, plan_solicitado, ruta_comprobante, estado, created_by)
-            VALUES ($1, $2, $3, 'PENDIENTE', $1)
-            ON CONFLICT (id_usuario) DO UPDATE
-            SET plan_solicitado = EXCLUDED.plan_solicitado,
-                ruta_comprobante = EXCLUDED.ruta_comprobante,
-                estado = 'PENDIENTE',
-                fecha_solicitud = NOW(),
-                revisado_por = NULL,
-                fecha_revision = NULL
-            WHERE solicitudes_activacion.estado != 'APROBADO' 
+            (id_usuario, plan_id, comprobante_path, estado, fecha_solicitud)
+            VALUES ($1, $2, $3, $4, NOW())
             RETURNING *;
         `;
-        const result = await client.query(insertQuery, [userId, plan_id, comprobantePath]);
+        // Guardamos la ruta relativa al servidor, Multer debería encargarse del path
+        const comprobantePath = comprobanteFile.path; 
 
-        // 2. Actualizar el rol del usuario a PENDIENTE_REVISION
+        await client.query(insertQuery, [
+            userId, 
+            plan_id, 
+            comprobantePath, 
+            'PENDIENTE_REVISION' // Estado inicial de la solicitud
+        ]);
+
+        // 2. Actualizar el rol del usuario a 'PENDIENTE_REVISION' para bloquear la UI
         const updateRoleQuery = `
-            UPDATE users SET rol = 'PENDIENTE_REVISION' WHERE id = $1 AND rol != 'administrador';
+            UPDATE users 
+            SET rol = 'PENDIENTE_REVISION', 
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, username, rol, email, first_name, last_name, telefono, direccion;
         `;
-        await client.query(updateRoleQuery, [userId]);
+        const updateResult = await client.query(updateRoleQuery, [userId]);
+        const updatedUser = updateResult.rows[0];
 
         await client.query('COMMIT'); // Confirma la transacción
-        
-        console.log(`[SUBSCRIPTION LOG] Solicitud registrada para user: ${userId}, plan: ${plan_id}. Archivo: ${uploadedFile.filename}`);
-        
-        res.status(200).json({ 
-            message: 'Comprobante subido y solicitud registrada/actualizada con éxito. Pendiente de revisión.',
-            solicitud: result.rows[0]
+
+        res.status(200).json({
+            message: 'Comprobante recibido con éxito. Su cuenta está PENDIENTE DE REVISIÓN.',
+            user: updatedUser // Devolvemos el objeto de usuario actualizado para Pinia Store
         });
 
     } catch (err) {
         await client.query('ROLLBACK'); // Revierte si algo falla
-        console.error('[🔥 FAIL] Error al registrar la solicitud de suscripción:', err);
+        console.error('[🔥 FAIL] Error al subir el comprobante:', err);
         
-        // Eliminación del archivo en caso de fallo de DB
+        // 3. Limpieza de archivo en caso de fallo en DB
         try {
-            await fs.unlink(comprobantePath);
-            console.log(`[CLEANUP] Archivo eliminado con éxito tras fallo en DB: ${comprobantePath}`);
-        } catch (unlinkError) {
-            console.error(`[CLEANUP FAIL] No se pudo eliminar el archivo: ${comprobantePath}`, unlinkError);
+            if (comprobanteFile && comprobanteFile.path) {
+                // path.resolve() es crucial si el path devuelto por Multer es relativo
+                await fs.unlink(path.resolve(comprobanteFile.path)); 
+            }
+        } catch (unlinkErr) {
+            console.error('Error al intentar eliminar el archivo tras fallo de DB:', unlinkErr);
         }
 
-        res.status(500).json({ error: 'Error interno del servidor al procesar la solicitud.' });
+        res.status(500).json({ error: 'Error interno del servidor al registrar la solicitud.' });
     } finally {
         client.release();
     }
 };
 
 // ==========================================================
-// 2. Obtener Solicitudes Pendientes (Solo Admin)
+// 2. ADMIN: Obtener Solicitudes Pendientes
 // ==========================================================
+
 const getPendingRequests = async (req, res) => {
     try {
         const query = `
-            SELECT sa.id, sa.plan_solicitado, sa.ruta_comprobante, sa.estado, sa.fecha_solicitud,
-                   u.id AS id_usuario, u.email, u.first_name, u.last_name, u.rol AS current_rol
+            SELECT 
+                sa.id, 
+                sa.plan_id, 
+                sa.comprobante_path, 
+                sa.fecha_solicitud,
+                sa.estado,
+                u.username,
+                u.email,
+                u.first_name,
+                u.last_name
             FROM solicitudes_activacion sa
             JOIN users u ON sa.id_usuario = u.id
-            WHERE sa.estado = 'PENDIENTE'
+            WHERE sa.estado = 'PENDIENTE_REVISION'
             ORDER BY sa.fecha_solicitud ASC;
         `;
         const result = await pool.query(query);
-
-        res.status(200).json({ items: result.rows });
+        res.status(200).json(result.rows);
     } catch (err) {
-        console.error('Error al obtener solicitudes pendientes:', err);
+        console.error('[FAIL] Error al obtener solicitudes pendientes:', err);
         res.status(500).json({ error: 'Error interno del servidor.' });
     }
 };
 
 // ==========================================================
-// 3. Manejar Aprobación o Rechazo (Solo Admin)
+// 3. ADMIN: Manejar Acción (Aprobar/Rechazar)
 // ==========================================================
+
 const handleRequestAction = async (req, res) => {
+    const client = await pool.connect();
     const { id: solicitudId } = req.params;
     const { action } = req.body; // 'APPROVE' o 'REJECT'
-    const adminId = req.user.id;
+    const adminId = req.user.id; // ID del administrador que realiza la acción
     
     if (!['APPROVE', 'REJECT'].includes(action)) {
-        return res.status(400).json({ error: 'Acción no válida. Debe ser APPROVE o REJECT.' });
+        return res.status(400).json({ error: 'Acción inválida.' });
     }
 
-    const client = await pool.connect();
-
     try {
-        await client.query('BEGIN'); // Inicia la transacción
+        await client.query('BEGIN');
 
-        // 1. Obtener la solicitud actual
-        const getRequestQuery = 'SELECT id_usuario, plan_solicitado, estado, ruta_comprobante FROM solicitudes_activacion WHERE id = $1 FOR UPDATE;';
-        const requestResult = await client.query(getRequestQuery, [solicitudId]);
+        // 1. Obtener los detalles de la solicitud antes de cambiar el estado
+        const detailQuery = `
+            SELECT id_usuario, plan_id, comprobante_path, estado 
+            FROM solicitudes_activacion 
+            WHERE id = $1 AND estado = 'PENDIENTE_REVISION'
+            FOR UPDATE; -- Bloquea la fila
+        `;
+        const detailResult = await client.query(detailQuery, [solicitudId]);
 
-        if (requestResult.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Solicitud no encontrada.' });
+        if (detailResult.rows.length === 0) {
+            await client.query('COMMIT'); // Libera el bloqueo si no se encuentra/ya fue procesada
+            return res.status(404).json({ error: 'Solicitud no encontrada o ya procesada.' });
         }
-
-        const { id_usuario, plan_solicitado, estado, ruta_comprobante } = requestResult.rows[0];
-
-        if (estado !== 'PENDIENTE') {
-            await client.query('ROLLBACK');
-            return res.status(409).json({ error: `La solicitud ya fue ${estado}.` });
-        }
-
-        let newStatus = action === 'APPROVE' ? 'APROBADO' : 'RECHAZADO';
-        let responseMessage = action === 'APPROVE' ? 'Solicitud aprobada.' : 'Solicitud rechazada.';
-        let expirationDate = null;
         
-        // 2. Ejecutar la lógica de acción
+        const { id_usuario, plan_id, comprobante_path } = detailResult.rows[0];
+
+        let newStatus;
+        let responseMessage;
+        let expirationDate = null;
+        let updatedUser = null;
+
         if (action === 'APPROVE') {
-            // 2a. Si se aprueba, actualizar rol y expiración del usuario
-            expirationDate = await updateUserRoleAndExpiration(client, id_usuario, plan_solicitado);
+            newStatus = 'APROBADA';
+            responseMessage = `Solicitud ${solicitudId} aprobada. Usuario activado.`;
+            
+            // 2. Actualizar el rol del usuario y la fecha de expiración
+            expirationDate = await updateUserRoleAndExpiration(client, id_usuario, plan_id);
+            
+            // 3. Obtener el usuario actualizado para el frontend
+            const userResult = await client.query(`
+                SELECT id, username, rol, email, first_name, last_name, telefono, direccion, suscripcion_vence 
+                FROM users 
+                WHERE id = $1;
+            `, [id_usuario]);
+            updatedUser = userResult.rows[0];
             
         } else if (action === 'REJECT') {
-            // 2b. Si se rechaza, podemos opcionalmente cambiar el rol de vuelta a PENDIENTE_PAGO
-            const downgradeQuery = `UPDATE users SET rol = 'PENDIENTE_PAGO' WHERE id = $1 AND rol = 'PENDIENTE_REVISION';`;
-            await client.query(downgradeQuery, [id_usuario]);
+            newStatus = 'RECHAZADA';
+            responseMessage = `Solicitud ${solicitudId} rechazada.`;
+            
+            // Revertir el rol del usuario a 'visualizador' (o el rol que debe tener sin suscripción)
+            const updateRoleQuery = `
+                UPDATE users 
+                SET rol = 'visualizador', 
+                    updated_at = NOW(),
+                    suscripcion_vence = NULL
+                WHERE id = $1
+                RETURNING id, username, rol, email, first_name, last_name, telefono, direccion;
+            `;
+            const updateResult = await client.query(updateRoleQuery, [id_usuario]);
+            updatedUser = updateResult.rows[0];
+
+            // Opcional: Eliminar el archivo comprobante
+            if (comprobante_path) {
+                try {
+                    await fs.unlink(path.resolve(comprobante_path));
+                    console.log(`Archivo ${comprobante_path} eliminado.`);
+                } catch (unlinkErr) {
+                    console.warn(`No se pudo eliminar el archivo ${comprobante_path}.`, unlinkErr);
+                }
+            }
         }
-        
-        // 3. Actualizar el estado de la solicitud
+
+        // 4. Actualizar la solicitud
         const updateRequestQuery = `
             UPDATE solicitudes_activacion 
             SET estado = $1, 
@@ -202,8 +266,6 @@ const handleRequestAction = async (req, res) => {
         `;
         const updatedRequestResult = await client.query(updateRequestQuery, [newStatus, adminId, solicitudId]);
 
-        // 4. (Opcional) Limpieza de Archivo si se aprueba o se rechaza (para evitar almacenamiento innecesario)
-        // NOTA: Es común mantener el archivo por motivos de auditoría. Aquí lo mantendremos a menos que el estado sea 'CERRADO'.
 
         await client.query('COMMIT'); // Confirma la transacción
 
@@ -213,6 +275,9 @@ const handleRequestAction = async (req, res) => {
         };
         if (expirationDate) {
             responseData.message += ` Rol actualizado a 'editor' hasta el ${expirationDate.toISOString().split('T')[0]}.`;
+        }
+        if (updatedUser) {
+            responseData.user = updatedUser;
         }
 
         res.status(200).json(responseData);
@@ -225,7 +290,6 @@ const handleRequestAction = async (req, res) => {
         client.release();
     }
 };
-
 
 module.exports = {
     uploadPaymentProof,

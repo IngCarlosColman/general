@@ -1,167 +1,138 @@
 <template>
   <v-container fluid class="pa-4 subscription-container">
-    <v-card class="pa-6 rounded-xl shadow-lg elevation-8">
+    <v-card class="pa-6 rounded-xl shadow-lg elevation-8 bg-white">
       <v-card-title class="text-h4 font-weight-black text-center mb-4 text-primary">
         ¡Bienvenido! Active su Licencia
       </v-card-title>
       <v-card-text>
         <p class="text-center text-subtitle-1 mb-6 text-medium-emphasis">
-          Para comenzar a utilizar nuestra plataforma, seleccione un plan y suba su comprobante de pago para la activación. Su rol actual es: <v-chip color="warning" class="font-weight-bold ml-2">PENDIENTE_PAGO</v-chip>
+          Para comenzar a utilizar nuestra plataforma, seleccione un plan y suba su comprobante de pago para la activación. Su rol actual es: 
+          <v-chip color="warning" class="font-weight-bold ml-2">{{ authStore.rol.toUpperCase() }}</v-chip>
         </p>
 
         <v-divider class="mb-6"></v-divider>
 
-        <!-- Sección de Planes -->
+        <!-- Sección de Planes Agrupados -->
         <h2 class="text-h5 font-weight-bold mb-4">1. Elija su Plan</h2>
-        <v-row>
-          <!-- Tarjeta de Plan -->
-          <v-col v-for="plan in plans" :key="plan.id" cols="12" md="4">
-            <v-card
-              class="plan-card"
-              :class="{ 'plan-card-selected': selectedPlan === plan.id }"
-              @click="selectedPlan = plan.id"
-              :color="selectedPlan === plan.id ? 'blue-lighten-5' : 'grey-lighten-5'"
-              hover
-              flat
-            >
-              <v-card-title class="text-h5 font-weight-bold text-center text-blue-darken-3">{{ plan.name }}</v-card-title>
-              <v-card-subtitle class="text-center text-h6 font-weight-bold text-green-darken-2 py-2">{{ plan.price }}</v-card-subtitle>
-              <v-card-text>
-                <v-list density="compact" class="bg-transparent">
-                  <v-list-item v-for="(feature, i) in plan.features" :key="i" class="py-1">
-                    <template v-slot:prepend>
-                      <v-icon color="success" icon="mdi-check-circle-outline"></v-icon>
-                    </template>
-                    <v-list-item-title class="text-body-2">{{ feature }}</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-                <v-btn
-                  :color="selectedPlan === plan.id ? 'primary' : 'grey'"
-                  variant="flat"
-                  block
-                  class="mt-4"
-                  :disabled="selectedPlan === plan.id"
-                >
-                  {{ selectedPlan === plan.id ? 'Seleccionado' : 'Seleccionar' }}
-                </v-btn>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
         
-        <v-divider class="my-6"></v-divider>
+        <div v-for="planCategory in store.plans" :key="planCategory.id" class="mb-10">
+            <h3 class="text-h6 font-weight-bold mb-4 text-secondary">{{ planCategory.name }} <span class="text-medium-emphasis text-body-2">- {{ planCategory.description }}</span></h3>
+            
+            <v-row>
+                <!-- Opciones de Plan dentro de la Categoría -->
+                <v-col v-for="option in planCategory.options" :key="option.option_id" cols="12" md="4">
+                    <v-card
+                        class="plan-card"
+                        :class="{ 'plan-card-selected': selectedPlan === option.option_id }"
+                        @click="selectedPlan = option.option_id"
+                        :color="selectedPlan === option.option_id ? 'blue-lighten-5' : 'grey-lighten-4'"
+                        hover
+                        min-height="300"
+                    >
+                        <v-card-text class="d-flex flex-column justify-space-between h-100">
+                            <div>
+                                <h4 class="text-h5 font-weight-bold mb-3 text-primary">{{ option.name }}</h4>
+                                
+                                <div class="mb-3">
+                                    <p class="text-caption text-medium-emphasis">Costo Unitario Mensual (Equivalente):</p>
+                                    <p class="text-h6 font-weight-black text-success">{{ store.formatCurrency(option.guaranies_unitario) }}</p>
+                                </div>
+
+                                <div class="mb-4">
+                                    <p class="text-caption text-medium-emphasis">Total (Pago Único):</p>
+                                    <p class="text-h5 font-weight-black text-blue-darken-3">{{ store.formatCurrency(option.guaranies_total) }}</p>
+                                </div>
+                                
+                                <v-chip 
+                                    v-if="option.ahorro !== 'Sin descuento'"
+                                    color="green" 
+                                    variant="flat" 
+                                    density="comfortable" 
+                                    class="mb-3 font-weight-bold"
+                                >
+                                    ¡Ahorra {{ option.ahorro }}!
+                                </v-chip>
+                            </div>
+
+                            <!-- Lista de Características -->
+                            <v-list density="compact" class="bg-transparent mt-3">
+                                <v-list-item v-for="(feature, i) in option.features" :key="i" class="pa-0">
+                                    <template v-slot:prepend>
+                                        <v-icon color="success" size="small" class="mr-2">mdi-check-circle</v-icon>
+                                    </template>
+                                    <v-list-item-title class="text-body-2">{{ feature }}</v-list-item-title>
+                                </v-list-item>
+                            </v-list>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+            </v-row>
+        </div>
+
+        <v-divider class="mb-6"></v-divider>
 
         <!-- Sección de Subida de Comprobante -->
-        <h2 class="text-h5 font-weight-bold mb-4">2. Subir Comprobante de Pago</h2>
-        
-        <v-alert
-            v-if="store.uploadSuccess"
-            type="success"
-            icon="mdi-check-all"
-            closable
-            class="mb-4 elevation-2"
-        >
-            {{ store.userMessage }}
-            <p class="mt-2 text-caption">Su solicitud ha sido enviada. Un administrador revisará el pago y activará su cuenta en breve.</p>
-        </v-alert>
-
-        <v-alert
-            v-if="store.uploadError"
-            type="error"
-            icon="mdi-alert-circle-outline"
-            closable
-            class="mb-4 elevation-2"
-        >
-            {{ store.uploadError }}
-        </v-alert>
+        <h2 class="text-h5 font-weight-bold mb-4">2. Suba su Comprobante de Pago</h2>
 
         <v-form @submit.prevent="handleSubmitProof">
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-file-input
+            <v-file-input
                 v-model="comprobanteFile"
-                label="Adjuntar Comprobante (PDF, JPG, PNG)"
-                hint="Adjunte una imagen o PDF de su transferencia/depósito."
-                persistent-hint
-                accept=".pdf,.jpg,.jpeg,.png"
-                :disabled="!selectedPlan || store.isUploading || store.uploadSuccess"
-                prepend-icon="mdi-paperclip"
-                show-size
-                clearable
-                :rules="[v => !!v || 'El comprobante es obligatorio']"
-              ></v-file-input>
-            </v-col>
+                label="Comprobante de Pago (PDF o Imagen)"
+                accept="image/*,application/pdf"
+                prepend-icon="mdi-camera"
+                :rules="[v => !!v || 'Debe subir el comprobante.']"
+                variant="outlined"
+                class="mb-4"
+            ></v-file-input>
 
-            <v-col cols="12" md="6" class="d-flex align-center">
-              <v-btn
-                :loading="store.isUploading"
-                :disabled="!selectedPlan || !comprobanteFile || store.uploadSuccess"
-                color="success"
-                size="large"
-                prepend-icon="mdi-upload-multiple"
+            <v-alert
+                v-if="store.uploadError"
+                type="error"
+                icon="mdi-alert-circle"
+                class="mb-4"
+                density="compact"
+            >{{ store.uploadError }}</v-alert>
+
+            <v-alert
+                v-if="store.uploadSuccess"
+                type="success"
+                icon="mdi-check-circle"
+                class="mb-4"
+                density="compact"
+            >{{ store.userMessage }}</v-alert>
+
+            <v-btn
                 type="submit"
+                color="primary"
+                size="large"
                 block
-                class="elevation-4"
-              >
-                Enviar Solicitud de Activación
-              </v-btn>
-            </v-col>
-          </v-row>
+                :loading="store.isUploading"
+                :disabled="!selectedPlan || !comprobanteFile || store.isUploading"
+                class="font-weight-bold text-white"
+            >
+                <v-icon left>mdi-upload</v-icon>
+                Enviar Comprobante y Solicitar Activación
+            </v-btn>
         </v-form>
 
+        <v-divider class="my-6"></v-divider>
+        <div class="text-center text-medium-emphasis text-caption">
+            * El precio unitario es el equivalente mensual del costo total, aplicado el descuento por volumen/frecuencia.
+        </div>
       </v-card-text>
     </v-card>
   </v-container>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSuscripcionStore } from '@/stores/suscripcion';
+import { useAuthStore } from '@/stores/auth';
 
 const store = useSuscripcionStore();
-
-// Estado local
-const selectedPlan = ref(null); 
-const comprobanteFile = ref(null); 
-
-// Planes de ejemplo
-const plans = ref([
-  {
-    id: 'basic',
-    name: 'Básico',
-    price: '₲ 100.000 / Mes',
-    features: [
-      'Acceso a Búsqueda Catastral',
-      '50 Consultas WFS al día',
-      'Visualización de 50 propiedades guardadas',
-      'Soporte estándar por email'
-    ]
-  },
-  {
-    id: 'standard',
-    name: 'Estándar (Recomendado)',
-    price: '₲ 250.000 / Mes',
-    features: [
-      'Todo lo del Básico',
-      'Consultas WFS ilimitadas',
-      'Visualización de 500 propiedades guardadas',
-      'Filtro por área Geoespacial',
-      'Soporte prioritario por WhatsApp'
-    ]
-  },
-  {
-    id: 'pro',
-    name: 'Profesional',
-    price: '₲ 500.000 / Mes',
-    features: [
-      'Todo lo del Estándar',
-      'Visualización de 5000 propiedades guardadas',
-      'Funcionalidad de exportación a CSV/KML',
-      'Gestión de 2 usuarios visualizadores adicionales',
-      'Atención personalizada 24/7'
-    ]
-  }
-]);
+const authStore = useAuthStore();
+const selectedPlan = ref(null);
+const comprobanteFile = ref(null);
 
 /**
  * Maneja el envío del formulario.
@@ -185,7 +156,13 @@ const handleSubmitProof = async () => {
     }
 
     // Llamada a la acción del store
-    await store.submitPaymentProof(selectedPlan.value, file);
+    const result = await store.submitPaymentProof(selectedPlan.value, file);
+
+    // Si la subida fue exitosa, limpiamos el campo y seleccionamos el plan
+    if (result.success) {
+        // No limpiamos selectedPlan para que el usuario sepa qué plan seleccionó
+        comprobanteFile.value = null; 
+    }
 };
 
 </script>
@@ -200,15 +177,20 @@ const handleSubmitProof = async () => {
     border: 3px solid transparent;
     transition: all 0.3s ease-in-out;
     cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    height: 100%; /* Asegura que todas las tarjetas tengan la misma altura */
 }
-/* Estilo para la tarjeta seleccionada */
+.plan-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+}
 .plan-card-selected {
-    border-color: #1976D2 !important; /* Vuetify Primary Blue */
-    box-shadow: 0 0 18px rgba(25, 118, 210, 0.6) !important;
+    border-color: #1976D2 !important; /* Color primario de Vuetify */
+    box-shadow: 0 0 15px rgba(25, 118, 210, 0.5) !important;
 }
-/* Asegura que los textos largos en la lista se envuelvan */
-.v-list-item-title {
-    white-space: normal;
-    font-size: 0.9rem;
+
+/* Fuerza el 100% de altura en el contenido de la tarjeta */
+.v-card-text.h-100 {
+    height: 100%;
 }
 </style>

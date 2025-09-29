@@ -27,96 +27,75 @@ function calculateExpirationDate(recurrence, activationDate) {
 
 
 // ===================================================================
-// 1. OBTENER PAGOS PENDIENTES DE VERIFICACIÓN
+// 1. OBTENER PAGOS PENDIENTES DE VERIFICACIÓN (O LISTA DE SUSCRIPCIONES)
 // ===================================================================
 const getPendingSubscriptions = async (req, res) => {
     try {
+        // Asumiendo que esta función lista suscripciones ya registradas que necesitan ser
+        // revisadas/activadas por el administrador, que puede ser la entidad corporativa.
         const query = `
             SELECT 
                 us.id_suscripcion, 
                 us.monto_transferido, 
                 us.fecha_pago_reportada, 
-                us.comprobante_url,
-                us.created_at AS fecha_solicitud,
-                p.nombre_plan,
-                p.recurrencia,
-                p.max_cuentas,
-                u.id AS user_id,
-                u.first_name,
-                u.last_name,
-                u.email,
-                u.telefono
-            FROM 
-                usuarios_suscripciones us
-            JOIN 
-                users u ON us.id_usuario_principal = u.id
-            JOIN
-                planes p ON us.id_plan = p.id_plan
-            WHERE 
-                us.estado = 'PENDIENTE_VERIFICACION'
-            ORDER BY 
-                us.created_at ASC;
+                us.comprobante_adjunto, 
+                us.estado_suscripcion, 
+                us.fecha_vencimiento,
+                u.username AS usuario_principal,
+                u.email AS email_principal
+            FROM suscripciones us
+            JOIN users u ON us.id_usuario_principal = u.id
+            WHERE us.estado_suscripcion = 'PENDIENTE_ACTIVACION'
+            ORDER BY us.fecha_pago_reportada ASC;
         `;
         const result = await pool.query(query);
-        
-        console.log(`[LOG ADMIN] ${result.rowCount} suscripciones pendientes encontradas.`);
-        res.json(result.rows);
-
+        res.status(200).json(result.rows);
     } catch (err) {
         console.error('Error al obtener suscripciones pendientes:', err);
-        res.status(500).json({ error: 'Error del servidor al consultar pagos pendientes.' });
+        res.status(500).json({ error: 'Error interno del servidor.' });
     }
 };
 
 // ===================================================================
-// 2. ACTIVAR SUSCRIPCIÓN (APROBAR PAGO)
-// Solo para usuarios con rol 'administrador'
+// 2. ADMINISTRACIÓN: Activar Suscripción Corporativa/Grupal
 // ===================================================================
 const activateSubscription = async (req, res) => {
-    // El ID del administrador proviene del token JWT (asumido en el middleware de autenticación)
-    const adminId = req.user.id; // Asume que 'req.user' contiene los datos del usuario autenticado
-    const { id_suscripcion } = req.params; 
-
     const client = await pool.connect();
+    const { id: id_suscripcion } = req.params;
+    const adminId = req.user.id; // Asume que el admin está autenticado
+    const activationDate = new Date().toISOString().split('T')[0]; // Fecha de activación de hoy
 
     try {
         await client.query('BEGIN');
-        
-        // 1. Obtener detalles de la suscripción y el plan
+
+        // 1. Obtener detalles de la suscripción
         const detailQuery = `
-            SELECT 
-                us.id_usuario_principal, 
-                p.recurrencia
-            FROM 
-                usuarios_suscripciones us
-            JOIN 
-                planes p ON us.id_plan = p.id_plan
-            WHERE 
-                us.id_suscripcion = $1 AND us.estado = 'PENDIENTE_VERIFICACION'
-            FOR UPDATE; -- Bloquea la fila para evitar doble procesamiento
+            SELECT id_usuario_principal, recurrencia_plan
+            FROM suscripciones
+            WHERE id_suscripcion = $1 AND estado_suscripcion = 'PENDIENTE_ACTIVACION'
+            FOR UPDATE;
         `;
         const detailResult = await client.query(detailQuery, [id_suscripcion]);
 
-        if (detailResult.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Suscripción pendiente no encontrada o ya procesada.' });
+        if (detailResult.rows.length === 0) {
+            await client.query('COMMIT');
+            return res.status(404).json({ error: 'Suscripción no encontrada o ya activada.' });
         }
 
-        const { id_usuario_principal, recurrencia } = detailResult.rows[0];
+        const { id_usuario_principal, recurrencia_plan } = detailResult.rows[0];
 
-        // 2. Calcular la fecha de vencimiento
-        const activationDate = new Date();
-        const expirationDate = calculateExpirationDate(recurrencia, activationDate);
-        
-        // 3. Actualizar la tabla usuarios_suscripciones
+        // 2. Calcular fecha de vencimiento
+        const expirationDate = calculateExpirationDate(recurrencia_plan, activationDate);
+
+        // 3. Actualizar la suscripción a ACTIVA
         const updateSubscriptionQuery = `
-            UPDATE usuarios_suscripciones
+            UPDATE suscripciones
             SET 
-                estado = 'ACTIVO',
-                fecha_habilitacion = $1,
+                estado_suscripcion = 'ACTIVA', 
+                fecha_activacion = $1, 
                 fecha_vencimiento = $2,
-                id_admin_verificador = $3,
-                updated_at = NOW()
+                fecha_ultima_gestion = NOW(),
+                gestionado_por = $3
             WHERE 
                 id_suscripcion = $4
             RETURNING *;
@@ -129,16 +108,18 @@ const activateSubscription = async (req, res) => {
         ]);
 
         // 4. Actualizar el rol del usuario principal a 'editor'
+        // Esto solo aplica al usuario que es el "dueño" de la suscripción corporativa.
         const updateUserRoleQuery = `
             UPDATE users
             SET 
                 rol = 'editor', 
+                suscripcion_vence = $1, -- Usamos la misma fecha de vencimiento
                 updated_at = NOW()
             WHERE 
-                id = $1
+                id = $2
             RETURNING id, rol;
         `;
-        const userUpdateResult = await client.query(updateUserRoleQuery, [id_usuario_principal]);
+        const userUpdateResult = await client.query(updateUserRoleQuery, [expirationDate, id_usuario_principal]);
 
         await client.query('COMMIT');
         
@@ -146,7 +127,7 @@ const activateSubscription = async (req, res) => {
 
         res.status(200).json({ 
             message: 'Suscripción activada con éxito. Usuario habilitado como editor.',
-            suscripcion: detailResult.rows[0],
+            suscripcion_id: id_suscripcion,
             rol_actualizado: userUpdateResult.rows[0].rol,
             fecha_vencimiento: expirationDate
         });
@@ -163,4 +144,5 @@ const activateSubscription = async (req, res) => {
 module.exports = {
     getPendingSubscriptions,
     activateSubscription,
+    // La utilidad calculateExpirationDate no se exporta si solo se usa internamente.
 };
