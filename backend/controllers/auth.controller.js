@@ -20,23 +20,26 @@ const REFRESH_COOKIE_OPTIONS = {
 // 1. REGISTRO DE USUARIO PÚBLICO (Asigna rol PENDIENTE_PAGO)
 // ===================================================================
 const register = async (req, res) => {
-    const { username, email, password, first_name, last_name, telefono, direccion } = req.body;
+    // 🟢 CORRECCIÓN: Añadir 'cedula' a la desestructuración de req.body
+    const { username, email, password, first_name, last_name, telefono, direccion, cedula } = req.body;
 
     // 🔑 CAMBIO CLAVE: El rol por defecto es ahora PENDIENTE_PAGO
     const defaultRole = 'PENDIENTE_PAGO'; 
 
-    if (!email || !password || !first_name) {
-        return res.status(400).json({ error: 'Email, Contraseña y Nombre son obligatorios.' });
+    // 🟢 CORRECCIÓN: Añadir validación para cedula
+    if (!email || !password || !first_name || !cedula) {
+        return res.status(400).json({ error: 'Email, Contraseña, Nombre y Cédula son obligatorios.' });
     }
 
     try {
         const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
 
+        // 🟢 CORRECCIÓN: Incluir 'cedula' en la lista de columnas y en la lista de valores ($9)
         const result = await pool.query(
             // El campo username no es estrictamente obligatorio si se usa email/nombre,
             // pero lo mantenemos si existe en su esquema.
-            'INSERT INTO users (username, email, password_hash, rol, first_name, last_name, telefono, direccion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [username, email.toLowerCase(), password_hash, defaultRole, first_name, last_name, telefono, direccion]
+            'INSERT INTO users (username, email, password_hash, rol, first_name, last_name, telefono, direccion, cedula) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+            [username, email.toLowerCase(), password_hash, defaultRole, first_name, last_name, telefono, direccion, cedula]
         );
         
         const newUser = result.rows[0];
@@ -65,8 +68,10 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const userResult = await pool.query('SELECT id, username, email, rol, first_name, last_name, telefono, direccion, password_hash FROM users WHERE email = $1', [email.toLowerCase()]);
+        // 🟢 CORRECCIÓN: Seleccionar también 'cedula' de la base de datos
+        const userResult = await pool.query('SELECT id, username, email, rol, first_name, last_name, telefono, direccion, cedula, password_hash FROM users WHERE email = $1', [email.toLowerCase()]);
         const user = userResult.rows[0];
+        
         if (!user) {
             return res.status(400).json({ error: 'Credenciales inválidas.' });
         }
@@ -123,7 +128,9 @@ const login = async (req, res) => {
             first_name: user.first_name,
             last_name: user.last_name,
             telefono: user.telefono,
-            direccion: user.direccion
+            direccion: user.direccion,
+            // 🟢 CORRECCIÓN: Incluir 'cedula' en el token de acceso
+            cedula: user.cedula 
         }, process.env.JWT_SECRET, { expiresIn: '60m' }); // Token de corta duración
 
         const refreshToken = jwt.sign({ id: user.id }, process.env.REFRESH_SECRET, { expiresIn: '7d' }); // Token de larga duración
@@ -141,7 +148,9 @@ const login = async (req, res) => {
                 first_name: user.first_name,
                 last_name: user.last_name,
                 telefono: user.telefono,
-                direccion: user.direccion
+                direccion: user.direccion,
+                // 🟢 CORRECCIÓN: Incluir 'cedula' en el objeto de respuesta del usuario
+                cedula: user.cedula 
             }
         });
     } catch (err) {
@@ -162,8 +171,10 @@ const refreshToken = async (req, res) => {
     try {
         const payload = jwt.verify(token, process.env.REFRESH_SECRET);
 
-        const userResult = await pool.query('SELECT rol, username, email, first_name, last_name, telefono, direccion FROM users WHERE id = $1', [payload.id]);
+        // 🟢 CORRECCIÓN: Seleccionar también 'cedula' de la base de datos
+        const userResult = await pool.query('SELECT rol, username, email, first_name, last_name, telefono, direccion, cedula FROM users WHERE id = $1', [payload.id]);
         const user = userResult.rows[0];
+        
         if (!user) {
             return res.status(403).json({ error: 'Usuario no encontrado.' });
         }
@@ -177,7 +188,9 @@ const refreshToken = async (req, res) => {
             first_name: user.first_name,
             last_name: user.last_name,
             telefono: user.telefono,
-            direccion: user.direccion
+            direccion: user.direccion,
+            // 🟢 CORRECCIÓN: Incluir 'cedula' en el nuevo token de acceso
+            cedula: user.cedula
         }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
         // Generación de un nuevo Refresh Token (para rotación de tokens)

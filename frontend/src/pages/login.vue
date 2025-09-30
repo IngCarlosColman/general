@@ -4,7 +4,6 @@
     class="pa-0 fill-height login-background d-flex justify-center align-center"
     :style="{'--login-bg-image': loginBgImage}"
   >
-    <!-- Contenedor centralizado para mejor visualización en desktop y móvil -->
     <v-card
       class="pa-6 pa-sm-8 elevation-12 login-card"
       width="90%"
@@ -17,7 +16,6 @@
       </div>
 
       <v-form @submit.prevent="handleLogin" ref="formRef">
-        <!-- Campo Email -->
         <v-text-field
           v-model="email"
           label="Correo Electrónico"
@@ -31,7 +29,6 @@
           dark
         ></v-text-field>
 
-        <!-- Campo Contraseña -->
         <v-text-field
           v-model="password"
           :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
@@ -48,7 +45,6 @@
           dark
         ></v-text-field>
 
-        <!-- Mensaje de Error (si existe) -->
         <v-alert
             v-if="authStore.authError"
             type="error"
@@ -59,7 +55,6 @@
         </v-alert>
 
 
-        <!-- Botón de Login -->
         <v-btn
           color="primary"
           block
@@ -74,7 +69,6 @@
 
       <v-divider class="my-6"></v-divider>
 
-      <!-- Enlace a Registro -->
       <div class="text-center">
         <router-link to="/register" class="text-white text-decoration-none">
           ¿No tienes una cuenta? <span class="font-weight-bold text-primary">Regístrate aquí</span>
@@ -88,13 +82,13 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { useSnackbar } from '@/composables/useSnackbar'; // Importar el composable de notificaciones
+import { useSnackbar } from '@/composables/useSnackbar'; 
 
 // Configuración y variables
 const router = useRouter();
 const authStore = useAuthStore();
-const { showSnackbar } = useSnackbar(); // Hook para notificaciones
-const formRef = ref(null); // Referencia al formulario para validación
+const { showSnackbar } = useSnackbar(); 
+const formRef = ref(null); 
 const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
@@ -112,7 +106,7 @@ const passwordRules = [
 ];
 
 /**
- * Maneja el envío del formulario de inicio de sesión.
+ * Maneja el envío del formulario de inicio de sesión, incluyendo la redirección dinámica.
  */
 const handleLogin = async () => {
   // Resetear el error antes de intentar
@@ -123,13 +117,29 @@ const handleLogin = async () => {
   if (!valid) return;
 
   try {
-    // 🔑 Llamada al action del store (incluye el setToken, carga de usuario y el splash screen)
+    // 🔑 1. Llamada al action del store (Autenticación). Esto actualiza authStore.rol
     await authStore.login(email.value, password.value);
     
     // Si la llamada no lanza error, el inicio de sesión fue exitoso
     showSnackbar('Inicio de sesión exitoso. Redirigiendo...', 'success');
     
-    // La redirección a /dashboard la maneja el action del store (ver auth.js)
+    // 🟢 2. LÓGICA DE REDIRECCIÓN DINÁMICA
+    const userRol = authStore.rol;
+    let targetPath = '/dashboard'; 
+    
+    // Si el usuario está pendiente de pago o revisión, el destino principal es /dashboard, 
+    // donde dashboard.vue le mostrará el SuscripcionPlanes.
+    if (userRol === 'PENDIENTE_PAGO' || userRol === 'PENDIENTE_REVISION') {
+        // Mantiene /dashboard como target, ya que el componente dashboard.vue tiene el paywall.
+        // Si quisieras un path diferente (ej. /suscripciones) iría aquí.
+        // targetPath = '/suscripciones'; 
+    }
+    
+    // Para 'administrador' y 'editor', se mantiene el targetPath = '/dashboard'.
+    
+    // 🧭 3. Ejecutar la redirección
+    await router.push(targetPath);
+    
   } catch (error) {
     // El error ya está en authStore.authError
     // Mostrar el error en un snackbar también

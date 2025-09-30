@@ -1,4 +1,3 @@
-//src/services/auth.service.js
 import api from '../api/axiosClient';
 
 /**
@@ -15,20 +14,19 @@ const login = async (email, password) => {
   }
 };
 
-const register = async (username, email, password, first_name, last_name, telefono, direccion) => {
+/**
+ * 🟢 FUNCIÓN CORREGIDA: Ahora acepta un solo objeto 'userData' en lugar de múltiples argumentos.
+ * Esto alinea el servicio con la llamada del Pinia Store y elimina la causa del error 400.
+ * @param {object} userData - Objeto que contiene todos los campos de registro (username, email, password, etc.).
+ */
+const register = async (userData) => {
   try {
-    const response = await api.post('/register', {
-      username,
-      email,
-      password,
-      first_name,
-      last_name,
-      telefono,
-      direccion,
-    });
+    // Enviamos el objeto completo directamente al endpoint /register.
+    const response = await api.post('/register', userData);
     return response.data;
   } catch (error) {
     // Lanza el mensaje de error específico del backend
+    // Este mensaje debería ser el que viste: "Email, Contraseña y Nombre son obligatorios."
     throw error.response.data.error;
   }
 };
@@ -81,7 +79,7 @@ const refreshToken = async () => {
 };
 
 /**
- * 🟢 FUNCIÓN RE-AÑADIDA: Obtiene el perfil completo del usuario autenticado.
+ * 🟢 FUNCIÓN: Obtiene el perfil completo del usuario autenticado.
  * @returns {Promise<object>} Objeto con los datos del usuario.
  */
 const getProfile = async () => {
@@ -102,5 +100,5 @@ export default {
   logout,
   refreshToken,
   submitPaymentProof,
-  getProfile, // 🟢 AÑADIDO: Necesario para la acción 'fetchUser' en el store Pinia
+  getProfile,
 };

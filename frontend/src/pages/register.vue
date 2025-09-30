@@ -46,7 +46,22 @@
             ></v-text-field>
           </v-col>
 
-          <!-- Fila 2: Nombre y Apellido -->
+          <!-- Fila 2 (NUEVA): Cédula -->
+          <v-col cols="12">
+            <v-text-field
+              v-model="cedula"
+              label="Número de Cédula"
+              prepend-inner-icon="mdi-card-account-details-outline"
+              :rules="cedulaRules"
+              required
+              variant="outlined"
+              bg-color="rgba(255, 255, 255, 0.1)"
+              color="white"
+              dark
+            ></v-text-field>
+          </v-col>
+          
+          <!-- Fila 3: Nombre y Apellido (Movidas un nivel abajo) -->
           <v-col cols="12" md="6">
             <v-text-field
               v-model="first_name"
@@ -74,7 +89,7 @@
             ></v-text-field>
           </v-col>
 
-          <!-- Fila 3: Contraseña y Confirmación -->
+          <!-- Fila 4: Contraseña y Confirmación (Movidas un nivel abajo) -->
           <v-col cols="12" md="6">
             <v-text-field
               v-model="password"
@@ -105,7 +120,7 @@
             ></v-text-field>
           </v-col>
 
-          <!-- Fila 4: Teléfono y Dirección -->
+          <!-- Fila 5: Teléfono y Dirección (Movidas un nivel abajo) -->
           <v-col cols="12" md="6">
             <v-text-field
               v-model="telefono"
@@ -187,6 +202,8 @@ const first_name = ref('');
 const last_name = ref('');
 const telefono = ref('');
 const direccion = ref('');
+// 🟢 NUEVO: Estado para el campo cedula
+const cedula = ref(''); 
 const showPassword = ref(false);
 
 const loginBgImage = 'url(https://placehold.co/1920x1080/0d1117/30363d?text=Fondo+Registro)';
@@ -210,6 +227,13 @@ const passwordConfirmRules = computed(() => [
   ...requiredRule,
   v => v === password.value || 'Las contraseñas no coinciden.',
 ]);
+// 🟢 NUEVO: Reglas para la cédula (ejemplo: debe ser solo números y tener un largo mínimo)
+const cedulaRules = [
+  ...requiredRule,
+  v => /^\d+$/.test(v) || 'La cédula solo debe contener números.',
+  v => (v && v.length >= 5) || 'Mínimo 5 dígitos.',
+];
+
 
 /**
  * Maneja el envío del formulario de registro.
@@ -224,10 +248,13 @@ const handleRegister = async () => {
 
   try {
     // 2. Llamada al store para registrar
+    // 🟢 CORRECCIÓN: Asegurar que se envía el campo cedula
     await authStore.register({
       username: username.value,
       email: email.value,
       password: password.value,
+      // 🔑 CLAVE: Añadir cedula aquí
+      cedula: cedula.value, 
       first_name: first_name.value,
       last_name: last_name.value,
       telefono: telefono.value,

@@ -36,6 +36,7 @@ declare module 'vue' {
     KpiCard: typeof import('./src/components/KpiCard.vue')['default']
     Mapa: typeof import('./src/components/Mapa.vue')['default']
     Panel: typeof import('./src/components/Panel.vue')['default']
+    PlanCard: typeof import('./src/components/PlanCard.vue')['default']
     PropertyMap: typeof import('./src/components/PropertyMap.vue')['default']
     Requests: typeof import('./src/components/requests.vue')['default']
     RoleGuard: typeof import('./src/components/auth/RoleGuard.vue')['default']

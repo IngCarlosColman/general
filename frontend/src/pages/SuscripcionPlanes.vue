@@ -1,209 +1,275 @@
 <template>
   <v-container fluid class="pa-4 subscription-container">
-    <v-card class="pa-6 rounded-xl shadow-lg elevation-8 bg-white">
-      <v-card-title class="text-h4 font-weight-black text-center mb-4 text-primary">
-        ¡Bienvenido! Active su Licencia
-      </v-card-title>
-      <v-card-text>
-        <p class="text-center text-subtitle-1 mb-6 text-medium-emphasis">
-          Para comenzar a utilizar nuestra plataforma, seleccione un plan y suba su comprobante de pago para la activación. Su rol actual es: 
-          <v-chip 
-            :color="getRoleColor(authStore.rol)" 
-            class="font-weight-bold ml-2"
+    <v-row justify="center" class="mb-8">
+      <v-col cols="12" md="10">
+        <!-- Tarjeta Principal con Título y Estado del Rol -->
+        <v-card class="pa-6 rounded-xl elevation-10 bg-white" color="#f5f5f5">
+          <v-card-title class="text-h4 font-weight-black text-center text-primary">
+            ¡Bienvenido a la Plataforma!
+          </v-card-title>
+          <v-card-subtitle class="text-h6 text-center mb-4 text-medium-emphasis">
+            Active su Licencia para comenzar a operar.
+          </v-card-subtitle>
+          <p class="text-center text-subtitle-1 mb-4 text-medium-emphasis">
+            Su rol actual es: 
+            <v-chip 
+              :color="getRoleColor(authStore.rol)" 
+              class="font-weight-bold ml-2 text-white"
+              size="large"
+            >
+              {{ authStore.rol.toUpperCase().replace('_', ' ') }}
+            </v-chip>
+          </p>
+
+          <v-divider class="mb-6"></v-divider>
+
+          <!-- 🟢 SECCIÓN DE ALERTA: PENDIENTE DE REVISIÓN -->
+          <v-alert
+              v-if="authStore.rol === 'PENDIENTE_REVISION'"
+              type="info"
+              icon="mdi-clock-time-four-outline"
+              title="Solicitud de Activación en Curso"
+              class="mb-8"
+              variant="tonal"
+              color="blue-grey"
+              prominent
           >
-            {{ authStore.rol.toUpperCase() }}
-          </v-chip>
-        </p>
+            Hemos recibido su comprobante de pago. Un administrador revisará su solicitud en las próximas 24 horas. 
+            Una vez aprobado, su rol cambiará a **EDITOR** y podrá acceder al sistema. Gracias por su paciencia.
+          </v-alert>
 
-        <v-divider class="mb-6"></v-divider>
-
-        <!-- 🟢 CONDICIÓN PRINCIPAL: SI EL ROL ES PENDIENTE_REVISION, MUESTRA ALERTA -->
-        <v-alert
-            v-if="authStore.rol === 'PENDIENTE_REVISION'"
-            type="info"
-            icon="mdi-clock-time-four-outline"
-            title="Solicitud de Activación en Curso"
-            class="mb-8"
-            variant="tonal"
-            prominent
-        >
-            <p class="text-body-1 font-weight-medium">
-                ¡Gracias por enviar su comprobante de pago!
-            </p>
-            <p class="mt-2">
-                Su cuenta ha sido marcada como **PENDIENTE DE REVISIÓN**. Un administrador está verificando la validez del pago y activará su plan en breve. Le notificaremos tan pronto como el proceso se complete.
-            </p>
-        </v-alert>
-
-        <!-- 🔴 CONTENIDO NORMAL DE PLANES Y SUBIDA: SOLO SE MUESTRA SI NO ESTÁ PENDIENTE DE REVISIÓN -->
-        <div v-else>
-            <!-- Sección de Planes Agrupados -->
-            <h2 class="text-h5 font-weight-bold mb-4">1. Elija su Plan</h2>
+          <!-- 🔴 SECCIÓN DE PLANES: SOLO VISIBLE SI EL ROL ES PENDIENTE_PAGO -->
+          <div v-else-if="authStore.rol === 'PENDIENTE_PAGO'">
+            <h2 class="text-h5 font-weight-bold text-center mb-6 text-secondary">
+                1. Elija su Plan de Suscripción
+            </h2>
             
-            <div v-for="planCategory in store.plans" :key="planCategory.id" class="mb-10">
-                <h3 class="text-h6 font-weight-bold mb-4 text-secondary">{{ planCategory.name }} <span class="text-medium-emphasis text-body-2">- {{ planCategory.description }}</span></h3>
-                
-                <v-row>
-                    <!-- Opciones de Plan dentro de la Categoría -->
-                    <v-col v-for="option in planCategory.options" :key="option.option_id" cols="12" md="4">
-                        <v-card
-                            class="plan-card"
-                            :class="{ 'plan-card-selected': selectedPlan === option.option_id }"
-                            @click="selectedPlan = option.option_id"
-                            :color="selectedPlan === option.option_id ? 'blue-lighten-5' : 'grey-lighten-4'"
-                            hover
-                            min-height="300"
-                        >
-                            <v-card-text class="d-flex flex-column justify-space-between h-100">
-                                <div>
-                                    <h4 class="text-h5 font-weight-bold mb-3 text-primary">{{ option.name }}</h4>
-                                    
-                                    <div class="mb-3">
-                                        <p class="text-caption text-medium-emphasis">Costo Unitario Mensual (Equivalente):</p>
-                                        <p class="text-h6 font-weight-black text-success">{{ store.formatCurrency(option.guaranies_unitario) }}</p>
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <p class="text-caption text-medium-emphasis">Total (Pago Único):</p>
-                                        <p class="text-h5 font-weight-black text-blue-darken-3">{{ store.formatCurrency(option.guaranies_total) }}</p>
-                                    </div>
-                                    
-                                    <v-chip 
-                                        v-if="option.ahorro !== 'Sin descuento'"
-                                        color="green" 
-                                        variant="flat" 
-                                        density="comfortable" 
-                                        class="mb-3 font-weight-bold"
-                                    >
-                                        ¡Ahorra {{ option.ahorro }}!
-                                    </v-chip>
-                                </div>
-
-                                <!-- Lista de Características -->
-                                <v-list density="compact" class="bg-transparent mt-3">
-                                    <v-list-item v-for="(feature, i) in option.features" :key="i" class="pa-0">
-                                        <template v-slot:prepend>
-                                            <v-icon color="success" size="small" class="mr-2">mdi-check-circle</v-icon>
-                                        </template>
-                                        <v-list-item-title class="text-body-2">{{ feature }}</v-list-item-title>
-                                    </v-list-item>
-                                </v-list>
-                            </v-card-text>
-                        </v-card>
+            <v-expansion-panels flat multiple class="plans-accordion">
+              <!-- GRUPO 1: PLANES AGENTES INDIVIDUALES -->
+              <v-expansion-panel value="agentes">
+                <v-expansion-panel-title class="text-h6 font-weight-bold text-primary">
+                  Plan Agentes (Individual)
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-row justify="center" class="pa-3">
+                    <v-col v-for="plan in planesAgentes" :key="plan.id" cols="12" sm="6" lg="4">
+                      <PlanCard
+                        :plan="plan"
+                        :selected="selectedPlan === plan.id"
+                        @select="selectPlan"
+                        :monthly-base-price="350000"
+                      />
                     </v-col>
-                </v-row>
-            </div>
+                  </v-row>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
 
-            <v-divider class="mb-6"></v-divider>
+              <v-divider></v-divider>
 
-            <!-- Sección de Subida de Comprobante -->
-            <h2 class="text-h5 font-weight-bold mb-4">2. Suba su Comprobante de Pago</h2>
+              <!-- GRUPO 2: PLANES MINI BROKER/DESARROLLADORAS (Anual - Múltiples Cuentas) -->
+              <v-expansion-panel value="minibroker">
+                <v-expansion-panel-title class="text-h6 font-weight-bold text-primary">
+                  Plan Mini Broker / Desarrolladoras (5 a 15 Cuentas)
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-row justify="center" class="pa-3">
+                    <v-col v-for="plan in planesMiniBroker" :key="plan.id" cols="12" sm="6" lg="4">
+                      <PlanCard
+                        :plan="plan"
+                        :selected="selectedPlan === plan.id"
+                        @select="selectPlan"
+                        :monthly-base-price="350000"
+                      />
+                    </v-col>
+                  </v-row>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
 
-            <v-form @submit.prevent="handleSubmitProof">
-                <v-file-input
-                    v-model="comprobanteFile"
-                    label="Comprobante de Pago (PDF o Imagen)"
-                    accept="image/*,application/pdf"
-                    prepend-icon="mdi-camera"
-                    :rules="[v => !!v || 'Debe subir el comprobante.']"
-                    variant="outlined"
-                    class="mb-4"
-                ></v-file-input>
+              <v-divider></v-divider>
 
-                <v-alert
-                    v-if="store.uploadError"
-                    type="error"
-                    icon="mdi-alert-circle"
-                    class="mb-4"
-                    density="compact"
-                >{{ store.uploadError }}</v-alert>
+              <!-- GRUPO 3: PLANES INMOBILIARIAS (Anual - Múltiples Cuentas) -->
+              <v-expansion-panel value="inmobiliarias">
+                <v-expansion-panel-title class="text-h6 font-weight-bold text-primary">
+                  Plan Inmobiliarias (20+ Cuentas)
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-row justify="center" class="pa-3">
+                    <v-col v-for="plan in planesInmobiliarias" :key="plan.id" cols="12" sm="6" lg="4">
+                      <PlanCard
+                        :plan="plan"
+                        :selected="selectedPlan === plan.id"
+                        @select="selectPlan"
+                        :monthly-base-price="350000"
+                      />
+                    </v-col>
+                  </v-row>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
 
-                <v-alert
-                    v-if="store.uploadSuccess"
-                    type="success"
-                    icon="mdi-check-circle"
-                    class="mb-4"
-                    density="compact"
-                >{{ store.userMessage }}</v-alert>
+            <v-divider class="my-8"></v-divider>
 
+            <h2 class="text-h5 font-weight-bold text-center mb-6 text-secondary">
+                2. Suba su Comprobante de Pago
+            </h2>
+
+            <v-form @submit.prevent="handleUpload">
+              <!-- Muestra el plan seleccionado con su precio total -->
+              <v-alert
+                v-if="currentPlan"
+                type="success"
+                icon="mdi-check-circle"
+                class="mb-6"
+                variant="tonal"
+                color="green-darken-2"
+              >
+                Plan Seleccionado: <span class="font-weight-bold">{{ currentPlan.name }}</span> | 
+                Monto Total a Pagar: <span class="font-weight-black text-h6">{{ currentPlan.totalPriceFormatted }}</span>
+              </v-alert>
+
+              <!-- Selector de Archivo -->
+              <v-file-input
+                v-model="comprobanteFile"
+                :disabled="!selectedPlan || store.isUploading"
+                :rules="fileRules"
+                accept="image/jpeg,image/png,application/pdf"
+                label="Seleccione Comprobante (JPG, PNG o PDF)"
+                prepend-icon="mdi-paperclip"
+                variant="outlined"
+                clearable
+                class="mb-4"
+              ></v-file-input>
+
+              <!-- Área de Mensajes y Botón -->
+              <div class="d-flex flex-column align-center">
                 <v-btn
-                    type="submit"
-                    color="primary"
-                    size="large"
-                    block
-                    :loading="store.isUploading"
-                    :disabled="!selectedPlan || !comprobanteFile || store.isUploading"
-                    class="font-weight-bold text-white"
+                  type="submit"
+                  :disabled="!selectedPlan || !comprobanteFile || store.isUploading"
+                  :loading="store.isUploading"
+                  color="primary"
+                  size="large"
+                  class="mt-4 font-weight-bold"
+                  block
+                  prepend-icon="mdi-cloud-upload-outline"
                 >
-                    <v-icon left>mdi-upload</v-icon>
-                    Enviar Comprobante y Solicitar Activación
+                  Subir Comprobante y Enviar Solicitud
                 </v-btn>
+
+                <!-- Mensaje de Error -->
+                <v-alert
+                  v-if="store.uploadError"
+                  type="error"
+                  class="mt-4 w-100"
+                  density="compact"
+                  variant="flat"
+                >
+                  {{ store.uploadError }}
+                </v-alert>
+              </div>
             </v-form>
-        </div>
-        <!-- 👆 FIN DE CONTENIDO CONDICIONAL -->
+          </div>
+          <!-- ⛔ OTROS ROLES: ACCESO DENEGADO (Deberían ser redirigidos por el router, pero es un fallback) -->
+          <v-alert
+              v-else
+              type="error"
+              icon="mdi-lock-alert"
+              title="Acceso Denegado"
+              variant="tonal"
+              prominent
+              class="mb-8"
+          >
+              Su rol actual ({{ authStore.rol.toUpperCase() }}) no requiere que complete el proceso de suscripción. Contacte a soporte si cree que esto es un error.
+          </v-alert>
 
-
-        <v-divider class="my-6"></v-divider>
-        <div class="text-center text-medium-emphasis text-caption">
-            * El precio unitario es el equivalente mensual del costo total, aplicado el descuento por volumen/frecuencia.
-        </div>
-      </v-card-text>
-    </v-card>
+        </v-card>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useSuscripcionStore } from '@/stores/suscripcion';
+import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { useSuscripcionStore } from '@/stores/suscripcion';
 
-const store = useSuscripcionStore();
+// --- Importación de Componente de Tarjeta (Definido abajo) ---
+import PlanCard from '@/components/PlanCard.vue';
+
+// --- Stores ---
 const authStore = useAuthStore();
+const store = useSuscripcionStore();
+
+// --- Estado Local ---
 const selectedPlan = ref(null);
 const comprobanteFile = ref(null);
 
+// --- Reglas de Validación ---
+const fileRules = [
+  v => !!v || 'El comprobante es obligatorio.',
+  v => !v || v.size <= 5000000 || 'El archivo debe ser menor a 5 MB.', // Límite de 5MB
+];
+
+// --- Computadas de Planes (Organización de la interfaz) ---
+
+const allPlans = computed(() => store.plans);
+
+// Filtramos y organizamos los planes en grupos
+const planesAgentes = computed(() => 
+  allPlans.value.filter(p => p.id.startsWith('agente_'))
+);
+
+const planesMiniBroker = computed(() => 
+  allPlans.value.filter(p => p.id.startsWith('mb_'))
+);
+
+const planesInmobiliarias = computed(() => 
+  allPlans.value.filter(p => p.id.startsWith('inm_'))
+);
+
+// Obtiene el plan completo actualmente seleccionado
+const currentPlan = computed(() => {
+  return store.plans.find(p => p.id === selectedPlan.value);
+});
+
+
+// --- Métodos ---
 
 /**
- * 🟢 Función auxiliar para dar color a los roles en el chip.
- * @param {string} rol - El rol actual del usuario.
- * @returns {string} - El color de Vuetify.
+ * Función para seleccionar un plan, deseleccionando si se hace clic nuevamente.
+ * @param {string} planId - ID del plan seleccionado.
+ */
+const selectPlan = (planId) => {
+    selectedPlan.value = selectedPlan.value === planId ? null : planId;
+    // Limpiamos el error al cambiar de plan
+    store.uploadError = null; 
+};
+
+/**
+ * Función que determina el color del chip basado en el rol.
+ * @param {string} rol - Rol del usuario.
+ * @returns {string} Color de Vuetify.
  */
 const getRoleColor = (rol) => {
     switch (rol) {
-        case 'administrador':
-            return 'red';
-        case 'editor':
-            return 'success';
-        case 'visualizador':
-            return 'blue';
-        case 'PENDIENTE_REVISION':
-            return 'info'; // Color para el nuevo estado
-        default:
-            return 'warning'; // PENDIENTE_PAGO o guest
+        case 'administrador': return 'red-darken-3';
+        case 'editor': return 'green-darken-2';
+        case 'PENDIENTE_PAGO': return 'yellow-darken-3';
+        case 'PENDIENTE_REVISION': return 'blue-grey-darken-2';
+        default: return 'grey';
     }
-}
-
+};
 
 /**
- * Maneja el envío del formulario.
+ * Maneja la subida del archivo al store.
  */
-const handleSubmitProof = async () => {
-    store.uploadError = null; // Limpiar errores antes de intentar
-    store.uploadSuccess = false; // Limpiar éxito previo
-    
-    // Si ya está PENDIENTE_REVISION, evitamos cualquier acción.
-    if (authStore.rol === 'PENDIENTE_REVISION') {
-        store.uploadError = 'Su solicitud ya está en revisión. Por favor, espere la activación.';
+const handleUpload = async () => {
+    if (!selectedPlan.value || !comprobanteFile.value) {
+        store.uploadError = 'Debe seleccionar un plan y adjuntar el comprobante.';
         return;
     }
 
-    if (!selectedPlan.value) {
-        store.uploadError = 'Por favor, seleccione un plan.';
-        return;
-    }
-
-    // El comprobanteFile puede ser un FileList (si se usa directamente) o un array de Files (v-model en Vuetify)
-    const file = Array.isArray(comprobanteFile.value) && comprobanteFile.value.length > 0
+    // El v-file-input devuelve un array si es 'multiple', si no, el objeto File.
+    const file = Array.isArray(comprobanteFile.value)
         ? comprobanteFile.value[0]
         : comprobanteFile.value;
 
@@ -230,27 +296,33 @@ const handleSubmitProof = async () => {
 <style scoped>
 /* Contenedor centralizado y con padding */
 .subscription-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 20px auto;
+    /* Estas propiedades aseguran que el contenedor no restrinja el flujo vertical */
+    min-height: 100% !important; 
+    overflow-y: visible !important;
 }
-.plan-card {
-    border: 3px solid transparent;
-    transition: all 0.3s ease-in-out;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    height: 100%; /* Asegura que todas las tarjetas tengan la misma altura */
+/* Estilos generales para el acordeón de planes */
+.plans-accordion .v-expansion-panel {
+    margin-bottom: 12px;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
-.plan-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+.plans-accordion .v-expansion-panel-title {
+    background-color: #f7f7f7;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 18px 24px;
 }
-.plan-card-selected {
-    border-color: #1976D2 !important; /* Color primario de Vuetify */
-    box-shadow: 0 0 15px rgba(25, 118, 210, 0.5) !important;
+.plans-accordion .v-expansion-panel-text {
+    padding: 20px 0;
 }
+.text-primary { color: #007bff !important; } /* Azul Intenso */
+.text-secondary { color: #28a745 !important; } /* Verde para Acciones */
+</style>
 
-/* Fuerza el 100% de altura en el contenido de la tarjeta */
-.v-card-text.h-100 {
-    height: 100%;
+<style>
+/* Estilo para hacer el título del panel más visible */
+.v-expansion-panel-title__overlay {
+  opacity: 0 !important;
 }
 </style>
