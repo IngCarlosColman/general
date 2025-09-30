@@ -32,7 +32,7 @@ const subscriptionRoutes = require('./routes/subscription.routes');
 
 // 🔑 Importación de las TRES nuevas rutas
 const adminRoutes = require('./routes/admin.routes');
-const billingRoutes = require('./routes/billing.routes');
+const billingRoutes = require('./routes/billing.routes'); // ⬅️ ¡Esta línea ahora es válida!
 const managementRoutes = require('./routes/management.routes');
 
 
