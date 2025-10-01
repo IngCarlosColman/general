@@ -123,12 +123,12 @@ const uploadPaymentProof = async (req, res) => {
         const insertQuery = `
             INSERT INTO solicitudes_activacion (
                 id_usuario, 
-                plan_id, 
-                comprobante_path, 
+                plan_solicitado, 
+                ruta_comprobante, 
                 estado,
                 fecha_solicitud
             ) VALUES ($1, $2, $3, $4, NOW())
-            RETURNING id, id_usuario, plan_id, comprobante_path, estado, fecha_solicitud;
+            RETURNING id, id_usuario, plan_solicitado, ruta_comprobante , estado, fecha_solicitud;
         `;
         const solicitudResult = await client.query(insertQuery, [
             userId,
@@ -262,7 +262,7 @@ const handleRequestAction = async (req, res) => {
 
         // 2. Determinar el nuevo estado y actualizar el rol del usuario
         if (action === 'APPROVE') {
-            newStatus = 'APROBADA';
+            newStatus = 'APROBADO';
             responseMessage = 'Solicitud de activación aprobada.';
 
             // CLAVE: Actualizar el rol a 'editor' y establecer la fecha de expiración

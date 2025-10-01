@@ -29,7 +29,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "${DB_PORT}:${DB_PORT}"
+      - "5433:${DB_PORT}"
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Monta el archivo de configuración

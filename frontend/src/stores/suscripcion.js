@@ -25,120 +25,168 @@ export const useSuscripcionStore = defineStore('suscripcion', () => {
         // --- GRUPO 1: PLANES INDIVIDUALES (Agente) ---
         {
             id: 'agente_mensual',
-            type: 'individual', // Nuevo campo para clasificación
-            name: 'Agente Básico - Mensual',
+            type: 'Mensual', // Nuevo campo para clasificación
+            name: 'Agente Básico',
             price: 350000,  
             duration: '1 Mes',
             users: 1, // Nuevo campo: 1 editor
             features: [
-                'Acceso completo a herramientas de publicación y gestión.',
-                'Soporte estándar.',
-                '1 usuario principal.'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
         {
             id: 'agente_semestral',
-            type: 'individual',
-            name: 'Agente Estándar - Semestral',
-            price: 1995000,
+            type: 'Semestral',
+            name: 'Agente Estándar',
+            price: 332500,
             duration: '6 Meses',
             users: 1, // 1 editor
             features: [
-                'Acceso completo a herramientas de publicación y gestión.',
-                'Soporte prioritario.',
-                '1 usuario principal.'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
         {
             id: 'agente_anual',
-            type: 'individual',
-            name: 'Agente Pro - Anual',
-            price: 3780000,
+            type: 'Anual',
+            name: 'Agente Pro',
+            price: 315000,
             duration: '1 Año',
             users: 1, // 1 editor
             features: [
-                'Acceso completo a herramientas de publicación y gestión.',
-                'Soporte premium 24/7.',
-                'Gestión de 1 usuarios'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
         // --- GRUPO 2: PLANES CORPORATIVOS (Mini Broker / Inmobiliaria - Todos Anuales) ---
         {
             id: 'mb_anual_5',
-            type: 'empresarial',
-            name: 'Mini Broker Anual (5 Usuarios)',
-            price: 18270000,
+            type: '5 Cuentas',
+            name: 'Mini Broker 5',
+            price: 304500,
             duration: '1 Año',
             users: 5,
             features: [
-                'Todas las ventajas del plan Agente Pro.',
-                'Gestión de hasta 5 usuarios (1 editor + 4 visualizadores).',
-                'Reportes de rendimiento avanzados.'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                '4 Cuentas Secundarias.',
+                'Panel Administracion.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
         {
             id: 'mb_anual_10',
-            type: 'empresarial',
-            name: 'Mini Broker Anual (10 Usuarios)',
-            price: 35700000,
+            type: '10 Cuentas',
+            name: 'Mini Broker 10',
+            price: 297500,
             duration: '1 Año',
             users: 10,
             features: [
-                'Todas las ventajas del plan Agente Pro.',
-                'Gestión de hasta 10 usuarios (1 editor + 9 visualizadores).',
-                'Reportes de rendimiento avanzados.'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                '9 Cuentas Secundarias.',
+                'Panel Administracion.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
         {
             id: 'mb_anual_15',
-            type: 'empresarial',
-            name: 'Mini Broker Anual (15 Usuarios)',
-            price: 52290000,
+            type: '15 Cuentas',
+            name: 'Mini Broker 15',
+            price: 290500,
             duration: '1 Año',
             users: 15,
             features: [
-                'Todas las ventajas del plan Agente Pro.',
-                'Gestión de hasta 15 usuarios (1 editor + 14 visualizadores).',
-                'Reportes de rendimiento avanzados.'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                '14 Cuentas Secundarias.',
+                'Panel Administracion.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
         {
             id: 'inm_anual_20',
-            type: 'empresarial',
-            name: 'Inmobiliaria Anual (20 Usuarios)',
-            price: 68040000,
+            type: '20 Cuentas',
+            name: 'Inmobiliaria 20',
+            price: 283500,
             duration: '1 Año',
             users: 20,
             features: [
-                'Todas las ventajas de Mini Broker.',
-                'Gestión de hasta 20 usuarios (1 editor + 19 visualizadores).',
-                'Atención personalizada 24/7 y Acuerdo de Nivel de Servicio (SLA).'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                '19 Cuentas Secundarias.',
+                'Panel Administracion.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
         {
             id: 'inm_anual_30',
-            type: 'empresarial',
-            name: 'Inmobiliaria Anual (30 Usuarios)',
-            price: 99540000,
+            type: '30 Cuentas',
+            name: 'Inmobiliaria 30',
+            price: 276500,
             duration: '1 Año',
             users: 30,
             features: [
-                'Todas las ventajas de Mini Broker.',
-                'Gestión de hasta 30 usuarios (1 editor + 29 visualizadores).',
-                'Atención personalizada 24/7 y Acuerdo de Nivel de Servicio (SLA).'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                '29 Cuentas Secundarias.',
+                'Panel Administracion.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
         {
             id: 'inm_anual_50',
-            type: 'empresarial',
-            name: 'Inmobiliaria Anual (50 Usuarios)',
-            price: 161700000,
+            type: '50 Cuentas',
+            name: 'Inmobiliaria 50',
+            price: 269500,
             duration: '1 Año',
             users: 50,
             features: [
-                'Todas las ventajas de Mini Broker.',
-                'Gestión de hasta 50 usuarios (1 editor + 49 visualizadores).',
-                'Atención personalizada 24/7 y Acuerdo de Nivel de Servicio (SLA).'
+                'Acceso completo.',
+                '1 Cuenta principal.',
+                '49 Cuentas Secundarias.',
+                'Panel Administracion.',
+                'Agenda Privada.',
+                'Informaciones Personales.',
+                'Listas Filtradas.',
+                'Filtro Territorial.',
+                'Filtro en Mapa Avanzado.'
             ]
         },
     ]); 

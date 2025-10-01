@@ -1,15 +1,14 @@
 <template>
-  <v-app class="dashboard-layout">
-    <!-- 🟢 NUEVA VERIFICACIÓN PRINCIPAL: Si la suscripción está pendiente, muestra solo los planes -->
+  <v-app 
+    class="dashboard-layout"
+    :class="{ 'scrollable-app-layout': isSubscriptionRequired }"
+  >
     <SuscripcionPlanes v-if="isSubscriptionRequired" />
 
-    <!-- 🟢 CONTENIDO NORMAL DEL DASHBOARD (Solo visible si la suscripción está activa o el rol es administrador) -->
     <template v-else>
-      <!-- BARRA SUPERIOR (APP BAR) -->
       <v-app-bar app elevation="2" color="surface-container" flat>
         <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
         <v-toolbar-title class="font-weight-bold d-flex align-center">
-          <!-- El espacio en blanco entre el v-img y el texto ayuda con la separación -->
           <v-img
             :src="logoSrc"
             alt="Logo de la Aplicación"
@@ -20,14 +19,10 @@
           <span>Agenda Inmobiliaria</span>
         </v-toolbar-title>
 
-        <v-spacer></v-spacer> <!-- Mueve los iconos a la derecha -->
-
-        <!-- Botón de Tema (Opcional) -->
-        <v-btn icon>
+        <v-spacer></v-spacer> <v-btn icon>
           <v-icon>mdi-white-balance-sunny</v-icon>
         </v-btn>
 
-        <!-- Menú de Usuario en la Barra Superior -->
         <v-menu offset-y>
           <template v-slot:activator="{ props }">
             <v-btn icon v-bind="props">
@@ -35,7 +30,6 @@
             </v-btn>
           </template>
           <v-list>
-            <!-- Opción de Mi Perfil -->
             <v-list-item @click="showComponent('mi-perfil')">
                <v-list-item-title>Mi Perfil</v-list-item-title>
             </v-list-item>
@@ -46,7 +40,6 @@
         </v-menu>
       </v-app-bar>
 
-      <!-- BARRA LATERAL (NAVIGATION DRAWER) -->
       <v-navigation-drawer
         v-model="drawer"
         :permanent="true"
@@ -55,7 +48,6 @@
         class="flex-shrink-0 transition-width duration-300"
         app
       >
-        <!-- Detalles del Usuario -->
         <v-list class="pt-4" nav>
           <v-list-item
             prepend-icon="mdi-account-circle-outline"
@@ -66,7 +58,6 @@
         </v-list>
         <v-divider></v-divider>
 
-        <!-- Menú de Navegación Principal -->
         <v-list density="compact" nav>
           <v-list-item
             prepend-icon="mdi-view-dashboard"
@@ -104,7 +95,6 @@
             color="primary"
           ></v-list-item>
 
-          <!-- Opción de Perfil Personal (para que sea accesible desde el menú) -->
           <v-list-item
             prepend-icon="mdi-account-circle"
             title="Mi Perfil"
@@ -115,7 +105,6 @@
           ></v-list-item>
 
 
-          <!-- APLICACIÓN DE ROLE GUARD: Solo visible para el administrador -->
           <RoleGuard :allowedRoles="['administrador']">
             <v-list-item
               prepend-icon="mdi-account-multiple"
@@ -136,7 +125,6 @@
         </v-list>
       </v-navigation-drawer>
 
-      <!-- CONTENIDO PRINCIPAL -->
       <v-main class="main-scroll-area bg-grey-lighten-4">
         <v-container fluid class="pa-6">
           <component
@@ -147,7 +135,6 @@
         </v-container>
       </v-main>
 
-      <!-- FOOTER -->
       <v-footer app color="grey-darken-4" class="py-2">
         <div class="flex-grow-1 text-center text-sm-start text-white">
           &copy; 2024 Mi Aplicación
@@ -225,7 +212,14 @@ const handleLogout = async () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden;
+  /* El 'overflow: hidden' es el que bloquea el scroll en el modo Dashboard normal */
+  overflow: hidden; 
+}
+
+/* 🟢 CORRECCIÓN: Definiendo la clase que activa el scroll en el v-app */
+.scrollable-app-layout {
+  /* Al activarse esta clase, se anula el 'overflow: hidden' y se permite el scroll */
+  overflow: auto;
 }
 
 .main-scroll-area {

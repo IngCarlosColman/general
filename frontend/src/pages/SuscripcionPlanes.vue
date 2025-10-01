@@ -5,25 +5,21 @@
         <!-- Tarjeta Principal con Título y Estado del Rol -->
         <v-card class="pa-6 rounded-xl elevation-10 bg-white" color="#f5f5f5">
           <v-card-title class="text-h4 font-weight-black text-center text-primary">
-            ¡Bienvenido a la Plataforma!
+            Bienvenido a la Agenda Inmobiliaria!
           </v-card-title>
           <v-card-subtitle class="text-h6 text-center mb-4 text-medium-emphasis">
-            Active su Licencia para comenzar a operar.
-          </v-card-subtitle>
-          <p class="text-center text-subtitle-1 mb-4 text-medium-emphasis">
-            Su rol actual es: 
-            <v-chip 
-              :color="getRoleColor(authStore.rol)" 
+            Active su Licencia para comenzar a operar. Su estado actual es:
+            <v-chip
+              :color="getRoleColor(authStore.rol)"
               class="font-weight-bold ml-2 text-white"
               size="large"
             >
               {{ authStore.rol.toUpperCase().replace('_', ' ') }}
             </v-chip>
-          </p>
-
+          </v-card-subtitle>
           <v-divider class="mb-6"></v-divider>
 
-          <!-- 🟢 SECCIÓN DE ALERTA: PENDIENTE DE REVISIÓN -->
+          <!--  SECCIÓN DE ALERTA: PENDIENTE DE REVISIÓN -->
           <v-alert
               v-if="authStore.rol === 'PENDIENTE_REVISION'"
               type="info"
@@ -34,87 +30,132 @@
               color="blue-grey"
               prominent
           >
-            Hemos recibido su comprobante de pago. Un administrador revisará su solicitud en las próximas 24 horas. 
+            Hemos recibido su comprobante de pago. Un administrador revisará su solicitud en las próximas 24 horas.
             Una vez aprobado, su rol cambiará a **EDITOR** y podrá acceder al sistema. Gracias por su paciencia.
           </v-alert>
 
-          <!-- 🔴 SECCIÓN DE PLANES: SOLO VISIBLE SI EL ROL ES PENDIENTE_PAGO -->
+          <!--  SECCIÓN PRINCIPAL: SELECCIÓN DE PLAN Y PAGO (Visible solo si el rol es PENDIENTE_PAGO) -->
           <div v-else-if="authStore.rol === 'PENDIENTE_PAGO'">
             <h2 class="text-h5 font-weight-bold text-center mb-6 text-secondary">
                 1. Elija su Plan de Suscripción
             </h2>
-            
-            <v-expansion-panels flat multiple class="plans-accordion">
-              <!-- GRUPO 1: PLANES AGENTES INDIVIDUALES -->
-              <v-expansion-panel value="agentes">
-                <v-expansion-panel-title class="text-h6 font-weight-bold text-primary">
-                  Plan Agentes (Individual)
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <v-row justify="center" class="pa-3">
-                    <v-col v-for="plan in planesAgentes" :key="plan.id" cols="12" sm="6" lg="4">
-                      <PlanCard
-                        :plan="plan"
-                        :selected="selectedPlan === plan.id"
-                        @select="selectPlan"
-                        :monthly-base-price="350000"
-                      />
-                    </v-col>
-                  </v-row>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
 
-              <v-divider></v-divider>
+            <v-card class="mb-6 elevation-3 rounded-xl">
+              <v-tabs
+                v-model="activeTab"
+                align-tabs="center"
+                color="primary"
+                height="60"
+                slider-color="secondary"
+              >
+                <v-tab value="agentes" prepend-icon="mdi-account-star">
+                  Agentes
+                  <div class="text-caption text-medium-emphasis ml-2 d-none d-sm-inline">(Individual)</div>
+                </v-tab>
+                <v-tab value="minibroker" prepend-icon="mdi-office-building-cog">
+                  Mini Broker/Desarrolladoras
+                  <div class="text-caption text-medium-emphasis ml-2 d-none d-sm-inline">(5 a 15 Cuentas)</div>
+                </v-tab>
+                <v-tab value="inmobiliarias" prepend-icon="mdi-domain">
+                  Inmobiliarias
+                  <div class="text-caption text-medium-emphasis ml-2 d-none d-sm-inline">(20+ Cuentas)</div>
+                </v-tab>
+              </v-tabs>
+            </v-card>
 
-              <!-- GRUPO 2: PLANES MINI BROKER/DESARROLLADORAS (Anual - Múltiples Cuentas) -->
-              <v-expansion-panel value="minibroker">
-                <v-expansion-panel-title class="text-h6 font-weight-bold text-primary">
-                  Plan Mini Broker / Desarrolladoras (5 a 15 Cuentas)
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <v-row justify="center" class="pa-3">
-                    <v-col v-for="plan in planesMiniBroker" :key="plan.id" cols="12" sm="6" lg="4">
-                      <PlanCard
-                        :plan="plan"
-                        :selected="selectedPlan === plan.id"
-                        @select="selectPlan"
-                        :monthly-base-price="350000"
-                      />
-                    </v-col>
-                  </v-row>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
+            <v-window v-model="activeTab" class="py-4">
+              <v-window-item value="agentes">
+                <v-row justify="center" class="pa-3">
+                  <v-col v-for="plan in planesAgentes" :key="plan.id" cols="12" sm="6" lg="4">
+                    <PlanCard
+                      :plan="plan"
+                      :selected="selectedPlan === plan.id"
+                      @select="selectPlan"
+                      :monthlyBasePrice="350000"
+                    />
+                  </v-col>
+                </v-row>
+              </v-window-item>
 
-              <v-divider></v-divider>
+              <v-window-item value="minibroker">
+                <v-row justify="center" class="pa-3">
+                  <v-col v-for="plan in planesMiniBroker" :key="plan.id" cols="12" sm="6" lg="4">
+                    <PlanCard
+                      :plan="plan"
+                      :selected="selectedPlan === plan.id"
+                      @select="selectPlan"
+                      :monthlyBasePrice="350000"
+                    />
+                  </v-col>
+                </v-row>
+              </v-window-item>
 
-              <!-- GRUPO 3: PLANES INMOBILIARIAS (Anual - Múltiples Cuentas) -->
-              <v-expansion-panel value="inmobiliarias">
-                <v-expansion-panel-title class="text-h6 font-weight-bold text-primary">
-                  Plan Inmobiliarias (20+ Cuentas)
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <v-row justify="center" class="pa-3">
-                    <v-col v-for="plan in planesInmobiliarias" :key="plan.id" cols="12" sm="6" lg="4">
-                      <PlanCard
-                        :plan="plan"
-                        :selected="selectedPlan === plan.id"
-                        @select="selectPlan"
-                        :monthly-base-price="350000"
-                      />
-                    </v-col>
-                  </v-row>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-            </v-expansion-panels>
-
+              <v-window-item value="inmobiliarias">
+                <v-row justify="center" class="pa-3">
+                  <v-col v-for="plan in planesInmobiliarias" :key="plan.id" cols="12" sm="6" lg="4">
+                    <PlanCard
+                      :plan="plan"
+                      :selected="selectedPlan === plan.id"
+                      @select="selectPlan"
+                      :monthlyBasePrice="350000"
+                    />
+                  </v-col>
+                </v-row>
+              </v-window-item>
+            </v-window>
             <v-divider class="my-8"></v-divider>
+
+            <!--  INFORMACIÓN DE DEPÓSITO ACTUALIZADA -->
+            <v-card class="pa-5 mb-8 rounded-xl elevation-4 bg-blue-grey-lighten-5 border-lg" flat>
+                <v-card-title class="text-h6 font-weight-bold text-blue-grey-darken-3 d-flex align-center">
+                    <v-icon icon="mdi-bank-transfer-in" class="mr-3" color="blue-grey-darken-2"></v-icon>
+                    Información para Transferencia Bancaria
+                </v-card-title>
+                <v-card-text class="py-3">
+                    <p class="mb-2 font-weight-medium text-medium-emphasis">Realice el pago total de su plan a la siguiente cuenta:</p>
+                    <v-list density="compact" class="bg-transparent">
+                        <!--  LÍNEA: TIPO DE ALIAS (RUC) -->
+                        <v-list-item class="px-0 py-1">
+                            <span class="font-weight-medium text-caption">TIPO DE ALIAS:</span>
+                            <span class="ml-2 font-weight-bold text-primary">RUC</span>
+                        </v-list-item>
+                        <v-list-item class="px-0 py-1">
+                            <span class="font-weight-medium text-caption">ALIAS:</span>
+                            <span class="ml-2 font-weight-bold text-primary">3685150 - 7</span>
+                        </v-list-item>
+                        <!--  LÍNEA: CUENTA N -->
+                        <v-list-item class="px-0 py-1">
+                            <span class="font-weight-medium text-caption">CUENTA NUMERO:</span>
+                            <span class="ml-2 font-weight-bold text-primary">266422</span>
+                        </v-list-item>
+                        <v-list-item class="px-0 py-1">
+                            <span class="font-weight-medium text-caption">DESTINATARIO:</span>
+                            <span class="ml-2 font-weight-bold text-primary">Carlos Colman</span>
+                        </v-list-item>
+                        <!--  ENTIDAD ACTUALIZADA -->
+                        <v-list-item class="px-0 py-1">
+                            <span class="font-weight-medium text-caption">ENTIDAD FINANCIERA:</span>
+                            <span class="ml-2 font-weight-bold text-primary">Cooperativa Universitaria Ltda.</span>
+                        </v-list-item>
+                    </v-list>
+                    <v-alert
+                        type="warning"
+                        density="compact"
+                        variant="tonal"
+                        class="mt-4"
+                    >
+                        Recuerde que debe subir el comprobante de esta transferencia en el siguiente paso.
+                    </v-alert>
+                </v-card-text>
+            </v-card>
+            <!--  FIN INFORMACIÓN DE DEPÓSITO -->
 
             <h2 class="text-h5 font-weight-bold text-center mb-6 text-secondary">
                 2. Suba su Comprobante de Pago
             </h2>
 
             <v-form @submit.prevent="handleUpload">
-              <!-- Muestra el plan seleccionado con su precio total -->
+              <!-- ALERT DE PLAN SELECCIONADO -->
               <v-alert
                 v-if="currentPlan"
                 type="success"
@@ -123,11 +164,11 @@
                 variant="tonal"
                 color="green-darken-2"
               >
-                Plan Seleccionado: <span class="font-weight-bold">{{ currentPlan.name }}</span> | 
+                Plan Seleccionado: <span class="font-weight-bold">{{ currentPlan.name }}</span> ({{ currentPlan.users }} Cuentas) |
                 Monto Total a Pagar: <span class="font-weight-black text-h6">{{ currentPlan.totalPriceFormatted }}</span>
               </v-alert>
+              <!-- FIN ALERT -->
 
-              <!-- Selector de Archivo -->
               <v-file-input
                 v-model="comprobanteFile"
                 :disabled="!selectedPlan || store.isUploading"
@@ -140,7 +181,6 @@
                 class="mb-4"
               ></v-file-input>
 
-              <!-- Área de Mensajes y Botón -->
               <div class="d-flex flex-column align-center">
                 <v-btn
                   type="submit"
@@ -155,7 +195,6 @@
                   Subir Comprobante y Enviar Solicitud
                 </v-btn>
 
-                <!-- Mensaje de Error -->
                 <v-alert
                   v-if="store.uploadError"
                   type="error"
@@ -168,7 +207,6 @@
               </div>
             </v-form>
           </div>
-          <!-- ⛔ OTROS ROLES: ACCESO DENEGADO (Deberían ser redirigidos por el router, pero es un fallback) -->
           <v-alert
               v-else
               type="error"
@@ -178,8 +216,23 @@
               prominent
               class="mb-8"
           >
-              Su rol actual ({{ authStore.rol.toUpperCase() }}) no requiere que complete el proceso de suscripción. Contacte a soporte si cree que esto es un error.
+            Su cuenta actual es ({{ authStore.rol.toUpperCase() }}) no requiere que complete el proceso de suscripción. Contacte a soporte si cree que esto es un error.
           </v-alert>
+
+          <!--  NUEVA ACCIÓN DE CIERRE DE SESIÓN -->
+          <v-card-actions class="pt-6">
+              <v-btn
+                variant="elevated"
+                color="red-darken-3"
+                @click="handleLogout"
+                block
+                prepend-icon="mdi-logout"
+                size="large"
+              >
+                Cerrar Sesión y Salir
+              </v-btn>
+          </v-card-actions>
+          <!--  FIN ACCIÓN DE CIERRE DE SESIÓN -->
 
         </v-card>
       </v-col>
@@ -189,50 +242,121 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useSuscripcionStore } from '@/stores/suscripcion';
 
-// --- Importación de Componente de Tarjeta (Definido abajo) ---
+// --- Importación de Componente de Tarjeta ---
 import PlanCard from '@/components/PlanCard.vue';
 
-// --- Stores ---
+// --- Constantes ---
+const monthlyBasePrice = 350000; // Precio base para cálculo de descuentos
+
+// --- Stores & Router ---
 const authStore = useAuthStore();
 const store = useSuscripcionStore();
+const router = useRouter();
 
 // --- Estado Local ---
 const selectedPlan = ref(null);
 const comprobanteFile = ref(null);
+const activeTab = ref('agentes');
+
+// --- Funciones Auxiliares ---
+
+/**
+ * Determina la duración en meses basándose en el campo 'duration' del plan.
+ * (Función auxiliar para calcular el precio total en el componente padre)
+ * @param {object} plan - Objeto del plan.
+ * @returns {number} Duración en meses.
+ */
+const getDurationInMonths = (plan) => {
+    const durationText = plan.duration.toLowerCase();
+
+    if (durationText.includes('1 mes')) return 1;
+    if (durationText.includes('6 meses')) return 6;
+    if (durationText.includes('1 año')) return 12;
+
+    // Fallback para planes corporativos si la duración no es explícita
+    if (plan.id.startsWith('mb_') || plan.id.startsWith('inm_')) {
+        return 12;
+    }
+    return 1; // Default a 1 mes si no se puede determinar
+};
+
+/**
+ * Calcula el precio total de pago único para un plan.
+ * Fórmula: Precio Mensual Equivalente * Duración en Meses * Cantidad de Cuentas
+ * @param {object} plan - Objeto del plan.
+ * @returns {number} Precio total.
+ */
+const calculateTotalPrice = (plan) => {
+    const pricePerMonth = plan.price;
+    const months = getDurationInMonths(plan);
+    const users = plan.users || 1;
+
+    return pricePerMonth * months * users;
+};
+
 
 // --- Reglas de Validación ---
 const fileRules = [
   v => !!v || 'El comprobante es obligatorio.',
-  v => !v || v.size <= 5000000 || 'El archivo debe ser menor a 5 MB.', // Límite de 5MB
+  v => {
+    // Maneja si v es File o un array de Files
+    const file = Array.isArray(v) ? v[0] : v;
+    return !file || file.size <= 5000000 || 'El archivo debe ser menor a 5 MB.';
+  },
 ];
 
 // --- Computadas de Planes (Organización de la interfaz) ---
-
 const allPlans = computed(() => store.plans);
 
 // Filtramos y organizamos los planes en grupos
-const planesAgentes = computed(() => 
+const planesAgentes = computed(() =>
   allPlans.value.filter(p => p.id.startsWith('agente_'))
 );
 
-const planesMiniBroker = computed(() => 
+const planesMiniBroker = computed(() =>
   allPlans.value.filter(p => p.id.startsWith('mb_'))
 );
 
-const planesInmobiliarias = computed(() => 
+const planesInmobiliarias = computed(() =>
   allPlans.value.filter(p => p.id.startsWith('inm_'))
 );
 
-// Obtiene el plan completo actualmente seleccionado
+/**
+ * Obtiene el plan completo actualmente seleccionado,
+ * añadiendo el precio total y el formato de moneda.
+ */
 const currentPlan = computed(() => {
-  return store.plans.find(p => p.id === selectedPlan.value);
+  const plan = store.plans.find(p => p.id === selectedPlan.value);
+
+  if (plan) {
+    const totalPrice = calculateTotalPrice(plan);
+    return {
+      ...plan,
+      totalPrice,
+      totalPriceFormatted: store.formatCurrency(totalPrice),
+    };
+  }
+  return null;
 });
 
 
 // --- Métodos ---
+
+/**
+ * Función para cerrar la sesión del usuario y redirigirlo al login.
+ */
+const handleLogout = async () => {
+  try {
+    await authStore.logout();
+    await router.push('/login');
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
+  }
+};
 
 /**
  * Función para seleccionar un plan, deseleccionando si se hace clic nuevamente.
@@ -241,7 +365,7 @@ const currentPlan = computed(() => {
 const selectPlan = (planId) => {
     selectedPlan.value = selectedPlan.value === planId ? null : planId;
     // Limpiamos el error al cambiar de plan
-    store.uploadError = null; 
+    store.uploadError = null;
 };
 
 /**
@@ -263,12 +387,19 @@ const getRoleColor = (rol) => {
  * Maneja la subida del archivo al store.
  */
 const handleUpload = async () => {
-    if (!selectedPlan.value || !comprobanteFile.value) {
-        store.uploadError = 'Debe seleccionar un plan y adjuntar el comprobante.';
+    // Validar el plan seleccionado
+    if (!selectedPlan.value) {
+        store.uploadError = 'Debe seleccionar un plan.';
         return;
     }
 
-    // El v-file-input devuelve un array si es 'multiple', si no, el objeto File.
+    // Validar la existencia del archivo
+    if (!comprobanteFile.value || (Array.isArray(comprobanteFile.value) && comprobanteFile.value.length === 0)) {
+        store.uploadError = 'Debe adjuntar el comprobante de pago.';
+        return;
+    }
+
+    // El v-file-input devuelve un array si no tiene la prop 'single'
     const file = Array.isArray(comprobanteFile.value)
         ? comprobanteFile.value[0]
         : comprobanteFile.value;
@@ -278,16 +409,16 @@ const handleUpload = async () => {
         return;
     }
 
+    // Si pasa la validación, limpiar cualquier error anterior
+    store.uploadError = null;
+
     // Llamada a la acción del store
     const result = await store.submitPaymentProof(selectedPlan.value, file);
 
-    // Si la subida fue exitosa, limpiamos el campo. El rol de authStore se actualiza 
-    // dentro de submitPaymentProof (vía authStore.fetchUser), lo que hará que el componente 
-    // se re-renderice y muestre la alerta de PENDIENTE_REVISION.
+    // Si la subida fue exitosa, limpiamos el campo y la selección.
     if (result.success) {
-        // Limpiamos el campo de archivo y la selección para una interfaz limpia
-        comprobanteFile.value = null; 
-        selectedPlan.value = null; 
+        comprobanteFile.value = null;
+        selectedPlan.value = null;
     }
 };
 
@@ -298,31 +429,12 @@ const handleUpload = async () => {
 .subscription-container {
     max-width: 1400px;
     margin: 20px auto;
-    /* Estas propiedades aseguran que el contenedor no restrinja el flujo vertical */
-    min-height: 100% !important; 
-    overflow-y: visible !important;
+    /* Asegura que la vista pueda desplazarse si es necesario */
+    min-height: calc(100vh - 40px);
+    padding-bottom: 40px !important;
 }
-/* Estilos generales para el acordeón de planes */
-.plans-accordion .v-expansion-panel {
-    margin-bottom: 12px;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-}
-.plans-accordion .v-expansion-panel-title {
-    background-color: #f7f7f7;
-    border-radius: 12px 12px 0 0 !important;
-    padding: 18px 24px;
-}
-.plans-accordion .v-expansion-panel-text {
-    padding: 20px 0;
-}
+
+/* Estilos de color para mantener consistencia */
 .text-primary { color: #007bff !important; } /* Azul Intenso */
 .text-secondary { color: #28a745 !important; } /* Verde para Acciones */
-</style>
-
-<style>
-/* Estilo para hacer el título del panel más visible */
-.v-expansion-panel-title__overlay {
-  opacity: 0 !important;
-}
 </style>
