@@ -8,7 +8,7 @@ const corporateSubscriptionController = require('../controllers/subscriptions.co
 
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
 const { uploadProof } = require('../middlewares/upload.middleware');
-// NOTA: Se asume que el middleware 'uploadProof' está correctamente configurado con Multer o similar
+// NOTA: Se asume que el middleware 'uploadProof' está correctamente configurado con Multer.
 
 // Roles permitidos para las rutas de Administración
 const adminRole = ['administrador']; 
@@ -30,7 +30,9 @@ router.use(authenticateJWT);
 router.post(
     '/upload-proof', 
     checkRoles(allowedRoles), 
-    uploadProof, // Middleware Multer para manejar el archivo
+    // 🟢 CORRECCIÓN CLAVE: Usamos 'uploadProof' directamente. 
+    // Este ya fue configurado en upload.middleware.js como .single('comprobante').
+    uploadProof, 
     userSubscriptionController.uploadPaymentProof
 );
 
@@ -42,7 +44,11 @@ router.post(
 
 // 2. GET: Obtener todas las solicitudes pendientes de revisión.
 // RUTA FINAL: /api/subscription/admin/pending-requests
-router.get('/admin/pending-requests', checkRoles(adminRole), userSubscriptionController.getPendingRequests);
+router.get(
+    '/admin/pending-requests', 
+    checkRoles(adminRole), 
+    userSubscriptionController.getPendingRequests
+);
 
 // 3. POST: Aprobar una solicitud específica.
 // RUTA FINAL: /api/subscription/admin/approve/:id

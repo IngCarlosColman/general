@@ -1,73 +1,74 @@
 import api from '../api/axiosClient';
+import { useAuthStore } from '@/stores/auth';
 
 /**
- * Servicio de autenticación con métodos para login, registro, logout, obtener perfil y subida de comprobante.
+ * @fileoverview Servicio centralizado para todas las operaciones de autenticación y de usuario.
+ * @module auth.service
  */
 
+/**
+ * @description Inicia sesión del usuario en el sistema.
+ * @param {string} email - Correo electrónico del usuario.
+ * @param {string} password - Contraseña del usuario.
+ * @returns {Promise<object>} Objeto de respuesta que incluye tokens y datos del usuario.
+ * @throws {string} Mensaje de error si la autenticación falla.
+ */
 const login = async (email, password) => {
   try {
     const response = await api.post('/login', { email, password });
     return response.data;
   } catch (error) {
-    // Lanza el mensaje de error específico del backend
-    throw error.response.data.error;
+    throw error.response?.data?.error || 'Error de red o el servidor no responde.';
   }
 };
 
 /**
- * 🟢 FUNCIÓN CORREGIDA: Ahora acepta un solo objeto 'userData' en lugar de múltiples argumentos.
- * Esto alinea el servicio con la llamada del Pinia Store y elimina la causa del error 400.
- * @param {object} userData - Objeto que contiene todos los campos de registro (username, email, password, etc.).
+ * @description Registra un nuevo usuario en el sistema.
+ * @param {object} userData - Datos necesarios para el registro (ej: nombre, email, password).
+ * @returns {Promise<object>} Objeto de respuesta con el usuario recién creado.
+ * @throws {string} Mensaje de error si el registro falla.
  */
 const register = async (userData) => {
   try {
-    // Enviamos el objeto completo directamente al endpoint /register.
     const response = await api.post('/register', userData);
     return response.data;
   } catch (error) {
-    // Lanza el mensaje de error específico del backend
-    // Este mensaje debería ser el que viste: "Email, Contraseña y Nombre son obligatorios."
-    throw error.response.data.error;
+    throw error.response?.data?.error || 'Error de red o el servidor no responde.';
   }
 };
 
 /**
- * 🟢 FUNCIÓN: Envía el comprobante de pago al backend.
- * @param {string} planId - ID del plan seleccionado (option_id).
- * @param {File} comprobanteFile - El archivo del comprobante a subir.
- * @returns {object} Respuesta del servidor, que incluye el usuario actualizado.
+ * @description Envía el FormData con el plan y el comprobante de pago para solicitar la activación.
+ * @param {FormData} formData - Payload con 'comprobante' y 'plan_solicitado'.
+ * @returns {Promise<object>} Respuesta del servidor, que incluye el usuario actualizado y un mensaje.
+ * @throws {string} Mensaje de error si el servidor rechaza la subida.
  */
-const submitPaymentProof = async (planId, comprobanteFile) => {
-  const formData = new FormData();
-  // El planId que enviamos es el option_id completo (ej: 'agente_anual')
-  formData.append('plan_id', planId); 
-  formData.append('comprobante', comprobanteFile); 
-
+const submitPaymentProof = async (formData) => {
   try {
-    // Endpoint: /api/subscription/upload-proof
-    const response = await api.post('/subscription/upload-proof', formData, {
-      headers: {
-        // Es CRUCIAL para enviar archivos
-        'Content-Type': 'multipart/form-data' 
-      }
-    });
-    // La respuesta contiene { message: '...', user: {...} }
+    const response = await api.post('/subscription/upload-proof', formData);
     return response.data;
   } catch (error) {
-    // Si la respuesta tiene error.response.data.error, lo lanzamos.
-    // Si no, lanzamos un mensaje de error genérico.
     throw error.response?.data?.error || 'Error de conexión o archivo no válido.';
   }
 };
 
+/**
+ * @description Cierra la sesión del usuario.
+ * @returns {Promise<void>}
+ */
 const logout = async () => {
   try {
     await api.post('/logout');
   } catch (error) {
-    console.error('Error durante el logout:', error);
+    console.error('Error durante el logout, ignorando:', error);
   }
 };
 
+/**
+ * @description Solicita un nuevo token de acceso usando el token de refresco (generalmente usado por interceptores).
+ * @returns {Promise<object>} Objeto con el nuevo token.
+ * @throws {object} Error si el refresco falla.
+ */
 const refreshToken = async () => {
   try {
     const response = await api.post('/refresh');
@@ -79,20 +80,19 @@ const refreshToken = async () => {
 };
 
 /**
- * 🟢 FUNCIÓN: Obtiene el perfil completo del usuario autenticado.
+ * @description Obtiene el perfil completo del usuario autenticado.
  * @returns {Promise<object>} Objeto con los datos del usuario.
+ * @throws {string} Mensaje de error si la carga falla.
  */
 const getProfile = async () => {
-    try {
-        // Asumiendo que GET /users devuelve el perfil del usuario autenticado
-        const response = await api.get('/users');
-        return response.data.user; // Devolvemos el objeto 'user'
-    } catch (error) {
-        console.error('Error al obtener el perfil:', error);
-        throw error.response.data.error || 'Error al cargar perfil';
-    }
+  try {
+    const response = await api.get('/users');
+    return response.data.user;
+  } catch (error) {
+    console.error('Error al obtener el perfil:', error);
+    throw error.response?.data?.error || 'Error al cargar perfil';
+  }
 };
-
 
 export default {
   login,

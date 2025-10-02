@@ -101,16 +101,19 @@ const updateUserRoleAndExpiration = async (client, userId, newRole, planOptionId
  * @param {object} res - Objeto de respuesta.
  */
 const uploadPaymentProof = async (req, res) => {
-    // Nota: req.user.id viene del middleware de autenticación (JWT payload)
-    const userId = req.user.id; 
+    const userId = req.user.id;
     const { plan_solicitado } = req.body;
-    // req.file.path es la ruta relativa del archivo guardado por Multer
-    const comprobante_path = req.file ? req.file.path : null; 
+    const comprobante_path = req.file ? req.file.path : null;
+
+    // ✅ Log agregado para trazabilidad del archivo recibido
+    console.log('[LOG] Archivo recibido por Multer:');
+    console.log('→ Nombre original:', req.file?.originalname);
+    console.log('→ Ruta final:', comprobante_path);
+    console.log('→ Tamaño:', req.file?.size, 'bytes');
+    console.log('→ Tipo MIME:', req.file?.mimetype);
 
     if (!plan_solicitado || !comprobante_path) {
-        // Si falta plan_id o el archivo, intentamos limpiar el archivo por si acaso se subió
         if (comprobante_path) {
-            // Usamos path.join(process.cwd(), ...) para obtener la ruta absoluta y eliminar el archivo
             await fs.unlink(path.join(process.cwd(), comprobante_path)).catch(err => {
                 console.warn(`[WARN] No se pudo eliminar el archivo subido sin datos completos: ${comprobante_path}`, err);
             });
@@ -123,7 +126,6 @@ const uploadPaymentProof = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Insertar la solicitud de activación con estado PENDIENTE_REVISION
         const insertQuery = `
             INSERT INTO solicitudes_activacion (
                 id_usuario, 
@@ -141,27 +143,24 @@ const uploadPaymentProof = async (req, res) => {
             'PENDIENTE_REVISION'
         ]);
 
-        // 2. Actualizar el rol del usuario a PENDIENTE_REVISION
         const { updatedUser } = await updateUserRoleAndExpiration(
             client,
             userId,
             'PENDIENTE_REVISION',
-            null // No se pasa planId, la fecha de vencimiento se establece a NULL
+            null
         );
 
         await client.query('COMMIT');
 
-        // 3. Respuesta exitosa
         res.status(201).json({
             message: 'Comprobante de pago subido con éxito y solicitud registrada. Su cuenta está ahora PENDIENTE DE REVISIÓN.',
             solicitud: solicitudResult.rows[0],
-            user: updatedUser // Devuelve el usuario para actualizar el estado en el frontend (rol)
+            user: updatedUser
         });
 
     } catch (err) {
         await client.query('ROLLBACK');
 
-        // Intentar eliminar el archivo subido si falla la DB (fuera de la transacción)
         if (comprobante_path) {
             await fs.unlink(path.join(process.cwd(), comprobante_path)).catch(unlinkErr => {
                 console.warn(`[WARN] No se pudo eliminar el archivo ${comprobante_path} tras error de DB.`, unlinkErr);
