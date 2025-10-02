@@ -13,26 +13,30 @@ const adminRole = ['administrador'];
 router.use(authenticateJWT);
 
 // ==========================================================
-// --- Rutas Protegidas por Roles ---
+// --- Rutas Protegidas por Roles (Administración) ---
 // ==========================================================
 
-// Ruta para que solo los administradores puedan registrar nuevos usuarios
+// 1. POST: Ruta para que solo los administradores puedan registrar nuevos usuarios
 router.post('/register-user', checkRoles(adminRole), authController.register);
 
-// Ruta para obtener todos los usuarios (solo administradores)
-router.get('/users', checkRoles(adminRole), usersController.getAllUsers);
+// 2. GET: Obtener todos los usuarios (solo administradores). Coincide con el frontend: GET /admin/users
+router.get('/admin/users', checkRoles(adminRole), usersController.getAllUsers);
+
+
+// 3. PUT: Actualizar el perfil y rol de un usuario por ID (solo administradores). Coincide con el frontend: PUT /admin/users/:id
+// 🔑 CORRECCIÓN: Se usa updateUserByAdmin para permitir la actualización de cualquier usuario, incluyendo el rol.
+router.put('/admin/users/:id', checkRoles(adminRole), usersController.updateUserByAdmin);
 
 
 // ==========================================================
 // --- Rutas de Perfil (Solo requieren Autenticación) ---
 // ==========================================================
 
-// 1. Obtener los datos del usuario autenticado
+// 4. Obtener los datos del usuario autenticado
 router.get('/me', usersController.getAuthenticatedUser);
 
-// 2. 🔑 RUTA RECOMENDADA: Actualización de Perfil Propio
-// Usamos '/me/profile' para indicar que se actualiza el recurso propio.
-// El controlador usa req.user.id, lo que garantiza que solo el usuario se actualice a sí mismo.
+// 5. RUTA: Actualización de Perfil Propio (mantiene la ruta anterior para el endpoint de perfil propio)
+// Se mantiene updateUserProfile, ya que aquí el ID viene del token (req.user), NO del parámetro :id
 router.put('/me/profile', usersController.updateUserProfile); 
 
 module.exports = router;

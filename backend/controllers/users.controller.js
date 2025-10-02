@@ -74,7 +74,9 @@ const getAllUsers = async (req, res) => {
         const dataResult = await pool.query(dataQuery, dataParams);
         const items = dataResult.rows;
 
-        res.json({ items, totalItems });
+        // NOTA: El frontend espera 'users' o 'items'. Usamos 'users' para mayor compatibilidad
+        // con el código inicial del frontend que usa `response.data.users`
+        res.json({ users: items, totalItems }); 
     } catch (err) {
         console.error('Error al obtener la lista de usuarios:', err);
         res.status(500).json({ error: 'Error del servidor' });
@@ -82,7 +84,7 @@ const getAllUsers = async (req, res) => {
 };
 
 /**
- * NUEVA FUNCIÓN: Controlador para actualizar el perfil del usuario autenticado.
+ * Controlador para actualizar el perfil del usuario autenticado (propio).
  * Permite al usuario actualizar sus propios campos de información personal.
  * @param {object} req - Objeto de solicitud de Express.
  * @param {object} res - Objeto de respuesta de Express.
@@ -150,5 +152,90 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
+// -------------------------------------------------------------
+// 🔑 FUNCIÓN ADMINISTRATIVA CLAVE AÑADIDA
+// -------------------------------------------------------------
 
-module.exports = { getAuthenticatedUser, getAllUsers, updateUserProfile };
+/**
+ * Función exclusiva para Administradores. Actualiza el perfil y el rol
+ * de cualquier usuario por su ID.
+ * Este controlador será usado por la ruta PUT /api/admin/users/:id
+ * @param {object} req - Objeto de solicitud de Express (contiene req.params.id).
+ * @param {object} res - Objeto de respuesta de Express.
+ */
+const updateUserByAdmin = async (req, res) => {
+    try {
+        // 1. Obtener el ID del usuario a modificar desde los parámetros de la ruta
+        const { id: targetUserId } = req.params; 
+        
+        // Campos que el ADMIN puede actualizar (incluyendo 'rol')
+        const { first_name, last_name, telefono, direccion, rol } = req.body;
+
+        // Validar si al menos un campo relevante está presente
+        if (!first_name && !last_name && !telefono && !direccion && !rol) {
+            return res.status(400).json({ 
+                error: 'Debe proporcionar al menos un campo para actualizar.' 
+            });
+        }
+
+        // 2. Construir la consulta de forma dinámica para la actualización
+        const fieldsToUpdate = [];
+        const values = [];
+        let paramIndex = 1;
+
+        // Lógica de actualización de campos personales
+        if (first_name !== undefined) {
+            fieldsToUpdate.push(`first_name = $${paramIndex++}`);
+            values.push(first_name);
+        }
+        if (last_name !== undefined) {
+            fieldsToUpdate.push(`last_name = $${paramIndex++}`);
+            values.push(last_name);
+        }
+        if (telefono !== undefined) {
+            fieldsToUpdate.push(`telefono = $${paramIndex++}`);
+            values.push(telefono);
+        }
+        if (direccion !== undefined) {
+            fieldsToUpdate.push(`direccion = $${paramIndex++}`);
+            values.push(direccion);
+        }
+        // CAMBIO CLAVE: Permitir la actualización del rol
+        if (rol !== undefined) {
+            fieldsToUpdate.push(`rol = $${paramIndex++}`);
+            values.push(rol); 
+        }
+
+        // Agregar el ID del usuario al final de los valores para la cláusula WHERE
+        values.push(targetUserId);
+        const userIdParam = paramIndex;
+
+        const updateQuery = `
+             UPDATE users 
+             SET ${fieldsToUpdate.join(', ')} 
+             WHERE id = $${userIdParam} 
+             RETURNING id, username, email, first_name, last_name, rol, telefono, direccion;
+        `;
+
+        const result = await pool.query(updateQuery, values);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado para la actualización.' });
+        }
+
+        res.status(200).json({ 
+            message: 'Usuario actualizado por administrador con éxito.',
+            user: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error al actualizar usuario por Admin:', error);
+        res.status(500).json({ error: 'Error interno del servidor al actualizar el usuario.' });
+    }
+};
+module.exports = { 
+    getAuthenticatedUser, 
+    getAllUsers, 
+    updateUserProfile, 
+    updateUserByAdmin // ⬅️ NUEVA FUNCIÓN EXPORTADA
+};

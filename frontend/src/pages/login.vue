@@ -14,7 +14,6 @@
         <h2 class="text-h4 font-weight-bold text-white">Iniciar Sesión</h2>
         <p class="text-subtitle-1 text-medium-emphasis mt-2">Accede a tu cuenta de Tarsus</p>
       </div>
-
       <v-form @submit.prevent="handleLogin" ref="formRef">
         <v-text-field
           v-model="email"
@@ -28,7 +27,6 @@
           color="white"
           dark
         ></v-text-field>
-
         <v-text-field
           v-model="password"
           :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
@@ -44,7 +42,6 @@
           color="white"
           dark
         ></v-text-field>
-
         <v-alert
             v-if="authStore.authError"
             type="error"
@@ -53,8 +50,6 @@
         >
             {{ authStore.authError }}
         </v-alert>
-
-
         <v-btn
           color="primary"
           block
@@ -66,9 +61,7 @@
           Entrar
         </v-btn>
       </v-form>
-
       <v-divider class="my-6"></v-divider>
-
       <div class="text-center">
         <router-link to="/register" class="text-white text-decoration-none">
           ¿No tienes una cuenta? <span class="font-weight-bold text-primary">Regístrate aquí</span>
@@ -77,14 +70,11 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useSnackbar } from '@/composables/useSnackbar'; 
-
-// Configuración y variables
 const router = useRouter();
 const authStore = useAuthStore();
 const { showSnackbar } = useSnackbar(); 
@@ -92,11 +82,7 @@ const formRef = ref(null);
 const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
-
-// Estilos de fondo (usando una imagen de placeholder y degradado oscuro)
 const loginBgImage = 'url(https://placehold.co/1920x1080/0d1117/30363d?text=Fondo+Login)';
-
-// Reglas de Validación
 const emailRules = [
   v => !!v || 'El correo es obligatorio.',
   v => /.+@.+\..+/.test(v) || 'El correo debe ser válido.',
@@ -104,58 +90,29 @@ const emailRules = [
 const passwordRules = [
   v => !!v || 'La contraseña es obligatoria.',
 ];
-
-/**
- * Maneja el envío del formulario de inicio de sesión, incluyendo la redirección dinámica.
- */
 const handleLogin = async () => {
-  // Resetear el error antes de intentar
   authStore.authError = null;
-
-  // Validar el formulario
   const { valid } = await formRef.value.validate();
   if (!valid) return;
-
   try {
-    // 🔑 1. Llamada al action del store (Autenticación). Esto actualiza authStore.rol
     await authStore.login(email.value, password.value);
-    
-    // Si la llamada no lanza error, el inicio de sesión fue exitoso
     showSnackbar('Inicio de sesión exitoso. Redirigiendo...', 'success');
-    
-    // 🟢 2. LÓGICA DE REDIRECCIÓN DINÁMICA
     const userRol = authStore.rol;
     let targetPath = '/dashboard'; 
-    
-    // Si el usuario está pendiente de pago o revisión, el destino principal es /dashboard, 
-    // donde dashboard.vue le mostrará el SuscripcionPlanes.
     if (userRol === 'PENDIENTE_PAGO' || userRol === 'PENDIENTE_REVISION') {
-        // Mantiene /dashboard como target, ya que el componente dashboard.vue tiene el paywall.
-        // Si quisieras un path diferente (ej. /suscripciones) iría aquí.
-        // targetPath = '/suscripciones'; 
+
     }
-    
-    // Para 'administrador' y 'editor', se mantiene el targetPath = '/dashboard'.
-    
-    // 🧭 3. Ejecutar la redirección
     await router.push(targetPath);
-    
   } catch (error) {
-    // El error ya está en authStore.authError
-    // Mostrar el error en un snackbar también
     showSnackbar(authStore.authError || 'Error desconocido al iniciar sesión.', 'error');
   }
 };
 </script>
-
 <style scoped>
 .fill-height {
-  /* Asegura que el contenedor ocupe toda la altura de la vista */
   height: 100vh;
 }
-
 .login-background {
-  /* Fondo estilizado con imagen y un overlay oscuro */
   position: relative;
   background-image: var(--login-bg-image);
   background-size: cover;
@@ -164,30 +121,24 @@ const handleLogin = async () => {
   overflow: hidden;
   z-index: 0;
 }
-
 .login-background::before {
-  /* Overlay oscuro para mejorar la legibilidad del texto */
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.7); /* Oscurecer el fondo */
+  background-color: rgba(0, 0, 0, 0.7);
   z-index: 1;
 }
-
 .login-card {
-  /* Estilo de tarjeta con transparencia y desenfoque (vidrio esmerilado) */
   background-color: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   position: relative;
-  z-index: 2; /* Asegura que la tarjeta esté sobre el overlay */
+  z-index: 2;
   border-radius: 20px;
 }
-
-/* Forzar el color de texto a blanco dentro de la tarjeta para mejor contraste */
 .login-card :deep(.v-label),
 .login-card :deep(.v-input__control),
 .login-card :deep(.v-icon) {

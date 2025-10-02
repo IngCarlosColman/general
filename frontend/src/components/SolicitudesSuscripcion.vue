@@ -1,3 +1,88 @@
+<template>
+  <v-container fluid class="pa-4">
+    <v-card class="pa-6 rounded-xl shadow-lg elevation-8">
+      <v-card-title class="text-h4 font-weight-black mb-4 text-primary">
+        Gestión de Solicitudes de Suscripción
+      </v-card-title>
+      <v-card-text>
+        <p class="mb-6">
+          Revisa y gestiona los comprobantes de pago subidos por los usuarios para activar su licencia.
+        </p>
+
+        <v-data-table
+          :headers="headers"
+          :items="pendingRequests"
+          :loading="isLoading"
+          item-key="id"
+          no-data-text="No hay solicitudes pendientes de revisión."
+          loading-text="Cargando solicitudes..."
+          class="elevation-1"
+        >
+          <!-- Slot personalizado para el campo 'username' -->
+          <template v-slot:item.username="{ item }">
+            <v-chip color="info" size="small">{{ item.username }}</v-chip>
+          </template>
+
+          <!-- Slot personalizado para el campo 'monto_transferido' -->
+          <template v-slot:item.monto_transferido="{ item }">
+            <span class="font-weight-bold">{{ item.monto_transferido }} $</span>
+          </template>
+          
+          <!-- Slot personalizado para el campo 'comprobante_path' -->
+          <template v-slot:item.comprobante_path="{ item }">
+            <v-btn
+              variant="flat"
+              color="primary"
+              size="small"
+              icon="mdi-file-eye-outline"
+              @click="openComprobante(item.comprobanteUrl)"
+              title="Ver Comprobante"
+            ></v-btn>
+          </template>
+
+          <!-- Slot personalizado para las acciones -->
+          <template v-slot:item.actions="{ item }">
+            <v-btn
+              color="success"
+              class="mr-2"
+              size="small"
+              :disabled="isProcessingAction"
+              @click="handleAction(item.id, 'approve')"
+            >
+              Aprobar
+            </v-btn>
+            <v-btn
+              color="error"
+              size="small"
+              :disabled="isProcessingAction"
+              @click="handleAction(item.id, 'reject')"
+            >
+              Rechazar
+            </v-btn>
+          </template>
+        </v-data-table>
+      </v-card-text>
+    </v-card>
+    
+    <!-- Modal para visualización del comprobante -->
+    <v-dialog v-model="showImageModal" max-width="800">
+      <v-card>
+        <v-card-title class="text-h6">
+          Comprobante de Pago
+          <v-btn icon="mdi-close" variant="text" @click="showImageModal = false" class="float-right"></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-img :src="currentComprobanteUrl" max-height="700" contain></v-img>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+  </v-container>
+</template>
+
+<style scoped>
+/* Estilos adicionales si fueran necesarios */
+</style>
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '@/api/axiosClient';
@@ -92,89 +177,3 @@ const handleAction = async (requestId, action) => {
 
 onMounted(fetchPendingRequests);
 </script>
-
-<template>
-  <v-container fluid class="pa-4">
-    <v-card class="pa-6 rounded-xl shadow-lg elevation-8">
-      <v-card-title class="text-h4 font-weight-black mb-4 text-primary">
-        Gestión de Solicitudes de Suscripción
-      </v-card-title>
-      <v-card-text>
-        <p class="mb-6">
-          Revisa y gestiona los comprobantes de pago subidos por los usuarios para activar su licencia.
-        </p>
-
-        <v-data-table
-          :headers="headers"
-          :items="pendingRequests"
-          :loading="isLoading"
-          item-key="id"
-          no-data-text="No hay solicitudes pendientes de revisión."
-          loading-text="Cargando solicitudes..."
-          class="elevation-1"
-        >
-          <!-- Slot personalizado para el campo 'username' -->
-          <template v-slot:item.username="{ item }">
-            <v-chip color="info" size="small">{{ item.username }}</v-chip>
-          </template>
-
-          <!-- Slot personalizado para el campo 'monto_transferido' -->
-          <template v-slot:item.monto_transferido="{ item }">
-            <span class="font-weight-bold">{{ item.monto_transferido }} $</span>
-          </template>
-          
-          <!-- Slot personalizado para el campo 'comprobante_path' -->
-          <template v-slot:item.comprobante_path="{ item }">
-            <v-btn
-              variant="flat"
-              color="primary"
-              size="small"
-              icon="mdi-file-eye-outline"
-              @click="openComprobante(item.comprobanteUrl)"
-              title="Ver Comprobante"
-            ></v-btn>
-          </template>
-
-          <!-- Slot personalizado para las acciones -->
-          <template v-slot:item.actions="{ item }">
-            <v-btn
-              color="success"
-              class="mr-2"
-              size="small"
-              :disabled="isProcessingAction"
-              @click="handleAction(item.id, 'approve')"
-            >
-              Aprobar
-            </v-btn>
-            <v-btn
-              color="error"
-              size="small"
-              :disabled="isProcessingAction"
-              @click="handleAction(item.id, 'reject')"
-            >
-              Rechazar
-            </v-btn>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
-    
-    <!-- Modal para visualización del comprobante -->
-    <v-dialog v-model="showImageModal" max-width="800">
-      <v-card>
-        <v-card-title class="text-h6">
-          Comprobante de Pago
-          <v-btn icon="mdi-close" variant="text" @click="showImageModal = false" class="float-right"></v-btn>
-        </v-card-title>
-        <v-card-text>
-          <v-img :src="currentComprobanteUrl" max-height="700" contain></v-img>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
-
-  </v-container>
-</template>
-
-<style scoped>
-/* Estilos adicionales si fueran necesarios */
-</style>

@@ -2,9 +2,8 @@ require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const path = require('path'); 
 const { connectDbMiddleware } = require('./db/db');
-
-// Importa todas las rutas
 const authRoutes = require('./routes/auth.routes');
 const usersRoutes = require('./routes/users.routes');
 const catastroRoutes = require('./routes/catastro.routes');
@@ -29,17 +28,11 @@ const mapaRoutes = require('./routes/mapa.routes');
 const consultaPadronRoutes = require('./routes/consulta_padron.routes');
 const dashboardRoutes = require('./routes/dashboard.routes'); 
 const subscriptionRoutes = require('./routes/subscription.routes'); 
-
-// 🔑 Importación de las TRES nuevas rutas
 const adminRoutes = require('./routes/admin.routes');
-const billingRoutes = require('./routes/billing.routes'); // ⬅️ ¡Esta línea ahora es válida!
+const billingRoutes = require('./routes/billing.routes'); 
 const managementRoutes = require('./routes/management.routes');
-
-
 const app = express();
 const PORT = process.env.PORT || 8000;
-
-// Middlewares
 app.use(cors({
     origin: 'http://localhost:3000',
     credentials: true,
@@ -49,13 +42,12 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use(connectDbMiddleware);
-
-// Rutas API
+const UPLOADS_PATH = path.join(__dirname, 'uploads'); 
+console.log('Ruta ABSOLUTA para archivos estáticos /uploads (CORREGIDA):', UPLOADS_PATH);
+app.use('/uploads', express.static(UPLOADS_PATH));
 app.get('/', (req, res) => {
     res.send('¡Servidor del backend en funcionamiento!');
 });
-
-// Montaje de rutas existentes
 app.use('/api', authRoutes);
 app.use('/api', usersRoutes);
 app.use('/api', generalRoutes);
@@ -79,33 +71,13 @@ app.use('/api', geoRoutes);
 app.use('/api', mapaRoutes);
 app.use('/api', consultaPadronRoutes);
 app.use('/api', dashboardRoutes);
-
-// Uso de la ruta de Suscripción de Usuario (Comprobantes)
 app.use('/api/subscription', subscriptionRoutes);
-
-// ==========================================================
-// 🔑 Montaje de las NUEVAS Rutas
-// ==========================================================
-
-// Rutas de Administración (Suscripciones, etc.) - Prefijo /api/admin
-// Rutas finales: /api/admin/suscripciones/pendientes, etc.
 app.use('/api/admin', adminRoutes);
-
-// Rutas de Facturación - Prefijo /api/billing
-// Rutas finales: /api/billing/facturacion/datos
 app.use('/api/billing', billingRoutes);
-
-// Rutas de Gestión de Licencias/Planes Grupales - Prefijo /api/management
-// Rutas finales: /api/management/licencias/estado, etc.
 app.use('/api/management', managementRoutes);
-
-
-// Iniciar el servidor
 app.listen(PORT, () => {
     console.log(`Servidor Express corriendo en el puerto ${PORT}`);
 });
-
-// Cierre limpio del servidor
 process.on('SIGINT', () => {
     console.log('Servidor cerrado.');
     process.exit(0);

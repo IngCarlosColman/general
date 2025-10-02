@@ -4,7 +4,6 @@
     class="pa-0 fill-height login-background d-flex justify-center align-center"
     :style="{'--login-bg-image': loginBgImage}"
   >
-    <!-- Contenedor centralizado y adaptado a móvil -->
     <v-card
       class="pa-6 pa-sm-8 elevation-12 login-card"
       width="90%"
@@ -15,10 +14,8 @@
         <h2 class="text-h4 font-weight-bold text-white">Registro de Usuario</h2>
         <p class="text-subtitle-1 text-medium-emphasis mt-2">Crea tu cuenta para empezar</p>
       </div>
-
       <v-form @submit.prevent="handleRegister" ref="formRef">
         <v-row>
-          <!-- Fila 1: Username y Email -->
           <v-col cols="12" md="6">
             <v-text-field
               v-model="username"
@@ -45,8 +42,6 @@
               dark
             ></v-text-field>
           </v-col>
-
-          <!-- Fila 2 (NUEVA): Cédula -->
           <v-col cols="12">
             <v-text-field
               v-model="cedula"
@@ -60,8 +55,6 @@
               dark
             ></v-text-field>
           </v-col>
-          
-          <!-- Fila 3: Nombre y Apellido (Movidas un nivel abajo) -->
           <v-col cols="12" md="6">
             <v-text-field
               v-model="first_name"
@@ -88,8 +81,6 @@
               dark
             ></v-text-field>
           </v-col>
-
-          <!-- Fila 4: Contraseña y Confirmación (Movidas un nivel abajo) -->
           <v-col cols="12" md="6">
             <v-text-field
               v-model="password"
@@ -119,8 +110,6 @@
               dark
             ></v-text-field>
           </v-col>
-
-          <!-- Fila 5: Teléfono y Dirección (Movidas un nivel abajo) -->
           <v-col cols="12" md="6">
             <v-text-field
               v-model="telefono"
@@ -148,8 +137,6 @@
             ></v-text-field>
           </v-col>
         </v-row>
-
-        <!-- Mensaje de Error (si existe) -->
         <v-alert
             v-if="authStore.authError"
             type="error"
@@ -158,7 +145,6 @@
         >
             {{ authStore.authError }}
         </v-alert>
-
         <v-btn
           color="success"
           block
@@ -170,10 +156,7 @@
           Crear Cuenta
         </v-btn>
       </v-form>
-
       <v-divider class="my-6"></v-divider>
-
-      <!-- Enlace a Login -->
       <div class="text-center">
         <router-link to="/login" class="text-white text-decoration-none">
           ¿Ya tienes una cuenta? <span class="font-weight-bold text-primary">Iniciar Sesión</span>
@@ -182,18 +165,15 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useSnackbar } from '@/composables/useSnackbar'; // Importar composable
-
 const router = useRouter();
 const authStore = useAuthStore();
 const { showSnackbar } = useSnackbar();
 const formRef = ref(null);
-
 const username = ref('');
 const email = ref('');
 const password = ref('');
@@ -202,14 +182,9 @@ const first_name = ref('');
 const last_name = ref('');
 const telefono = ref('');
 const direccion = ref('');
-// 🟢 NUEVO: Estado para el campo cedula
 const cedula = ref(''); 
 const showPassword = ref(false);
-
 const loginBgImage = 'url(https://placehold.co/1920x1080/0d1117/30363d?text=Fondo+Registro)';
-
-
-// --- Reglas de Validación ---
 const requiredRule = [v => !!v || 'Campo obligatorio.'];
 const usernameRules = [
   ...requiredRule,
@@ -227,68 +202,49 @@ const passwordConfirmRules = computed(() => [
   ...requiredRule,
   v => v === password.value || 'Las contraseñas no coinciden.',
 ]);
-// 🟢 NUEVO: Reglas para la cédula (ejemplo: debe ser solo números y tener un largo mínimo)
 const cedulaRules = [
   ...requiredRule,
   v => /^\d+$/.test(v) || 'La cédula solo debe contener números.',
   v => (v && v.length >= 5) || 'Mínimo 5 dígitos.',
 ];
-
-
-/**
- * Maneja el envío del formulario de registro.
- */
 const handleRegister = async () => {
-  // Resetear el error antes de intentar
   authStore.authError = null;
-
-  // 1. Validar el formulario
   const { valid } = await formRef.value.validate();
   if (!valid) return;
 
   try {
-    // 2. Llamada al store para registrar
-    // 🟢 CORRECCIÓN: Asegurar que se envía el campo cedula
     await authStore.register({
       username: username.value,
       email: email.value,
       password: password.value,
-      // 🔑 CLAVE: Añadir cedula aquí
       cedula: cedula.value, 
       first_name: first_name.value,
       last_name: last_name.value,
       telefono: telefono.value,
       direccion: direccion.value,
     });
-    
-    // 3. Éxito: Mostrar snackbar y redirigir
     showSnackbar('Registro exitoso. ¡Ahora puedes iniciar sesión!', 'success');
     router.push('/login');
-
   } catch (error) {
-    // 4. Fallo: Mostrar error en snackbar
     console.error('Fallo de registro:', error);
     showSnackbar(authStore.authError || 'Error desconocido al registrar. Intenta de nuevo.', 'error');
   }
 };
 </script>
-
 <style scoped>
 .fill-height {
   height: 100vh;
 }
-
 .login-background {
   position: relative;
   background-image: var(--login-bg-image);
   background-size: cover;
   background-position: center;
   background-color: #000;
-  overflow: auto; /* Permite scroll si el contenido es más largo que la pantalla (útil en móvil) */
+  overflow: auto;
   z-index: 0;
-  padding: 40px 0; /* Padding para que la tarjeta no pegue arriba y abajo */
+  padding: 40px 0;
 }
-
 .login-background::before {
   content: '';
   position: absolute;
@@ -299,7 +255,6 @@ const handleRegister = async () => {
   background-color: rgba(0, 0, 0, 0.7);
   z-index: 1;
 }
-
 .login-card {
   background-color: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(12px);
@@ -308,7 +263,6 @@ const handleRegister = async () => {
   z-index: 2;
   border-radius: 20px;
 }
-
 .login-card :deep(.v-label),
 .login-card :deep(.v-input__control),
 .login-card :deep(.v-icon) {
