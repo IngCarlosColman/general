@@ -1,5 +1,4 @@
 import api from '../api/axiosClient';
-import { useAuthStore } from '@/stores/auth';
 
 /**
  * @fileoverview Servicio centralizado para todas las operaciones de autenticación y de usuario.

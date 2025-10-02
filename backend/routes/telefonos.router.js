@@ -4,7 +4,7 @@ const telefonosController = require('../controllers/telefonos.controller');
 
 // Importamos todos los middlewares necesarios
 const { authenticateJWT, checkRoles } = require('../middlewares/auth.middleware');
-// 🚨 Importa el middleware de permisos
+// Importa el middleware de permisos
 const { canAccessRecord } = require('../middlewares/permissions.middleware');
 
 // Definimos los roles que tienen permiso para acceder a estas rutas
@@ -26,7 +26,7 @@ router.put(
     telefonosController.updateTelefono
 );
 
-// 🚨 RUTA NUEVA BLINDADA: ELIMINACIÓN (DELETE)
+// RUTA NUEVA BLINDADA: ELIMINACIÓN (DELETE)
 router.delete(
     '/telefonos/:id',
     checkRoles(allowedRoles),

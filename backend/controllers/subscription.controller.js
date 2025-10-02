@@ -103,19 +103,35 @@ const updateUserRoleAndExpiration = async (client, userId, newRole, planOptionId
 const uploadPaymentProof = async (req, res) => {
     const userId = req.user.id;
     const { plan_solicitado } = req.body;
-    const comprobante_path = req.file ? req.file.path : null;
+    
+    // 1. Obtener la ruta absoluta de Multer
+    const rutaAbsoluta = req.file ? req.file.path : null;
+    
+    // 2. 🔑 CORRECCIÓN: Limpiar la ruta para obtener la URL pública
+    let rutaPublicaDB = null;
+    if (rutaAbsoluta) {
+        // Obtenemos la ruta limpia eliminando el directorio de trabajo (e.g., '/app')
+        // Esto convierte '/app/uploads/file.png' en '/uploads/file.png'
+        rutaPublicaDB = rutaAbsoluta.replace(path.join(process.cwd()), '');
+    }
+    
+    // Usamos la ruta limpia para el Log y la DB
+    const comprobante_path_db = rutaPublicaDB; 
 
     // ✅ Log agregado para trazabilidad del archivo recibido
     console.log('[LOG] Archivo recibido por Multer:');
     console.log('→ Nombre original:', req.file?.originalname);
-    console.log('→ Ruta final:', comprobante_path);
+    console.log('→ Ruta Absoluta (FS):', rutaAbsoluta);
+    console.log('→ Ruta Pública (DB):', comprobante_path_db); // Log de la ruta corregida
     console.log('→ Tamaño:', req.file?.size, 'bytes');
     console.log('→ Tipo MIME:', req.file?.mimetype);
 
-    if (!plan_solicitado || !comprobante_path) {
-        if (comprobante_path) {
-            await fs.unlink(path.join(process.cwd(), comprobante_path)).catch(err => {
-                console.warn(`[WARN] No se pudo eliminar el archivo subido sin datos completos: ${comprobante_path}`, err);
+
+    if (!plan_solicitado || !comprobante_path_db) {
+        // En caso de error, intentamos eliminar usando la ruta absoluta
+        if (rutaAbsoluta) {
+            await fs.unlink(rutaAbsoluta).catch(err => {
+                console.warn(`[WARN] No se pudo eliminar el archivo subido sin datos completos: ${rutaAbsoluta}`, err);
             });
         }
         return res.status(400).json({ error: 'El ID del plan y el comprobante de pago son obligatorios.' });
@@ -139,7 +155,8 @@ const uploadPaymentProof = async (req, res) => {
         const solicitudResult = await client.query(insertQuery, [
             userId,
             plan_solicitado,
-            comprobante_path,
+            // 3. 🔑 USAMOS LA RUTA PÚBLICA LIMPIA AQUÍ
+            comprobante_path_db, 
             'PENDIENTE_REVISION'
         ]);
 
@@ -161,9 +178,10 @@ const uploadPaymentProof = async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
 
-        if (comprobante_path) {
-            await fs.unlink(path.join(process.cwd(), comprobante_path)).catch(unlinkErr => {
-                console.warn(`[WARN] No se pudo eliminar el archivo ${comprobante_path} tras error de DB.`, unlinkErr);
+        // 4. En caso de ROLLBACK, usamos la ruta absoluta para eliminar del disco
+        if (rutaAbsoluta) {
+            await fs.unlink(rutaAbsoluta).catch(unlinkErr => {
+                console.warn(`[WARN] No se pudo eliminar el archivo ${rutaAbsoluta} tras error de DB.`, unlinkErr);
             });
         }
 
@@ -257,6 +275,11 @@ const handleRequestAction = async (req, res) => {
         }
 
         const { id_usuario: userId, ruta_comprobante, plan_solicitado } = requestResult.rows[0];
+        
+        // 🔑 NOTA IMPORTANTE: La ruta_comprobante obtenida de la DB es AHORA la ruta pública limpia (/uploads/...).
+        // Debemos reconstruir la ruta absoluta para la operación de eliminación (fs.unlink) si es rechazada.
+        const rutaAbsolutaParaFS = path.join(process.cwd(), ruta_comprobante);
+
 
         let newStatus;
         let responseMessage;
@@ -294,12 +317,12 @@ const handleRequestAction = async (req, res) => {
             // 3. Eliminar el archivo de comprobante subido si es rechazado
             if (ruta_comprobante) {
                 try {
-                    // Usamos la ruta absoluta
-                    await fs.unlink(path.join(process.cwd(), ruta_comprobante));
-                    console.log(`[LOG] Archivo de comprobante eliminado: ${ruta_comprobante}`);
+                    // Usamos la ruta ABSOLUTA que reconstruimos para el sistema de archivos
+                    await fs.unlink(rutaAbsolutaParaFS);
+                    console.log(`[LOG] Archivo de comprobante eliminado: ${rutaAbsolutaParaFS}`);
                 } catch (unlinkErr) {
                     // Sólo advertir, no detener la transacción si la eliminación del archivo falla
-                    console.warn(`[WARN] No se pudo eliminar el archivo ${ruta_comprobante} tras rechazo.`, unlinkErr);
+                    console.warn(`[WARN] No se pudo eliminar el archivo ${rutaAbsolutaParaFS} tras rechazo.`, unlinkErr);
                 }
             }
         }

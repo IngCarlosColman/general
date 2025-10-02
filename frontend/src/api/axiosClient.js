@@ -10,7 +10,7 @@ import { useAuthStore } from '../stores/auth';
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
   
-  // 🛑 CORRECCIÓN CRÍTICA: Se ELIMINA el 'Content-Type: application/json' GLOBAL.
+  // CORRECCIÓN CRÍTICA: Se ELIMINA el 'Content-Type: application/json' GLOBAL.
   // Axios ahora inferirá el Content-Type automáticamente:
   // - Para objetos planos (login, register): Asumirá application/json.
   // - Para FormData (submitPaymentProof): Asumirá multipart/form-data con boundary correcto.

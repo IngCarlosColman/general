@@ -30,7 +30,7 @@ router.use(authenticateJWT);
 router.post(
     '/upload-proof', 
     checkRoles(allowedRoles), 
-    // 🟢 CORRECCIÓN CLAVE: Usamos 'uploadProof' directamente. 
+    // CORRECCIÓN CLAVE: Usamos 'uploadProof' directamente. 
     // Este ya fue configurado en upload.middleware.js como .single('comprobante').
     uploadProof, 
     userSubscriptionController.uploadPaymentProof

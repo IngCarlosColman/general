@@ -129,7 +129,7 @@ const fetchPendingRequests = async () => {
       // Formateo de fecha simple
       fecha_subida: new Date(req.fecha_subida).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
       // Asume que el comprobante_path contiene solo el nombre del archivo
-      comprobanteUrl: `${import.meta.env.VITE_BACKEND_URL}/uploads/comprobantes/${req.comprobante_path}`
+      comprobanteUrl: `${import.meta.env.VITE_BACKEND_URL}/uploads/${req.comprobante_path}`
     }));
   } catch (error) {
     showSnackbar('Error al cargar las solicitudes: ' + (error.response?.data?.error || error.message), 'error');
