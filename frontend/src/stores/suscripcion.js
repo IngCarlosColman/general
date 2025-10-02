@@ -1,23 +1,29 @@
 import { defineStore } from 'pinia';
 import { ref, computed, toRaw } from 'vue';
-import authService from '@/services/auth.service'; 
-import { useAuthStore } from './auth'; 
-import { useSnackbar } from '@/composables/useSnackbar'; 
-
+import authService from '@/services/auth.service';
+import { useAuthStore } from './auth';
+import { useSnackbar } from '@/composables/useSnackbar';
 export const useSuscripcionStore = defineStore('suscripcion', () => {
     // Inicializamos el snackbar para los mensajes
     const { showSnackbar } = useSnackbar();
     // Inicializamos el store de Auth para actualizar el estado del usuario
-    const authStore = useAuthStore(); 
-
+    const authStore = useAuthStore();
     // === ESTADO (STATE) ===
     const isUploading = ref(false);
     const uploadError = ref(null);
     const uploadSuccess = ref(false);
     const userMessage = ref('');
-    
+    const billingData = ref({
+        ruc_fiscal: '',
+        razon_social: '',
+        direccion_fiscal: '',
+        metodo_entrega: 'EMAIL', // Valor por defecto
+        email_facturacion: '',
+    });
+    const isBillingLoading = ref(false);
+    const billingError = ref(null);
     /**
-     * @description Almacena la estructura de planes, usando los IDs que concuerdan 
+     * @description Almacena la estructura de planes, usando los IDs que concuerdan
      * con la lógica de duración del backend (subscription.controller.js).
      * Se han añadido nuevos planes corporativos para estar en sincronía con el backend.
      */
@@ -27,7 +33,7 @@ export const useSuscripcionStore = defineStore('suscripcion', () => {
             id: 'agente_mensual',
             type: 'Mensual', // Nuevo campo para clasificación
             name: 'Agente Básico',
-            price: 350000, 
+            price: 350000,
             duration: '1 Mes',
             users: 1, // Nuevo campo: 1 editor
             features: [
@@ -189,10 +195,8 @@ export const useSuscripcionStore = defineStore('suscripcion', () => {
                 'Filtro en Mapa Avanzado.'
             ]
         },
-    ]); 
-
+    ]);
     // === GETTERS ===
-
     /**
      * @description Formatea un número como moneda (Guaraníes de Paraguay: ₲).
      */
@@ -203,16 +207,14 @@ export const useSuscripcionStore = defineStore('suscripcion', () => {
         // Usamos Intl.NumberFormat para formatear como Guaraníes (PYG) sin decimales.
         return `₲ ${new Intl.NumberFormat('es-PY', { minimumFractionDigits: 0 }).format(value)}`;
     });
-
     /**
-     * @description Agrupa los planes en dos categorías principales (Individual y Corporativo) 
+     * @description Agrupa los planes en dos categorías principales (Individual y Corporativo)
      * para fácil visualización en la UI, basándose en el número de usuarios.
      */
     const groupedPlans = computed(() => {
         return plans.value.reduce((groups, plan) => {
             // Asigna a 'Individual' si users es 1, o 'Corporativo' si es > 1
             const key = plan.users === 1 ? 'Individual' : 'Corporativo';
-            
             if (!groups[key]) {
                 groups[key] = [];
             }
@@ -220,15 +222,53 @@ export const useSuscripcionStore = defineStore('suscripcion', () => {
             return groups;
         }, { Individual: [], Corporativo: [] }); // Inicializa para garantizar las claves
     });
-
     // === ACCIONES (ACTIONS) ===
-
-    /**
-     * @description Envía el plan seleccionado y el comprobante de pago al backend.
-     * @param {string} planId - ID del plan seleccionado (option_id).
-     * @param {File} comprobanteFile - Archivo del comprobante de pago.
-     * @returns {object} Resultado de la operación.
-     */
+    // 🔑 NUEVA ACCIÓN: Obtener Datos de Facturación
+    const fetchBillingData = async () => {
+        isBillingLoading.value = true;
+        billingError.value = null;
+        try {
+            const response = await authService.getBillingData(); // Asumiendo que esta función existe en authService
+            // Si la respuesta tiene datos, los actualizamos, sino se queda con los valores por defecto
+            if (response) {
+                billingData.value = { ...billingData.value, ...response };
+            }
+            return true;
+        } catch (err) {
+            // El 404 es esperado si el usuario nunca ha guardado datos, por eso lo ignoramos
+            if (err && err.response && err.response.status !== 404) {
+                 billingError.value = err.message || 'Error al cargar datos de facturación.';
+                 showSnackbar(billingError.value, 'error');
+            }
+            return false;
+        } finally {
+            isBillingLoading.value = false;
+        }
+    };
+    // 🔑 NUEVA ACCIÓN: Crear/Actualizar Datos de Facturación
+    const upsertBillingData = async (data) => {
+        isBillingLoading.value = true;
+        billingError.value = null;
+        try {
+            const response = await authService.upsertBillingData(data); // Asumiendo que esta función existe en authService
+            billingData.value = response.data; // Actualizar el estado con los datos retornados
+            showSnackbar(response.message || 'Datos de facturación guardados con éxito.', 'success');
+            return true;
+        } catch (err) {
+            const errorMessage = err.message || 'Error al guardar datos de facturación.';
+            billingError.value = errorMessage;
+            showSnackbar(errorMessage, 'error');
+            return false;
+        } finally {
+            isBillingLoading.value = false;
+        }
+    };
+/**
+* @description Envía el plan seleccionado y el comprobante de pago al backend.
+* @param {string} planId - ID del plan seleccionado (option_id).
+* @param {File} comprobanteFile - Archivo del comprobante de pago.
+* @returns {object} Resultado de la operación.
+*/
 /**
  * @description Envía el FormData ya construido al backend.
  * @param {FormData} formData - Payload con 'comprobante' y 'plan_solicitado'.
@@ -239,27 +279,21 @@ const submitPaymentProof = async (formData) => {
   uploadError.value = null;
   uploadSuccess.value = false;
   userMessage.value = '';
-
   if (!formData || !(formData instanceof FormData)) {
     uploadError.value = 'Error interno: datos de comprobante inválidos.';
     isUploading.value = false;
     showSnackbar(uploadError.value, 'error');
     return { success: false, message: uploadError.value };
   }
-
   try {
     const response = await authService.submitPaymentProof(formData);
-
     uploadSuccess.value = true;
     userMessage.value = response.message || 'Comprobante subido con éxito. Su cuenta está ahora PENDIENTE DE REVISIÓN.';
-
     if (response.user) {
       authStore.setUser(response.user);
     }
-
     showSnackbar(userMessage.value, 'success');
     return { success: true, message: userMessage.value };
-
   } catch (err) {
     const errorMessage = err || 'Error al subir el comprobante. Intente de nuevo.';
     uploadError.value = errorMessage;
@@ -270,8 +304,6 @@ const submitPaymentProof = async (formData) => {
     isUploading.value = false;
   }
 };
-
-
     // Exportamos el estado, getters y acciones
     return {
         isUploading,
@@ -279,8 +311,13 @@ const submitPaymentProof = async (formData) => {
         uploadSuccess,
         userMessage,
         plans,
-        formatCurrency, 
+        formatCurrency,
         groupedPlans,
-        submitPaymentProof
+        submitPaymentProof,
+        billingData,
+        isBillingLoading,
+        billingError,
+        fetchBillingData,
+        upsertBillingData,
     };
 });

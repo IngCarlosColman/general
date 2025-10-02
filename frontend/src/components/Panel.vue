@@ -26,7 +26,7 @@
       <v-col cols="12" sm="6" md="3">
         <KpiCard
           title="Catastro Pendiente"
-          :value="catastroPendienteCalculado.toLocaleString()" 
+          :value="catastroPendienteCalculado.toLocaleString()"
           icon="mdi-alert-box-outline"
           color="orange-darken-1"
           subtext="Registros sin vínculo propietario"
@@ -76,7 +76,7 @@
 
       <v-col cols="12" md="8">
         <v-card
-          title="Total de Registros por Usuario"
+          title="Top 5 Registros por Usuario"
           subtitle="Propiedades registradas (Rurales vs. Urbanas)"
           elevation="4"
           rounded="lg"
@@ -85,7 +85,7 @@
           <v-card-text>
             <v-list density="compact" class="pa-0">
               <v-list-item
-                v-for="item in funcionariosCobertura"
+                v-for="item in top5FuncionariosCobertura"
                 :key="item.nombre"
                 class="mb-3"
               >
@@ -105,6 +105,11 @@
                   rounded
                 ></v-progress-linear>
               </v-list-item>
+
+              <v-list-item v-if="top5FuncionariosCobertura.length > 0" class="text-center text-medium-emphasis text-caption py-2">
+                * Mostrando los {{ top5FuncionariosCobertura.length }} usuarios con más registros.
+              </v-list-item>
+
             </v-list>
           </v-card-text>
         </v-card>
@@ -143,16 +148,16 @@
                 <h3 class="text-subtitle-1 mb-2 font-weight-medium">Top 5 Departamentos</h3>
                 <div class="bg-surface-light rounded-lg pa-4">
                   <v-list density="compact">
-                    <v-list-item 
-                      v-for="dep in distribucionCatastro.topDepartamentos" 
-                      :key="dep.name" 
+                    <v-list-item
+                      v-for="dep in distribucionCatastro.topDepartamentos"
+                      :key="dep.name"
                       class="py-1"
                     >
                       <v-list-item-title class="text-caption">{{ dep.name }} ({{ dep.count.toLocaleString() }})</v-list-item-title>
-                      <v-progress-linear 
-                        :model-value="(dep.count / distribucionCatastro.topDepartamentos[0].count) * 100" 
-                        color="blue" 
-                        height="8" 
+                      <v-progress-linear
+                        :model-value="(dep.count / distribucionCatastro.topDepartamentos[0].count) * 100"
+                        color="blue"
+                        height="8"
                         rounded
                       ></v-progress-linear>
                     </v-list-item>
@@ -174,9 +179,9 @@
               :title="item.title"
               :subtitle="item.subtitle"
               :base-color="item.color"
-              
+
               @click="$emit('change-view', item.link.name.toLowerCase(), item.link.query)"
-              
+
               link
             >
               <template v-slot:append>
@@ -194,7 +199,7 @@
 </template>
 
 <script setup>
-import { computed, defineEmits, onMounted } from 'vue'; 
+import { computed, defineEmits, onMounted } from 'vue';
 import { useDashboardStore } from '@/stores/dashboard';
 import { storeToRefs } from 'pinia';
 import KpiCard from '@/components/KpiCard.vue';
@@ -206,19 +211,23 @@ const emit = defineEmits(['change-view']);
 
 // 1. Inicializar Store y desestructurar variables reactivas
 const dashboardStore = useDashboardStore();
-const { 
-  kpis, 
-  funcionariosCobertura, 
-  distribucionCatastro, 
-  isLoadingKpis, 
-  isLoadingDetails 
+const {
+  kpis,
+  // ❌ Se elimina funcionariosCobertura de storeToRefs
+  distribucionCatastro,
+  isLoadingKpis,
+  isLoadingDetails
 } = storeToRefs(dashboardStore);
 
 // 2. Acceder a Getters (ya son computed)
-const coberturaGeojsonPorcentaje = dashboardStore.coberturaGeojsonPorcentaje; 
-const coberturaTelefonoPorcentaje = dashboardStore.coberturaTelefonoPorcentaje; 
-// AÑADIDO: Acceder al getter calculado
+const coberturaGeojsonPorcentaje = dashboardStore.coberturaGeojsonPorcentaje;
+const coberturaTelefonoPorcentaje = dashboardStore.coberturaTelefonoPorcentaje;
 const catastroPendienteCalculado = dashboardStore.catastroPendienteCalculado;
+
+// 🎯 SOLUCIÓN: Acceder al getter del Top 5 directamente desde el store
+// Nota: Pinia getters se convierten en referencias (Refs) reactivas cuando se accede a ellas desde el script setup.
+const top5FuncionariosCobertura = dashboardStore.top5FuncionariosCobertura;
+
 
 // 3. Cargar datos al montar el componente
 onMounted(() => {
@@ -230,9 +239,9 @@ onMounted(() => {
 
 // Función auxiliar para colores de barras de progreso
 const getCoverageColor = (porcentaje) => {
-  if (porcentaje >= 90) return 'teal';
-  if (porcentaje >= 80) return 'blue';
-  if (porcentaje >= 70) return 'orange';
+  if (porcentaje >= 80) return 'teal';
+  if (porcentaje >= 60) return 'blue';
+  if (porcentaje >= 40) return 'orange';
   return 'red';
 };
 
@@ -244,10 +253,10 @@ const urgentTasks = computed(() => {
   const totalGuia = kpis.value.registrosGuiaTotal;
   const conTel = kpis.value.registrosGuiaConTelefono;
   const sinTelefonoCount = totalGuia - conTel;
-  
+
   // Catastro Pendiente (Usando el valor CALCULADO)
   const catastroPendienteCount = catastroPendienteCalculado.value;
-  
+
   // 1. Tarea: Catastro Pendiente
   if (catastroPendienteCount > 0) {
     tasks.push({
@@ -256,7 +265,7 @@ const urgentTasks = computed(() => {
       icon: 'mdi-alert-box-outline',
       color: 'red-darken-1',
       // Asumiendo que esta acción redirige a una vista de 'General' filtrada
-      link: { name: 'General', query: { filter: 'sin-vinculo-catastral' } } 
+      link: { name: 'General', query: { filter: 'sin-vinculo-catastral' } }
     });
   }
 
@@ -270,7 +279,7 @@ const urgentTasks = computed(() => {
       link: { name: 'General', query: { filter: 'sin-telefono' } }
     });
   }
-  
+
   // 3. Tarea: Posibles Duplicados (Stub, ya que no tenemos KPI de backend para esto)
   tasks.push({
     title: 'Posibles Duplicados (Análisis Pendiente)',
@@ -279,7 +288,7 @@ const urgentTasks = computed(() => {
     color: 'yellow-darken-2',
     link: { name: 'General', query: { filter: 'duplicados' } }
   });
-  
+
   return tasks;
 });
 </script>
