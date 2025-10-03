@@ -1,241 +1,116 @@
 <template>
-  <v-container fluid class="pa-4 subscription-container">
-    <v-row justify="center" class="mb-8">
-      <v-col cols="12" md="10">
-        <!-- Tarjeta Principal con Título y Estado del Rol -->
-        <v-card class="pa-6 rounded-xl elevation-10 bg-white" color="#f5f5f5">
-          <v-card-title class="text-h4 font-weight-black text-center text-primary">
-            Bienvenido a la Agenda Inmobiliaria!
-          </v-card-title>
-          <v-card-subtitle class="text-h6 text-center mb-4 text-medium-emphasis">
-            Active su Licencia para comenzar a operar. Su estado actual es:
-            <v-chip
-              :color="getRoleColor(authStore.rol)"
-              class="font-weight-bold ml-2 text-white"
-              size="large"
-            >
-              {{ authStore.rol.toUpperCase().replace('_', ' ') }}
-            </v-chip>
-          </v-card-subtitle>
-          <v-divider class="mb-6"></v-divider>
+  <v-container class="pa-0 subscription-container">
+    <v-row justify="center" class="w-100 ma-0">
+      <v-col cols="12" sm="11" md="10" lg="10" xl="11"> 
+        
+        <v-card class="pa-6 rounded-xl elevation-6 bg-white main-card-karla" flat>
+          
+          <SuscripcionHeader :rol="authStore.rol" />
 
-          <!--  SECCIÓN DE ALERTA: PENDIENTE DE REVISIÓN -->
-          <v-alert
-              v-if="authStore.rol === 'PENDIENTE_REVISION'"
-              type="info"
-              icon="mdi-clock-time-four-outline"
-              title="Solicitud de Activación en Curso"
-              class="mb-8"
-              variant="tonal"
-              color="blue-grey"
-              prominent
-          >
-            Hemos recibido su comprobante de pago. Un administrador revisará su solicitud en las próximas 24 horas.
-            Una vez aprobado, su rol cambiará a **EDITOR** y podrá acceder al sistema. Gracias por su paciencia.
-          </v-alert>
-
-          <!--  SECCIÓN PRINCIPAL: SELECCIÓN DE PLAN Y PAGO (Visible solo si el rol es PENDIENTE_PAGO) -->
-          <div v-else-if="authStore.rol === 'PENDIENTE_PAGO'">
-            <h2 class="text-h5 font-weight-bold text-center mb-6 text-secondary">
-                1. Elija su Plan de Suscripción
-            </h2>
-
-            <v-card class="mb-6 elevation-3 rounded-xl">
-              <v-tabs
-                v-model="activeTab"
-                align-tabs="center"
-                color="primary"
-                height="60"
-                slider-color="secondary"
-              >
-                <v-tab value="agentes" prepend-icon="mdi-account-star">
-                  Agentes
-                  <div class="text-caption text-medium-emphasis ml-2 d-none d-sm-inline">(Individual)</div>
-                </v-tab>
-                <v-tab value="minibroker" prepend-icon="mdi-office-building-cog">
-                  Mini Broker/Desarrolladoras
-                  <div class="text-caption text-medium-emphasis ml-2 d-none d-sm-inline">(5 a 15 Cuentas)</div>
-                </v-tab>
-                <v-tab value="inmobiliarias" prepend-icon="mdi-domain">
-                  Inmobiliarias
-                  <div class="text-caption text-medium-emphasis ml-2 d-none d-sm-inline">(20+ Cuentas)</div>
-                </v-tab>
-              </v-tabs>
-            </v-card>
-
-            <v-window v-model="activeTab" class="py-4">
-              <v-window-item value="agentes">
-                <v-row justify="center" class="pa-3">
-                  <v-col v-for="plan in planesAgentes" :key="plan.id" cols="12" sm="6" lg="4">
-                    <PlanCard
-                      :plan="plan"
-                      :selected="selectedPlan === plan.id"
-                      @select="selectPlan"
-                      :monthlyBasePrice="350000"
-                    />
-                  </v-col>
-                </v-row>
-              </v-window-item>
-
-              <v-window-item value="minibroker">
-                <v-row justify="center" class="pa-3">
-                  <v-col v-for="plan in planesMiniBroker" :key="plan.id" cols="12" sm="6" lg="4">
-                    <PlanCard
-                      :plan="plan"
-                      :selected="selectedPlan === plan.id"
-                      @select="selectPlan"
-                      :monthlyBasePrice="350000"
-                    />
-                  </v-col>
-                </v-row>
-              </v-window-item>
-
-              <v-window-item value="inmobiliarias">
-                <v-row justify="center" class="pa-3">
-                  <v-col v-for="plan in planesInmobiliarias" :key="plan.id" cols="12" sm="6" lg="4">
-                    <PlanCard
-                      :plan="plan"
-                      :selected="selectedPlan === plan.id"
-                      @select="selectPlan"
-                      :monthlyBasePrice="350000"
-                    />
-                  </v-col>
-                </v-row>
-              </v-window-item>
-            </v-window>
-            <v-divider class="my-8"></v-divider>
-
-            <!--  INFORMACIÓN DE DEPÓSITO ACTUALIZADA -->
-            <v-card class="pa-5 mb-8 rounded-xl elevation-4 bg-blue-grey-lighten-5 border-lg" flat>
-                <v-card-title class="text-h6 font-weight-bold text-blue-grey-darken-3 d-flex align-center">
-                    <v-icon icon="mdi-bank-transfer-in" class="mr-3" color="blue-grey-darken-2"></v-icon>
-                    Información para Transferencia Bancaria
-                </v-card-title>
-                <v-card-text class="py-3">
-                    <p class="mb-2 font-weight-medium text-medium-emphasis">Realice el pago total de su plan a la siguiente cuenta:</p>
-                    <v-list density="compact" class="bg-transparent">
-                        <!--  LÍNEA: TIPO DE ALIAS (RUC) -->
-                        <v-list-item class="px-0 py-1">
-                            <span class="font-weight-medium text-caption">TIPO DE ALIAS:</span>
-                            <span class="ml-2 font-weight-bold text-primary">RUC</span>
-                        </v-list-item>
-                        <v-list-item class="px-0 py-1">
-                            <span class="font-weight-medium text-caption">ALIAS:</span>
-                            <span class="ml-2 font-weight-bold text-primary">3685150 - 7</span>
-                        </v-list-item>
-                        <!--  LÍNEA: CUENTA N -->
-                        <v-list-item class="px-0 py-1">
-                            <span class="font-weight-medium text-caption">CUENTA NUMERO:</span>
-                            <span class="ml-2 font-weight-bold text-primary">266422</span>
-                        </v-list-item>
-                        <v-list-item class="px-0 py-1">
-                            <span class="font-weight-medium text-caption">DESTINATARIO:</span>
-                            <span class="ml-2 font-weight-bold text-primary">Carlos Colman</span>
-                        </v-list-item>
-                        <!--  ENTIDAD ACTUALIZADA -->
-                        <v-list-item class="px-0 py-1">
-                            <span class="font-weight-medium text-caption">ENTIDAD FINANCIERA:</span>
-                            <span class="ml-2 font-weight-bold text-primary">Cooperativa Universitaria Ltda.</span>
-                        </v-list-item>
-                    </v-list>
-                    <v-alert
-                        type="warning"
-                        density="compact"
-                        variant="tonal"
-                        class="mt-4"
-                    >
-                        Recuerde que debe subir el comprobante de esta transferencia en el siguiente paso.
-                    </v-alert>
-                </v-card-text>
-            </v-card>
-            <!--  FIN INFORMACIÓN DE DEPÓSITO -->
-
-            <h2 class="text-h5 font-weight-bold text-center mb-6 text-secondary">
-                2. Suba su Comprobante de Pago
-            </h2>
-
-            <v-form @submit.prevent="handleUpload">
-              <!-- ALERT DE PLAN SELECCIONADO -->
-              <v-alert
-                v-if="currentPlan"
-                type="success"
-                icon="mdi-check-circle"
-                class="mb-6"
-                variant="tonal"
-                color="green-darken-2"
-              >
-                Plan Seleccionado: <span class="font-weight-bold">{{ currentPlan.name }}</span> ({{ currentPlan.users }} Cuentas) |
-                Monto Total a Pagar: <span class="font-weight-black text-h6">{{ currentPlan.totalPriceFormatted }}</span>
-              </v-alert>
-              <!-- FIN ALERT -->
-
-              <!-- AÑADIDA LA PROPIEDAD 'single' PARA ASEGURAR QUE SÓLO DEVUELVE UN OBJETO FILE -->
-              <v-file-input
-                v-model="comprobanteFile"
-                :disabled="!selectedPlan || store.isUploading"
-                :rules="fileRules"
-                accept="image/jpeg,image/png,application/pdf"
-                label="Seleccione Comprobante (JPG, PNG o PDF)"
-                prepend-icon="mdi-paperclip"
-                variant="outlined"
-                clearable
-                class="mb-4"
-                single
-              ></v-file-input>
-
-              <div class="d-flex flex-column align-center">
-                <v-btn
-                  type="submit"
-                  :disabled="!selectedPlan || !comprobanteFile || store.isUploading"
-                  :loading="store.isUploading"
-                  color="primary"
-                  size="large"
-                  class="mt-4 font-weight-bold"
-                  block
-                  prepend-icon="mdi-cloud-upload-outline"
+          <div v-if="authStore.rol === 'PENDIENTE_PAGO'">
+            <v-card-text class="pa-0">
+              
+              <div class="d-flex justify-space-around align-center mb-6 text-body-1 font-weight-bold step-indicator">
+                <div 
+                  v-for="step in steps" 
+                  :key="step.value"
+                  class="d-flex align-center cursor-default step-item"
                 >
-                  Subir Comprobante y Enviar Solicitud
-                </v-btn>
-
-                <v-alert
-                  v-if="store.uploadError"
-                  type="error"
-                  class="mt-4 w-100"
-                  density="compact"
-                  variant="flat"
-                >
-                  {{ store.uploadError }}
-                </v-alert>
+                  <v-icon 
+                    :color="step.value <= currentStep ? 'primary' : 'grey-lighten-1'" 
+                    :icon="step.icon" 
+                    size="small"
+                    class="mr-2"
+                  ></v-icon>
+                  <span 
+                    :class="{'text-primary': step.value <= currentStep, 'text-medium-emphasis': step.value > currentStep}"
+                    class="d-none d-sm-inline font-karla"
+                  >
+                    {{ step.title }}
+                  </span>
+                </div>
               </div>
-            </v-form>
+              
+              <v-divider class="mb-8"></v-divider>
+              
+              <v-window v-model="currentStep">
+                
+                <v-window-item :value="1">
+                  <StepPlanSelection
+                    v-model:activeTab="activeTab"
+                    :planesAgentes="planesAgentes"
+                    :planesMiniBroker="planesMiniBroker"
+                    :planesInmobiliarias="planesInmobiliarias"
+                    :monthlyBasePrice="monthlyBasePrice"
+                    :selectedPlan="selectedPlan"
+                    :currentPlan="currentPlan"
+                    @selectPlan="selectPlan"
+                    @nextStep="currentStep = 2"
+                  />
+                </v-window-item>
+
+                <v-window-item :value="2">
+                  <v-form
+                    ref="billingFormRef"
+                    v-model="billingFormValid"
+                    @submit.prevent="handleUpsertBillingData"
+                    class="mb-6"
+                  >
+                    <div class="d-none">
+                      <v-text-field v-model="store.billingData.ruc_fiscal" :rules="[billingRules.required, billingRules.ruc]"></v-text-field>
+                      <v-text-field v-model="store.billingData.razon_social" :rules="[billingRules.required]"></v-text-field>
+                      <v-text-field v-model="store.billingData.direccion_fiscal" :rules="[billingRules.required]"></v-text-field>
+                      <v-select v-model="store.billingData.metodo_entrega" :items="[]" :rules="[billingRules.required]"></v-select>
+                      <v-text-field v-model="store.billingData.email_facturacion" :rules="store.billingData.metodo_entrega === 'EMAIL' ? [billingRules.required, billingRules.email] : []"></v-text-field>
+                    </div>
+
+                    <StepFacturacion 
+                      :billingRules="billingRules"
+                      :isBillingLoading="store.isBillingLoading"
+                      :isBillingFormValid="billingFormValid"
+                      @prevStep="currentStep = 1"
+                      @submitBilling="handleUpsertBillingData"
+                    />
+                  </v-form>
+                </v-window-item>
+                
+                <v-window-item :value="3">
+                  <StepPago
+                    v-model:comprobanteFile="comprobanteFile"
+                    :currentPlan="currentPlan"
+                    :selectedPlan="selectedPlan"
+                    :fileRules="fileRules"
+                    @prevStep="currentStep = 2"
+                    @uploadProof="handleUpload"
+                  />
+                </v-window-item>
+                
+              </v-window>
+            </v-card-text>
           </div>
+          
           <v-alert
-              v-else
-              type="error"
-              icon="mdi-lock-alert"
-              title="Acceso Denegado"
-              variant="tonal"
-              prominent
-              class="mb-8"
+            v-else
+            type="error"
+            icon="mdi-lock-alert"
+            title="Acceso Denegado"
+            variant="tonal"
+            prominent
+            class="mb-8"
           >
-            Su cuenta actual es ({{ authStore.rol.toUpperCase() }}) no requiere que complete el proceso de suscripción. Contacte a soporte si cree que esto es un error.
+            Su cuenta actual es ({{ authStore.rol.toUpperCase().replace('_', ' ') }}) no requiere que complete el proceso de suscripción. Contacte a soporte si cree que esto es un error.
           </v-alert>
-
-          <!--  NUEVA ACCIÓN DE CIERRE DE SESIÓN -->
-          <v-card-actions class="pt-6">
-              <v-btn
-                variant="elevated"
-                color="red-darken-3"
-                @click="handleLogout"
-                block
-                prepend-icon="mdi-logout"
-                size="large"
-              >
-                Cerrar Sesión y Salir
-              </v-btn>
+          
+          <v-card-actions class="justify-center mt-8">
+            <v-btn
+              color="error"
+              variant="text"
+              prepend-icon="mdi-logout-variant"
+              @click="handleLogout"
+            >
+              Salir de la Suscripción
+            </v-btn>
           </v-card-actions>
-          <!--  FIN ACCIÓN DE CIERRE DE SESIÓN -->
-
         </v-card>
       </v-col>
     </v-row>
@@ -243,46 +118,55 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useSuscripcionStore } from '@/stores/suscripcion';
-import PlanCard from '@/components/PlanCard.vue';
 
+// Componentes Refactorizados
+import SuscripcionHeader from '@/components/pagos/SuscripcionHeader.vue';
+import StepPlanSelection from '@/components/pagos/StepPlanSelection.vue';
+import StepFacturacion from '@/components/pagos/StepFacturacion.vue';
+import StepPago from '@/components/pagos/StepPago.vue';
+// Componente Existente (asegura que la ruta sea correcta)
+// import PlanCard from '@/components/pagos/PlanCard.vue'; // No se usa directamente aquí
+
+// --- CONFIGURACIÓN Y STORES (LÓGICA REAL PRESERVADA) ---
 const monthlyBasePrice = 350000;
 
 const authStore = useAuthStore();
 const store = useSuscripcionStore();
 const router = useRouter();
 
+// --- ESTADO LOCAL (LÓGICA REAL PRESERVADA) ---
 const selectedPlan = ref(null);
 const comprobanteFile = ref(null);
 const activeTab = ref('agentes');
+const currentStep = ref(1); // Control del paso actual (1: Plan, 2: Facturación, 3: Pago)
+const billingFormValid = ref(false);
+const billingFormRef = ref(null);
 
-const getDurationInMonths = (plan) => {
-  const durationText = plan.duration.toLowerCase();
-  if (durationText.includes('1 mes')) return 1;
-  if (durationText.includes('6 meses')) return 6;
-  if (durationText.includes('1 año')) return 12;
-  if (plan.id.startsWith('mb_') || plan.id.startsWith('inm_')) return 12;
-  return 1;
-};
-
-const calculateTotalPrice = (plan) => {
-  const pricePerMonth = plan.price;
-  const months = getDurationInMonths(plan);
-  const users = plan.users || 1;
-  return pricePerMonth * months * users;
+// Reglas de validación para facturación (LÓGICA REAL PRESERVADA)
+const billingRules = {
+  required: (value) => !!value || 'Campo obligatorio.',
+  ruc: (value) =>
+    /^[0-9]+-?[0-9kK]?$/.test(value) || 'Formato de RUC inválido.',
+  email: (value) => {
+    const pattern =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return pattern.test(value) || 'Email de facturación inválido.';
+  },
 };
 
 const fileRules = [
   v => !!v || 'El comprobante es obligatorio.',
   v => {
     const file = Array.isArray(v) ? v[0] : v;
-    return !file || file.size <= 5000000 || 'El archivo debe ser menor a 5 MB.';
+    return !file || !(file instanceof File) || file.size <= 5000000 || 'El archivo debe ser menor a 5 MB.';
   },
 ];
 
+// --- COMPUTED (LÓGICA REAL PRESERVADA) ---
 const allPlans = computed(() => store.plans);
 const planesAgentes = computed(() => allPlans.value.filter(p => p.id.startsWith('agente_')));
 const planesMiniBroker = computed(() => allPlans.value.filter(p => p.id.startsWith('mb_')));
@@ -301,27 +185,44 @@ const currentPlan = computed(() => {
   return null;
 });
 
-const handleLogout = async () => {
-  try {
-    await authStore.logout();
-    await router.push('/login');
-  } catch (error) {
-    console.error('Error al cerrar sesión:', error);
-  }
-};
+// --- ACCIONES Y LÓGICA DE FLUJO (LÓGICA REAL PRESERVADA) ---
+
+// Nuevo objeto para el Stepper Compacto (solo visual)
+const steps = [
+  { value: 1, title: 'Selección de Plan', icon: 'mdi-hand-pointing-up' },
+  { value: 2, title: 'Datos de Facturación', icon: 'mdi-file-document-edit-outline' },
+  { value: 3, title: 'Comprobante de Pago', icon: 'mdi-credit-card-fast-outline' },
+];
+
+onMounted(() => {
+    store.fetchBillingData(); // Cargamos los datos de facturación existentes
+});
 
 const selectPlan = (planId) => {
   selectedPlan.value = selectedPlan.value === planId ? null : planId;
   store.uploadError = null;
 };
 
-const getRoleColor = (rol) => {
-  switch (rol) {
-    case 'administrador': return 'red-darken-3';
-    case 'editor': return 'green-darken-2';
-    case 'PENDIENTE_PAGO': return 'yellow-darken-3';
-    case 'PENDIENTE_REVISION': return 'blue-grey-darken-2';
-    default: return 'grey';
+/**
+ * @description Valida el formulario de facturación del DOM
+ */
+const handleUpsertBillingData = async () => {
+  const { valid } = await billingFormRef.value.validate();
+  if (!valid) {
+    return;
+  }
+  
+  const dataToSend = {
+    ruc_fiscal: store.billingData.ruc_fiscal,
+    razon_social: store.billingData.razon_social,
+    direccion_fiscal: store.billingData.direccion_fiscal,
+    metodo_entrega: store.billingData.metodo_entrega,
+    email_facturacion: store.billingData.email_facturacion,
+  };
+
+  const success = await store.upsertBillingData(dataToSend);
+  if (success) {
+    currentStep.value = 3; // Mover al paso de pago
   }
 };
 
@@ -335,22 +236,17 @@ const handleUpload = async () => {
     ? comprobanteFile.value[0]
     : comprobanteFile.value;
 
-  if (!file || !(file instanceof File)) {
-    store.uploadError = 'Debe adjuntar el comprobante de pago. Asegúrese de que el archivo no está corrupto.';
+  if (!file || !(file instanceof File) || file.size === 0) {
+    store.uploadError = 'Debe adjuntar un comprobante de pago válido.';
     comprobanteFile.value = null;
-    return;
-  }
-
-  if (file.size === 0) {
-    store.uploadError = 'El archivo seleccionado está vacío o no se ha cargado correctamente.';
     return;
   }
 
   store.uploadError = null;
 
   const formData = new FormData();
-  formData.append('comprobante', file); // ✅ nombre exacto para multer
-  formData.append('plan_solicitado', selectedPlan.value); // ✅ nombre exacto para req.body
+  formData.append('comprobante', file);
+  formData.append('plan_solicitado', selectedPlan.value);
 
   try {
     const result = await store.submitPaymentProof(formData);
@@ -363,35 +259,64 @@ const handleUpload = async () => {
   }
 };
 
-watch(comprobanteFile, (newValue) => {
-  console.log('--- Nuevo valor de Comprobante ---');
-  if (Array.isArray(newValue)) {
-    console.log(`Es un Array con ${newValue.length} elementos.`);
-    if (newValue.length > 0 && newValue[0] instanceof File) {
-      console.log(`[OK] Archivo detectado: ${newValue[0].name} (${newValue[0].size} bytes)`);
-    } else {
-      console.log('[ERROR] Array vacío o elemento no es un File.');
-    }
-  } else if (newValue instanceof File) {
-    console.log(`[OK] Es un Objeto File: ${newValue.name} (${newValue.size} bytes)`);
-  } else {
-    console.log(`[WARN] Valor es nulo/desconocido: ${newValue}`);
+const handleLogout = async () => {
+  try {
+    await authStore.logout();
+    await router.push('/login');
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
   }
-  console.log('------------------------------------');
-}, { deep: true });
+};
+
+
+// --- HELPERS (LÓGICA REAL PRESERVADA) ---
+const getDurationInMonths = (plan) => {
+  const durationText = plan.duration.toLowerCase();
+  if (durationText.includes('1 mes')) return 1;
+  if (durationText.includes('6 meses')) return 6;
+  if (durationText.includes('1 año')) return 12;
+  if (plan.id.startsWith('mb_') || plan.id.startsWith('inm_')) return 12;
+  return 1;
+};
+
+const calculateTotalPrice = (plan) => {
+  const pricePerMonth = plan.price;
+  const months = getDurationInMonths(plan);
+  const users = plan.users || 1;
+  return pricePerMonth * months * users;
+};
+
 </script>
 
 <style scoped>
-/* Contenedor centralizado y con padding */
+/*
+ * ESTILOS DE FUENTES Y LAYOUT
+ * Utilizamos las fuentes 'Francois One' (Títulos) y 'Karla' (Cuerpo)
+ */
+
+/* CAMBIO 2: Estilos para aplicar el 95% de ancho en pantallas grandes */
 .subscription-container {
-    max-width: 1400px;
-    margin: 20px auto;
-    /* Asegura que la vista pueda desplazarse si es necesario */
-    min-height: calc(100vh - 40px);
-    padding-bottom: 40px !important;
+  max-width: 95%; /* Ancho máximo para el contenedor principal */
+  margin: auto;
+  padding-top: 24px;
+  padding-bottom: 24px;
 }
 
-/* Estilos de color para mantener consistencia */
-.text-primary { color: #007bff !important; } /* Azul Intenso */
-.text-secondary { color: #28a745 !important; } /* Verde para Acciones */
+/* Aplicar Karla a todo el contenido de la tarjeta principal (cuerpo del texto) */
+.main-card-karla, .main-card-karla * {
+  font-family: 'Karla', sans-serif !important;
+}
+
+/* Aplicar Francois One solo a los títulos (Ejemplo: v-card-title de SuscripcionHeader y títulos internos) */
+:deep(.v-card-title), 
+:deep(.text-h4), 
+:deep(.text-h5) {
+  font-family: 'Francois One', sans-serif !important;
+}
+
+/* Ajustes para el indicador de pasos compacto */
+.step-indicator {
+    padding-left: 12px;
+    padding-right: 12px;
+}
 </style>

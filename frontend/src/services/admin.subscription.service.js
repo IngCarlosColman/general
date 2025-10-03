@@ -18,6 +18,7 @@ const adminSubscriptionService = {
             return response.data;
         } catch (error) {
             console.error('[ADMIN SERVICE] Error al obtener solicitudes pendientes:', error);
+            // Usamos el error del backend si está disponible
             throw error.response?.data?.error || 'Error al obtener solicitudes pendientes.';
         }
     },
@@ -25,22 +26,34 @@ const adminSubscriptionService = {
     /**
      * Envía una acción de revisión (Aprobar o Rechazar) para una solicitud específica.
      * @param {number} solicitudId - ID de la solicitud a manejar.
-     * @param {string} action - 'approve' o 'reject'.
+     * @param {string} action - 'APPROVE' o 'REJECT' (Viene capitalizado desde el store).
      * @returns {object} Respuesta del servidor.
      */
     async handleRequestAction(solicitudId, action) {
-        if (!['approve', 'reject'].includes(action)) {
+        // ⚠️ CORRECCIÓN 1: Validamos con mayúsculas, ya que el store envía action.toUpperCase()
+        if (!['APPROVE', 'REJECT'].includes(action)) {
             throw 'Acción inválida.';
         }
 
         try {
-            // RUTA FINAL: /api/subscription/admin/approve/:id o /api/subscription/admin/reject/:id
-            const endpoint = `/subscription/admin/${action}/${solicitudId}`;
-            const response = await api.post(endpoint, {});
+            // 🎯 CORRECCIÓN 2: Usar el nuevo ENDPOINT UNIFICADO.
+            // RUTA FINAL: /api/subscription/admin/request-action/:id
+            const endpoint = `/subscription/admin/request-action/${solicitudId}`;
+            
+            // 🎯 CORRECCIÓN 3: Enviar el tipo de acción en el CUERPO (BODY) del POST.
+            // Esto resuelve el error "Acción inválida" en el backend.
+            const response = await api.post(endpoint, {
+                action: action // 'APPROVE' o 'REJECT'
+            });
+            
             return response.data;
         } catch (error) {
-            console.error(`[ADMIN SERVICE] Error al ${action} la solicitud ${solicitudId}:`, error);
-            throw error.response?.data?.error || `Error al procesar la solicitud (${action}).`;
+            // Usamos toLowerCase() solo para el log y el mensaje de error, para que se lea mejor
+            const actionLower = action.toLowerCase();
+            console.error(`[ADMIN SERVICE] Error al ${actionLower} la solicitud ${solicitudId}:`, error);
+            
+            // Usamos el error del backend si está disponible
+            throw error.response?.data?.error || `Error al procesar la solicitud (${actionLower}).`;
         }
     }
 };

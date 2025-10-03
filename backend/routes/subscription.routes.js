@@ -50,21 +50,15 @@ router.get(
     userSubscriptionController.getPendingRequests
 );
 
-// 3. POST: Aprobar una solicitud específica.
-// RUTA FINAL: /api/subscription/admin/approve/:id
-router.post('/admin/approve/:id', checkRoles(adminRole), (req, res) => {
-    // Inyecta la acción al cuerpo de la solicitud para el controlador general
-    req.body.action = 'APPROVE'; 
-    userSubscriptionController.handleRequestAction(req, res);
-});
-
-// 4. POST: Rechazar una solicitud específica.
-// RUTA FINAL: /api/subscription/admin/reject/:id
-router.post('/admin/reject/:id', checkRoles(adminRole), (req, res) => {
-    // Inyecta la acción al cuerpo de la solicitud para el controlador general
-    req.body.action = 'REJECT'; 
-    userSubscriptionController.handleRequestAction(req, res);
-});
+// 3. POST: Manejo de acción de solicitud (Aprobar o Rechazar).
+// ⚠️ RUTA UNIFICADA: Se eliminan las rutas separadas /approve/:id y /reject/:id.
+// El frontend debe enviar un body con { action: 'APPROVE' } o { action: 'REJECT' }.
+// RUTA FINAL: /api/subscription/admin/request-action/:id
+router.post(
+    '/admin/request-action/:id', 
+    checkRoles(adminRole), 
+    userSubscriptionController.handleRequestAction
+);
 
 
 // ==========================================================
@@ -73,7 +67,7 @@ router.post('/admin/reject/:id', checkRoles(adminRole), (req, res) => {
 // Estas rutas son más para la gestión de entidades de suscripción ya existentes/activadas.
 // ==========================================================
 
-// 5. GET: Obtener lista de suscripciones corporativas o activas.
+// 4. GET: Obtener lista de suscripciones corporativas o activas.
 // RUTA FINAL: /api/subscription/admin/list-subscriptions
 router.get(
     '/admin/list-subscriptions', 
@@ -81,7 +75,7 @@ router.get(
     corporateSubscriptionController.getPendingSubscriptions // La función genérica de listado
 );
 
-// 6. POST: Activar una suscripción corporativa específica (Ej: para renovaciones manuales).
+// 5. POST: Activar una suscripción corporativa específica (Ej: para renovaciones manuales).
 // RUTA FINAL: /api/subscription/admin/activate-subscription/:id
 router.post(
     '/admin/activate-subscription/:id', 
