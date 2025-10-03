@@ -1,0 +1,128 @@
+// ========================================================================
+// PLUGIN: _map-plugin-overrides.scss (Refactorizado para Vuetify 3 / Material Design)
+// Este archivo reemplaza a '_plugin-jquery.jvectormap.scss'.
+// Contiene estilos genéricos para plugins de mapas modernos (ej. Leaflet, MapLibre, D3 Maps)
+// para asegurar que los elementos de control y tooltips sigan el tema Material/Vuetify.
+// ========================================================================
+
+// ------------------------------------------------------------------------
+// 1. ESTILOS GENERALES DEL CONTENEDOR DE MAPA
+//    Aplica si el mapa está dentro de un contenedor específico.
+// ------------------------------------------------------------------------
+
+.v-map-container, // Clase Vuetify o wrapper específico para el mapa
+.map-canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    touch-action: pan-y; // Permite el scroll vertical en móvil, pero pan en el mapa
+    touch-action: pan-x; // Permite el scroll horizontal en móvil, pero pan en el mapa
+}
+
+// ------------------------------------------------------------------------
+// 2. ESTILOS DE TOOLTIP / HOVER (Aplicable a cualquier plugin)
+//    Diseño Material 2dp Elevation
+// ------------------------------------------------------------------------
+
+// Nota: Esta clase debe ser aplicada por el plugin JS (ej. 'map-tooltip' en lugar de 'jvectormap-tip')
+.map-tooltip {
+    position: absolute;
+    display: none; // Controlado por JS del plugin de mapa
+    line-height: 1.5em;
+
+    // Uso de variables de tema Vuetify para colores
+    color: rgb(var(--v-theme-on-surface));
+    background: rgb(var(--v-theme-surface));
+
+    // Estilo Material
+    border: none;
+    border-radius: 4px; // Radio estándar de Vuetify
+    padding: 8px 12px; // Espaciado Material
+    z-index: 9999;
+    
+    // Sombra de elevación Material (2dp)
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, 0.2), 
+                0 2px 2px 0 rgba(0, 0, 0, 0.14), 
+                0 1px 5px 0 rgba(0, 0, 0, 0.12);
+}
+
+// ------------------------------------------------------------------------
+// 3. ESTILOS DE CONTROLES DE ZOOM Y NAVEGACIÓN (Botones)
+//    Diseño Material
+// ------------------------------------------------------------------------
+
+.map-control-btn {
+    position: absolute;
+    left: 10px;
+    border-radius: 50%; // Circular como los Floating Action Buttons de Material
+    background: rgb(var(--v-theme-surface)); // Fondo claro u oscuro
+    color: rgb(var(--v-theme-on-surface));
+    cursor: pointer;
+    line-height: 1; // Ajuste para iconos
+    text-align: center;
+    box-sizing: border-box;
+    width: 36px;
+    height: 36px;
+    padding: 6px; // Espaciado interno para el icono
+
+    // Sombra de elevación Material (4dp para controles interactivos)
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.2), 
+                0 4px 5px 0 rgba(0, 0, 0, 0.14), 
+                0 1px 10px 0 rgba(0, 0, 0, 0.12);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+        background: rgba(var(--v-theme-on-surface), 0.08); // Efecto ripple sutil
+        box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.2), 
+                    0 6px 10px 0 rgba(0, 0, 0, 0.14), 
+                    0 2px 15px 0 rgba(0, 0, 0, 0.12);
+    }
+}
+
+// Posicionamiento de botones de zoom (ejemplo)
+.map-zoom-in {
+    top: 10px;
+}
+
+.map-zoom-out {
+    top: 55px; // Separación de 10px
+}
+
+// ------------------------------------------------------------------------
+// 4. ESTILOS DE LEYENDA
+// ------------------------------------------------------------------------
+
+.map-legend {
+    // La leyenda debe usar un diseño de tarjeta Material (Card)
+    background: rgb(var(--v-theme-surface));
+    color: rgb(var(--v-theme-on-surface));
+    border-radius: 8px; // Radio estándar
+    padding: 12px;
+    
+    // Sombra para destacarse
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.map-legend-title {
+    font-weight: 500; // Medium
+    font-size: 1rem;
+    margin-bottom: 8px;
+    text-align: center;
+    color: rgb(var(--v-theme-primary)); // Color de acento
+}
+
+// Ejemplo de lista de ticks de leyenda
+.map-legend-tick {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+
+    .map-legend-tick-color {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+}

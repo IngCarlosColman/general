@@ -1,0 +1,148 @@
+// =================================================================
+// ADAPTACIÓN DE LAYOUT, GRID Y UTILIDADES A VUETIFY V3
+// NOTA: Vuetify V3 usa su propio sistema de grid (<v-row>, <v-col>).
+// Estas clases son overrides para replicar el comportamiento de las
+// clases .md-layout y otras utilidades específicas de la fuente original.
+// =================================================================
+
+// --------------------------------------------------
+// 1. Grid/Layout Overrides (Adaptando md-layout a v-row/v-col)
+// --------------------------------------------------
+
+// Reemplazo de .md-layout (Similar a v-row)
+.v-row.md-layout,
+.md-layout {
+    width: 100%;
+}
+
+// Reemplazo de .md-layout-item (Similar a v-col)
+// Vuetify v-col ya tiene padding horizontal (gutter), pero lo forzamos a 15px.
+.v-col,
+.md-layout-item {
+    padding-right: 15px !important;
+    padding-left: 15px !important;
+}
+
+// --------------------------------------------------
+// 2. Custom Typography and Notes (.typo-line, .tim-typo)
+// --------------------------------------------------
+
+.typo-line {
+    // Estilos base
+    margin-bottom: 40px;
+    position: relative;
+}
+
+@media (min-width: 992px) {
+    .typo-line {
+        // Desktop adjustment: padding para la nota/categoría lateral
+        padding-left: 140px;
+    }
+
+    .typo-line .category {
+        // Desktop adjustment: Category/Note fijo a la izquierda del texto
+        transform: translateY(-50%);
+        top: 50%;
+        left: 0px;
+        position: absolute;
+    }
+}
+
+.tim-row {
+    margin-bottom: 20px;
+    padding-top: 50px;
+}
+
+.tim-row h3 {
+    margin-top: 0;
+}
+
+.tim-typo {
+    padding-left: 25%;
+    margin-bottom: 40px;
+    position: relative;
+}
+
+.tim-typo .tim-note {
+    bottom: 10px;
+    color: #c0c1c2;
+    display: block;
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 13px;
+    left: 0;
+    margin-left: 20px;
+    position: absolute;
+    width: 260px;
+}
+
+// --------------------------------------------------
+// 3. Spacing and Utility Components
+// --------------------------------------------------
+
+.space-70 {
+    height: 70px;
+    display: block;
+}
+
+// --------------------------------------------------
+// 4. Mapas y Botones (Component Specific)
+// --------------------------------------------------
+
+#map {
+    position: relative;
+    width: 100%;
+    // Altura calculada manteniendo la lógica original
+    height: calc(100% - 60px);
+}
+
+.places-buttons .v-btn { // Adaptando .btn a .v-btn de Vuetify
+    margin-bottom: 30px
+}
+
+// Sidebar (Adaptando el estilo del elemento activo en el sidebar)
+@media (min-width: 992px) {
+    .sidebar .v-list-item.active-pro { // Asumiendo que el sidebar usa v-list-item
+        position: absolute;
+        width: 100%;
+        bottom: 10px;
+    }
+}
+
+
+// --------------------------------------------------
+// 5. Container/Offset (Adaptando .md-offset a max-width responsive)
+// --------------------------------------------------
+
+.md-offset {
+    // Clase que simula un contenedor centrado con flex
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: auto !important;
+    width: 100%;
+}
+
+@media (min-width: 576px) {
+    .md-offset {
+        max-width: 540px;
+    }
+}
+
+@media (min-width: 768px) {
+    .md-offset {
+        max-width: 720px;
+    }
+}
+
+@media (min-width: 992px) {
+    .md-offset {
+        max-width: 960px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .md-offset {
+        max-width: 1140px;
+    }
+}

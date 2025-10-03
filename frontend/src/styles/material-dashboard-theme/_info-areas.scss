@@ -1,0 +1,83 @@
+// =================================================================
+// ADAPTACIÓN DE INFO AREAS A VUETIFY V3 (Diseño de Bloques de Información)
+// NOTA: Se asume que variables como $gray-color, $black-color, $font-size-h2,
+// $brand-primary, etc., están definidas en tu theme.
+// =================================================================
+
+// 1. Contenedor del Icono/Color (Clase de Utilidad)
+// Esta clase agrupa los estilos de color y tamaño del icono.
+.icon-wrapper { 
+    // Mantenemos la lógica de color para sobrescribir el color base del icono
+    &.icon-primary {
+        color: $brand-primary;
+    }
+    &.icon-info {
+        color: $brand-info;
+    }
+    &.icon-success {
+        color: $brand-success;
+    }
+    &.icon-warning {
+        color: $brand-warning;
+    }
+    &.icon-danger {
+        color: $brand-danger;
+    }
+    &.icon-rose {
+        color: $brand-rose;
+    }
+    
+    // Si se usa como selector genérico
+    color: $gray-color;
+}
+
+
+// 2. Estilo de Bloque de Información Vertical (Centrado)
+.info { // Mantenemos el nombre de la clase
+    max-width: 360px;
+    margin: 0 auto;
+    padding: 70px 0 30px;
+    text-align: center; // Centramos el contenido de texto
+
+    .icon-wrapper { // Reemplaza .info .icon
+        // Icono de Vuetify (v-icon)
+        .v-icon { // Reemplaza > i
+            font-size: 3.85rem;
+            // Vuetify maneja el tamaño, pero a veces es útil forzar la línea de altura
+            height: 3.85rem; 
+        }
+    }
+
+    .info-title { // Reemplaza .info-title
+        color: $black-color;
+        // Mantenemos el espaciado original
+        margin: (0.875rem * 2) 0 0.875rem; 
+    }
+
+    p {
+        color: $gray-color;
+    }
+}
+
+
+// 3. Estilo de Bloque de Información Horizontal (Flexbox)
+.info-horizontal { // Mantenemos el nombre de la clase
+    display: flex; 
+    align-items: flex-start; // Alinea el icono y el texto arriba
+
+    .icon-wrapper { // Reemplaza .info-horizontal .icon (Ahora usa Flexbox en lugar de float)
+        flex-shrink: 0; // Evita que el icono se encoja
+        margin-top: 24px; 
+        margin-right: 15px; 
+
+        // Icono de Vuetify
+        .v-icon { // Reemplaza > i
+            font-size: $font-size-h2;
+        }
+    }
+    
+    .description-content { // Reemplazamos .description
+        flex-grow: 1; // Permite que el texto ocupe el espacio restante
+        overflow: hidden; // Comportamiento para envolver el texto
+    }
+}

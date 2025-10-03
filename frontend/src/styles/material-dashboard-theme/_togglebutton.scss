@@ -1,0 +1,64 @@
+//
+// Refactoring of legacy .md-switch SCSS to modern Vuetify 3 (V3) standards.
+// Targets v-switch components, overriding default theme colors and borders.
+//
+
+// --- Placeholder Variables (Assumed from previous context) ---
+$white-color: #fff;
+$brand-primary: #9c27b0; // Purple (Used for checked state)
+
+// --- Core V-Switch Styling ---
+.v-switch {
+  display: flex;
+  
+  // 1. Label Styling (Replaces .md-switch-label)
+  .v-label {
+    color: rgba(0, 0, 0, 0.26) !important;
+    font-size: 14px !important;
+    line-height: 1.42857;
+    font-weight: 400 !important;
+  }
+
+  // --- Track Styling (Replaces .md-switch-container) ---
+  .v-switch__track {
+    // Unchecked state track color: rgba(80,80,80,.7)
+    background-color: rgba(80, 80, 80, 0.7) !important;
+    opacity: 1 !important; // Ensure custom color isn't dimmed
+  }
+
+  // --- Thumb Styling (Replaces .md-switch-thumb) ---
+  .v-switch__thumb {
+    background-color: $white-color !important;
+    border: 1px solid rgba(0, 0, 0, 0.54);
+    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+  }
+
+  // --- Ripple Styling (Unchecked State) ---
+  // Targets the V3 ripple wave inside the thumb
+  .v-switch__thumb .v-ripple__container .v-ripple__wave {
+    background-color: rgba(0, 0, 0, 0.54) !important;
+  }
+
+
+  // --- CHECKED/ACTIVE STATE (Replaces .md-checked, uses V3 standard class) ---
+  // The v-input--is-dirty class is applied when the switch is active/checked.
+  &.v-input--is-dirty {
+    // Track in checked state
+    .v-switch__track {
+      // Background-color: rgba(156,39,176,.7)
+      background-color: rgba(156, 39, 176, 0.7) !important;
+    }
+
+    // Thumb in checked state
+    .v-switch__thumb {
+      border: 1px solid $brand-primary;
+    }
+
+    // Ripple Styling (Checked State)
+    .v-switch__thumb .v-ripple__container .v-ripple__wave {
+      // Background-color: rgba(156,39,176,.7)
+      background-color: rgba(156, 39, 176, 0.7) !important;
+    }
+  }
+}

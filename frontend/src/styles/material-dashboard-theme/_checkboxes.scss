@@ -1,0 +1,70 @@
+// SCSS para Vuetify V3 (v-checkbox)
+.v-checkbox {
+  // Estilos de la etiqueta (Label)
+  .v-label {
+    font-weight: 400; // Original: font-weight: 400;
+    color: #aaa;      // Original: color: #aaa;
+    padding-left: 10px; // Original: padding-left: 10px;
+    // Opcional: ajusta la separación predeterminada si es necesario
+    margin-inline-start: 0;
+  }
+
+  // Estilos del Contenedor Visual (el cuadrado)
+  .v-selection-control__input {
+    // El elemento visual real que actúa como el "box"
+    // En V3, es el icono que contiene el checkmark y el fondo.
+    .v-icon {
+      // 1. Estilo del Borde del Contenedor (para estado inicial/no marcado)
+      border: 1px solid rgba(0, 0, 0, 0.54); // Original: border: 1px solid rgba(0, 0, 0, .54);
+      border-radius: 3px; // Original: border-radius: 3px;
+      
+      // Asegura que el fondo sea transparente (efecto hollow)
+      background-color: transparent !important;
+
+      // Oculta el color del checkmark cuando no está seleccionado
+      color: transparent; 
+    }
+    
+    // Estilos para el efecto 'ripple'
+    .v-selection-control__ripple {
+      overflow: hidden; // Original: overflow: hidden;
+    }
+  }
+
+  // Estado Marcado (Checked)
+  // En Vuetify V3, el estado marcado es `.v-selection-control--dirty`
+  &.v-selection-control--dirty {
+    .v-selection-control__input {
+      .v-icon {
+        // 2. Fondo Transparente en estado Marcado (manteniendo el hollow look)
+        background-color: transparent !important; // Original: background-color: transparent !important;
+
+        // 3. Color de la Marca de Verificación (el checkmark)
+        // Usa la variable CSS de Vuetify para el color primario
+        color: rgb(var(--v-theme-primary)) !important; // Original: border-color: $brand-primary !important;
+        
+        // Asegura que el borde se mantenga oscuro y visible
+        border-color: rgba(0, 0, 0, 0.54) !important;
+      }
+    }
+  }
+
+  // Estado Deshabilitado (Disabled)
+  // En Vuetify V3, el estado deshabilitado es `.v-selection-control--disabled`
+  &.v-selection-control--disabled {
+    opacity: 0.26; // Original: opacity: .26;
+
+    // Estado Deshabilitado y Marcado
+    &.v-selection-control--dirty {
+      .v-selection-control__input {
+        .v-icon {
+          background-color: transparent !important; // Fondo sigue transparente
+          border-color: rgba(0, 0, 0, 0.54) !important; // Borde oscuro
+          
+          // Color del checkmark deshabilitado
+          color: rgba(0, 0, 0, 0.54) !important; // Original: border-color: rgba(0, 0, 0, .54) !important;
+        }
+      }
+    }
+  }
+}

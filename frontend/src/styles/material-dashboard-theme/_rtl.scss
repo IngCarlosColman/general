@@ -1,0 +1,219 @@
+// =================================================================
+// ADAPTACIÓN DE RTL (Right-to-Left) A VUETIFY V3
+//
+// NOTA: Vuetify V3 ofrece soporte nativo para RTL al configurar la 
+// directiva de idioma. Estas reglas sobrescriben y aseguran el 
+// comportamiento exacto de los layouts antiguos (sidebar, toolbar, 
+// forms, etc.) en modo RTL.
+//
+// Utilizamos el selector de atributo [dir="rtl"] que Vuetify aplica
+// al elemento raíz (<html> o <body>).
+// =================================================================
+
+// Asumimos que las funciones/mixins de transformación están disponibles
+@mixin transform-translate-x($value) {
+    -webkit-transform: translate3d($value, 0, 0);
+    -moz-transform: translate3d($value, 0, 0);
+    -o-transform: translate3d($value, 0, 0);
+    -ms-transform: translate3d($value, 0, 0);
+    transform: translate3d($value, 0, 0);
+}
+
+
+[dir="rtl"] {
+    direction: rtl;
+
+    // ------------------------------------------------
+    // 1. Sidebar (v-navigation-drawer) & Layout
+    // ------------------------------------------------
+    .v-navigation-drawer, 
+    .v-app-bar { // Simula .sidebar y .bootstrap-navbar
+        right: 0 !important;
+        left: auto !important;
+
+        // Íconos de navegación
+        .v-list-item .v-icon:first-child { // Simula 'i' en .nav
+            float: right !important;
+            margin-left: 15px !important;
+            margin-right: 0 !important;
+        }
+        
+        // Párrafos y texto en el sidebar
+        .v-list-item-title, .v-list-item-subtitle { // Simula 'p' en .nav
+            text-align: right;
+        }
+
+        // Caret/Flecha de submenú (asumiendo que Vuetify usa un ícono al final)
+        .v-list-item__append .v-icon { // Simula .caret
+            left: 11px;
+            right: auto;
+        }
+        
+        // Logo y texto del logo
+        .v-md-logo-mini { // Clase custom para logo-mini
+            float: right;
+            margin-right: 23px;
+            margin-left: 13px;
+        }
+        .v-md-logo-text { // Clase custom para simple-text
+            text-align: right;
+        }
+
+        // Sección de Usuario
+        .v-md-user-info-area { 
+            .v-avatar { // Simula .photo
+                float: right;
+                margin-left: 12px;
+                margin-right: 23px;
+            }
+            .v-list-item-title, .v-list-item-subtitle { // Simula .user-info > a > span
+                text-align: right;
+                display: block;
+            }
+            // Ajuste del caret de usuario
+            .v-list-item__append .v-icon.v-md-user-caret { // Clase custom para caret de usuario
+                left: 22px;
+                right: auto;
+            }
+        }
+    }
+
+    // Contenido principal
+    .v-main { // Simula .main-panel
+        float: left;
+    }
+
+    // Botón de Minimizar
+    .v-app-bar .v-app-bar-nav-icon { // Usamos el ícono principal de nav-icon para simular .navbar-minimize
+        left: 21px;
+        right: auto;
+    }
+
+    // Botones con íconos
+    .v-btn:not(.v-btn--icon) .v-icon { // Simula .btn:not(.btn-just-icon):not(.btn-fab) .fa
+        left: 5px;
+    }
+
+    // ------------------------------------------------
+    // 2. Dropdown Menus (v-menu) & Toolbars
+    // ------------------------------------------------
+    .v-overlay__content { // Simula .dropdown-menu
+        right: 0 !important;
+        left: auto !important;
+    }
+
+    // Ajustes de Navbar Brand
+    .v-app-bar .v-toolbar-title { // Simula .navbar > .container-fluid .navbar-brand
+        margin-right: 10px;
+    }
+    
+    // ------------------------------------------------
+    // 3. Forms and Inputs (v-card, v-input)
+    // ------------------------------------------------
+    
+    // Card con ícono en el header
+    .v-card .v-card-title .v-icon { // Simula .card .card-header.card-header-icon
+        float: right;
+    }
+
+    // Card con tabs (v-tabs)
+    .v-card-tabs .v-toolbar-title { // Simula .nav-tabs-title
+        float: right;
+        padding: 10px 0 10px 10px;
+    }
+    .v-card-tabs .v-tabs { // Simula .md-tabs-container (generalmente se maneja con flex-direction)
+        .v-slide-group__content {
+             flex-direction: row-reverse;
+        }
+    }
+    
+    // Checkboxes y Radios (v-checkbox, v-radio)
+    .v-input--selection-controls {
+        .v-selection-control {
+            // Elimina el padding-right y usa el margin nativo de Vuetify
+            .v-selection-control__wrapper { 
+                right: 0;
+                left: auto;
+            }
+        }
+    }
+
+    // Tabs de Material Design (md-tabs-navigation)
+    .v-tabs-bar { // Simula md-tabs-navigation
+        padding: 15px 75px 15px 15px;
+    }
+    
+    // Input fields con botón de limpieza (v-text-field clearable)
+    .v-text-field.v-input--clearable {
+        .v-input__control {
+            // El input debe tener espacio a la izquierda para el botón
+            .v-field__input {
+                padding-right: 0;
+                padding-left: 30px;
+            }
+        }
+        .v-input__append-inner { // El ícono de acción/limpieza
+            right: auto;
+            left: 0;
+        }
+    }
+
+    // ------------------------------------------------
+    // 4. Alerts and Notifications (v-alert/v-snackbar)
+    // ------------------------------------------------
+    .v-alert {
+        // Botón de cierre
+        .v-alert__close { // Simula button.close
+            left: 10px !important;
+            right: auto !important;
+        }
+
+        // Ícono de notificación/alerta
+        .v-alert__icon { // Simula span[data-notify="icon"]
+            right: 15px !important;
+            left: auto !important;
+        }
+
+        // Padding para alertas con ícono
+        &.v-alert--prominent { // Simula .alert-with-icon
+            padding-right: 65px;
+            padding-left: 15px;
+        }
+    }
+
+    // ------------------------------------------------
+    // 5. Sidebar Mini (Hover/Collapse Behavior - Desktop only)
+    // ------------------------------------------------
+    @media (min-width: 992px) {
+        .v-md-sidebar-mini.v-navigation-drawer--rail { // Clase custom para sidebar mini en RTL
+            
+            // Texto oculto/colapsado
+            .v-navigation-drawer__content .v-list-item-title {
+                position: relative;
+                @include transform-translate-x(25px); // Empuja el texto fuera de la vista
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            // Al hacer hover, el texto se desliza
+            &:hover {
+                .v-navigation-drawer__content .v-list-item-title {
+                    @include transform-translate-x(0); // Regresa el texto a la vista
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------
+    // 6. Media Query Overrides (max-width: 768px)
+    // ------------------------------------------------
+    @media (max-width: 768px){
+        .v-app-bar .v-toolbar-title { // Simula .navbar-brand
+            margin-right: 15px;
+        }
+
+        .v-app-bar .v-app-bar-nav-icon { // Simula .navbar-header .navbar-toggle
+            margin-left: 30px;
+            margin-right: 0;
+        }
+    }
+}

@@ -1,0 +1,76 @@
+// =================================================================
+// ADAPTACIÓN DE FORMULARIOS (HORIZONTAL Y NEWSLETTER) A VUETIFY V3
+// NOTA: Se asume que variables como $mdb-label-color, $mdb-label-color-toggle-focus,
+// y otras variables de color/espaciado están definidas.
+// =================================================================
+
+// Mixin de Foco de Etiqueta (Adaptado para la estructura de inputs de Vuetify V3)
+@mixin mdb-label-color-toggle-focus() {
+    // Aplica el estilo cuando el componente v-input está enfocado.
+    // Esto es relevante si usas inputs custom o necesitas sobrescribir el comportamiento.
+    .v-input--is-focused.v-input--density-default & {
+        // En Vuetify, '&' puede ser la etiqueta (v-label) o el elemento subyacente.
+        color: $mdb-label-color;
+
+        // Al hacer hover/focus, oscurecer la etiqueta
+        &:hover,
+        &:focus {
+            color: $mdb-label-color-toggle-focus;
+        }
+
+        // Corregir el color de foco para elementos deshabilitados
+        fieldset[disabled] & {
+            color: $mdb-label-color;
+        }
+    }
+}
+
+// Estilos para formularios horizontales (requiere usar v-row/v-col en el template)
+.form-horizontal {
+    
+    // Alinear verticalmente v-radio y v-checkbox (que son v-input por debajo)
+    .v-radio-group,
+    .v-checkbox {
+        // Reiniciar padding y margen superior, manteniendo el margen inferior original
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 10px;
+    }
+
+    // Estilos de la etiqueta de control (si se usan etiquetas manuales o fuera del input)
+    label {
+        text-align: right;
+    }
+
+    label.control-label {
+        margin: 0;
+        text-align: right;
+    }
+}
+
+// Estilos para formularios de Newsletter (Input y Botón en línea)
+.form-newsletter {
+    display: flex;
+    align-items: flex-start; 
+    width: 100%;
+
+    // Contenedor del Input de Vuetify (v-input, v-text-field, etc.)
+    .v-input,
+    .input-group,
+    .form-group {
+        // Adaptación de float/width 78% a Flexbox
+        flex: 0 0 78%; 
+        max-width: 78%;
+        margin-right: 2%; // El 2% de separación
+        margin-top: 9px; 
+    }
+
+    // Botón de suscripción (v-btn)
+    .v-btn {
+        // Adaptación de float/width 20% a Flexbox
+        flex: 0 0 20%; 
+        max-width: 20%;
+        // Usar !important para sobrescribir los márgenes por defecto de v-btn
+        margin: 9px 0 0 !important; 
+    }
+}

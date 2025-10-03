@@ -1,0 +1,86 @@
+// ========================================================================
+// PLUGIN: _custom-sliders.scss (Refactorizado para Vuetify 3 / Material Design)
+// Este archivo reemplaza a '_plugin-nouislider.scss'.
+// El uso de V-SLIDER y V-RANGE-SLIDER de Vuetify es lo recomendado.
+// Estos estilos sirven como overrides para personalizar el V-Slider
+// o para estilizar un plugin de slider de terceros si fuera estrictamente necesario,
+// usando variables de tema de Vuetify.
+// ========================================================================
+
+// ------------------------------------------------------------------------
+// 1. PERSONALIZACIÓN DEL V-SLIDER NATIVO DE VUETIFY (Recomendado)
+// ------------------------------------------------------------------------
+
+.v-slider {
+    // Aumentar el grosor de la pista para una apariencia más robusta
+    .v-slider-track__background {
+        height: 6px !important;
+        border-radius: 3px;
+    }
+
+    // Estilo del pulgar/thumb, dándole un "ring" de enfoque de Material 3
+    .v-slider-thumb__surface {
+        // Usa el color primario del tema para el pulgar
+        background: rgb(var(--v-theme-primary));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    // Efecto de elevación al hacer clic o arrastrar
+    .v-slider-thumb:active {
+        // Se puede añadir un efecto de "halo" (ripple) si se usa JS,
+        // o un anillo de enfoque con un color sutil
+        .v-slider-thumb__surface {
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.4), 0 0 0 8px rgba(var(--v-theme-primary), 0.1);
+        }
+    }
+}
+
+// ------------------------------------------------------------------------
+// 2. ESTILOS DE FALLBACK PARA TOOLTIPS (Valores de Slider)
+//    Si se usan tooltips flotantes sobre el slider.
+// ------------------------------------------------------------------------
+
+.slider-tooltip {
+    position: absolute;
+    // Utiliza colores de superficie y texto del tema Vuetify
+    background-color: rgb(var(--v-theme-surface));
+    color: rgb(var(--v-theme-on-surface));
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    
+    // Pequeña sombra de elevación
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+// ------------------------------------------------------------------------
+// 3. SOBRESCRITURA DE CLASES LEGADAS (En caso de que NOUSLIDER persista)
+//    Adaptamos los estilos antiguos a variables de tema.
+// ------------------------------------------------------------------------
+
+// Pista principal
+.noUi-target {
+    background: rgba(var(--v-theme-on-surface), 0.15); // Color de pista sutil
+}
+
+// Conexión (color de progreso)
+.noUi-connect {
+    background-color: rgb(var(--v-theme-primary)) !important; // Color primario de Vuetify
+    border-radius: 4px;
+}
+
+// El handle (el círculo/pulgar)
+.noUi-handle {
+    border: 2px solid rgb(var(--v-theme-primary)) !important;
+    background-color: rgb(var(--v-theme-surface)) !important;
+    border-radius: 50%;
+    // Elimina la sombra obsoleta y usa una sombra Material
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+
+    &:before, &:after {
+        // Elimina los "glitch" visuales internos del handle de noUiSlider
+        display: none !important;
+    }
+}

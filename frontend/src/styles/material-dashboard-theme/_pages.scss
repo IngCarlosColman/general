@@ -1,0 +1,409 @@
+// =================================================================
+// ADAPTACIÓN DE LAYOUTS DE PÁGINA Y AUTENTICACIÓN A VUETIFY V3
+// =================================================================
+
+// NOTA: Se asume que los mixins `$brand-color`, `$purple-100`, `linear-gradient`,
+// `lock-page-input-color`, `shadow-16dp`, `transform-translate-y`,
+// y `animation-transition-general` están definidos en otro lugar del proyecto.
+
+// --------------------------------------------------
+// 1. Estructura General (Wrappers)
+// --------------------------------------------------
+
+.v-layout-wrapper { // Reemplaza .wrapper
+    // Clearfix equivalent
+    &:after {
+        display: table;
+        clear: both;
+        content: " ";
+    }
+
+    &.v-full-page-wrapper { // Reemplaza .wrapper-full-page
+        height: auto;
+        min-height: 100vh;
+
+        // Footer en páginas completas
+        .v-footer { // Reemplaza .footer
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: transparent !important;
+
+            a {
+                color: $white-color;
+            }
+        }
+    }
+}
+
+.v-login-page .v-footer .v-list-item-subtitle, // Reemplaza .login-page .footer .copyright
+.v-login-page .v-footer a { // Reemplaza .login-page .footer a
+    color: $white-color;
+}
+
+// --------------------------------------------------
+// 2. Encabezado de Página Completa (Background/Filters)
+// --------------------------------------------------
+
+.v-page-header-bg { // Reemplaza .page-header
+    position: relative;
+
+    // Filtros de superposición (Before & After)
+    &:after,
+    &:before {
+        display: block;
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 2;
+    }
+
+    &:before { // Fondo oscuro base
+        background-color: rgba(0, 0, 0, .5);
+    }
+
+    // Configuración de Filtros de Color (usando data-color para mantener la lógica)
+    &[data-color="purple"],
+    &[data-color="primary"] {
+        &:after {
+            @include linear-gradient(rgba($purple-100, .56), rgba($purple-300, .95));
+        }
+        @include lock-page-input-color($brand-primary);
+    }
+    &[data-color="blue"],
+    &[data-color="info"] {
+        &:after {
+            @include linear-gradient(rgba($cyan-100, .56), rgba($cyan-300, .95));
+        }
+        @include lock-page-input-color($brand-info);
+    }
+    &[data-color="green"],
+    &[data-color="success"] {
+        &:after {
+            @include linear-gradient(rgba($green-200, .56), rgba($green-400, .95));
+        }
+        @include lock-page-input-color($brand-success);
+    }
+    &[data-color="orange"],
+    &[data-color="warning"] {
+        &:after {
+            @include linear-gradient(rgba($orange-100, .56), rgba($orange-300, .95));
+        }
+        @include lock-page-input-color($brand-warning);
+    }
+    &[data-color="red"],
+    &[data-color="danger"] {
+        &:after {
+            @include linear-gradient(rgba($red-200, .56), rgba($red-400, .95));
+        }
+        @include lock-page-input-color($brand-danger);
+    }
+    &[data-color="rose"] {
+        &:after {
+            @include linear-gradient(rgba($pink-100, .56), rgba($pink-300, .95));
+        }
+        @include lock-page-input-color($brand-rose);
+    }
+
+    // Opacidad para fondos con imagen
+    &[data-image]:after {
+        opacity: .8;
+    }
+
+    // Contenido y Footer (deben estar encima del filtro)
+    > .v-content-area, // Reemplaza > .content
+    > .v-footer { // Reemplaza > .footer
+        position: relative;
+        z-index: 4;
+    }
+
+    > .v-content-area {
+        min-height: calc(100vh - 80px);
+    }
+
+    // Fondo (Imagen)
+    .v-full-page-background { // Reemplaza .full-page-background
+        position: absolute;
+        z-index: 1;
+        height: 100%;
+        width: 100%;
+        display: block;
+        top: 0;
+        left: 0;
+        background-size: cover;
+        background-position: center center;
+    }
+
+    // Estilos de texto en el footer sobre el fondo
+    .v-footer {
+        .v-list-item a:not(.v-btn), // Reemplaza nav > ul a:not(.btn)
+        &,
+        .v-list-item-subtitle a { // Reemplaza .copyright a
+            color: $white-color;
+        }
+    }
+}
+
+// Clase para remover el filtro oscuro base
+.v-clear-filter { // Reemplaza .clear-filter
+    &:before {
+        display: none;
+    }
+}
+
+// --------------------------------------------------
+// 3. Estilos de Páginas Específicas (Login, Lock, Register)
+// --------------------------------------------------
+
+// Login y Lock Screen Base
+.v-login-page,
+.v-lock-page { // Reemplaza .login-page, .lock-page
+    > .v-content-area {
+        padding-top: 18vh;
+    }
+}
+
+// Login Page
+.v-login-page {
+    .v-card-login { // Reemplaza .md-card-login
+        max-width: 340px;
+        margin: 0 auto;
+        @include transform-translate-y(0);
+        @extend .animation-transition-general;
+
+        &.v-card-hidden { // Reemplaza .md-card-hidden
+            opacity: 0;
+            @include transform-translate-y(-60px);
+        }
+
+        .v-card-title { // Reemplaza .md-card-header
+            margin-top: -40px;
+            margin-bottom: 20px;
+        }
+
+        .social-line .v-btn { // Reemplaza .social-line .btn
+            margin-left: 5px;
+            margin-right: 5px;
+        }
+    }
+
+    &.v-page-header-bg > .v-container { // Reemplaza .page-header > .container
+        padding: 0;
+    }
+}
+
+// Lock Page
+.v-lock-page {
+    .v-card-lock-profile { // Reemplaza .md-card-profile
+        width: 240px;
+        margin: 60px auto 0;
+        color: #FFFFFF;
+        left: 0;
+        right: 0;
+        display: block;
+
+        @include transform-translate-y(0);
+        @extend .animation-transition-general;
+
+        &.v-card-hidden {
+            opacity: 0;
+            @include transform-translate-y(-60px);
+        }
+
+        .v-input { // Reemplaza .md-field
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        .v-card-title { // Reemplaza .md-card-header
+            margin: 0;
+        }
+
+        .v-avatar-lock { // Reemplaza .md-card-avatar
+            max-width: 90px;
+            max-height: 90px;
+            margin-top: -45px;
+        }
+
+        .v-card-actions { // Reemplaza .md-card-actions
+            border: none;
+            padding-top: 0;
+            padding: .9375rem 1.875rem;
+            margin: 0;
+            justify-content: center;
+        }
+    }
+}
+
+// Register Page
+.v-register-page {
+    .v-card-signup { // Reemplaza .md-card-signup
+        border-radius: $border-radius-base * 2;
+        @include shadow-16dp();
+        margin-bottom: 100px;
+        padding: 40px 0px;
+        margin-top: 15vh;
+        max-width: 920px;
+        margin-left: auto;
+        margin-right: auto;
+
+        .info {
+            padding: 0px;
+
+            .info-title {
+                color: #3C4858;
+                margin: 30px 0 15px;
+            }
+        }
+
+        .v-checkbox { // Reemplaza .md-checkbox
+            margin-top: 20px;
+            margin-bottom: 0;
+
+            .v-selection-control__wrapper { // Reemplaza .checkbox-material
+                padding-right: 20px;
+            }
+            a {
+                color: $brand-primary;
+            }
+        }
+
+        .v-card-text { // Reemplaza .md-card-content
+            .button-container {
+                text-align: center;
+            }
+        }
+
+        .info-horizontal { // Estructura de información horizontal
+
+            .v-icon-wrapper { // Contenedor del icono (Reemplaza .icon)
+                float: left;
+                margin-top: 24px;
+                margin-right: 10px;
+
+                .v-icon { // Icono de Vuetify
+                    font-size: 2.6em !important;
+                    width: auto;
+                    height: auto;
+                    color: inherit;
+                }
+
+                &.icon-primary { color: $brand-primary; }
+                &.icon-info { color: $brand-info; }
+                &.icon-success { color: $brand-success; }
+                &.icon-warning { color: $brand-warning; }
+                &.icon-danger { color: $brand-danger; }
+                &.icon-rose { color: $brand-rose; }
+            }
+        }
+    }
+
+    .v-container { // Reemplaza .container
+        position: relative;
+        z-index: 3;
+    }
+    
+    .v-form-check { // Reemplaza .form-check
+         .v-label { // Para el label contenedor
+             margin-left: 27px;
+         }
+         .v-label-content { // Para el label interno de Vuetify
+             padding-left: 34px;
+         }
+    }
+}
+
+// Pricing Page
+.v-pricing-page { // Reemplaza .pricing-page
+    padding: 120px 0;
+
+    .v-title { // Reemplaza .title
+        color: $white-color;
+        margin-top: 5vh;
+    }
+
+    .section-space {
+        display: block;
+        height: 70px;
+    }
+
+    .v-card--plain { // Reemplaza .card-plain
+        .v-icon, // Reemplaza .icon i
+        .v-card-title {
+            color: $white-color;
+        }
+    }
+
+    .v-card-text { // Reemplaza .description
+        color: $white-color;
+    }
+
+    &.v-full-page-wrapper:before { // Reemplaza .full-page:before
+        background-color: rgba(0, 0, 0, 0.65);
+    }
+}
+
+// --------------------------------------------------
+// 4. Sidebar / Navbar Colapso (Off-Canvas)
+// --------------------------------------------------
+
+.v-off-canvas-sidebar { // Reemplaza .off-canvas-sidebar
+    // Navbar Toggler (v-app-bar-nav-icon)
+    .v-app-bar-nav-icon .v-icon {
+        color: $white-color !important;
+    }
+
+    // Sidebar Content (v-navigation-drawer / v-list)
+    .v-navigation-drawer-content {
+        .v-list {
+            // Estilo para links en la lista (nav > li > a)
+            > .v-list-item {
+                > a,
+                > a:hover {
+                    color: $white-color;
+                    margin: 0 15px;
+                }
+
+                > a:focus,
+                > a:hover {
+                    background: rgba(200, 200, 200, 0.2);
+                }
+            }
+        }
+    }
+    // Background del Scrim del Drawer
+    .v-navigation-drawer__scrim { // Reemplaza :after background
+         background-color: #282828;
+    }
+}
+
+// Estilos para la documentación (Offline Doc)
+.v-offline-doc { // Reemplaza .offline-doc
+    .v-app-bar {
+        .v-toolbar-items {
+            .v-btn { // Reemplaza .nav-item .nav-link
+                color: $white-color;
+            }
+        }
+    }
+}
+
+// Ajustes Responsive
+@media screen and (max-width: 991px){
+    .v-off-canvas-sidebar {
+        .v-page-header-bg {
+            > .v-container {
+                padding-top: 70px;
+                padding-bottom: 200px;
+            }
+        }
+    }
+}
+
+// Utilidades
+.social-line {
+    padding: $padding-general-x 0;
+}

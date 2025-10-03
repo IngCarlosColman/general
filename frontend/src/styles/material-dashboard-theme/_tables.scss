@@ -1,0 +1,315 @@
+//
+// Refactoring of legacy .md-table SCSS to modern Vuetify 3 (V3) standards.
+// Targets v-table and v-data-table structures.
+//
+
+// --- Placeholder Variables (Adjust these to match your project's variables) ---
+$font-size-base: 1rem;
+$font-size-h5: 1.1rem;
+$font-weight-default: 500;
+$font-weight-light: 300;
+$gray-dark: #444;
+$gray-light: #aaa;
+$border-color: #ddd;
+
+// Contextual Colors (Mapping legacy names to modern hex/variables)
+$brand-warning: #fb8c00; // Orange
+$brand-primary: #9c27b0; // Purple
+$brand-info: #00bcd4;    // Blue
+$brand-danger: #f44336;  // Red
+$brand-success: #4caf50; // Green
+
+// --- Utility Classes for Table Contextual Backgrounds ---
+.v-table-row {
+  &.table-success { background-color: #cde9ce !important; }
+  &.table-info { background-color: #b8ecf3 !important; }
+  &.table-danger { background-color: #fccac7 !important; }
+  &.table-warning { background-color: #fff9c8 !important; }
+}
+
+// --- Main Table Styling (v-table / v-data-table) ---
+.v-table, .v-data-table {
+
+  // General Cell/Row Styling
+  .v-table__wrapper > table {
+    thead th {
+      // Replaces .md-table-head-container and .md-table-head
+      padding: 8px 12px; // Reduced padding for compact head
+      height: 28px;
+    }
+
+    // Replaces .md-table-head-label
+    thead th .v-data-table-header__wrapper {
+      font-size: $font-size-h5;
+      font-weight: 300;
+      color: $gray-dark;
+      padding-left: 0;
+      padding-right: 10px;
+    }
+
+    tbody td {
+      // Replaces .md-table-cell
+      padding: 8px 12px;
+      font-size: $font-size-base;
+      border-top-color: $border-color !important;
+
+      &:last-child {
+        padding-right: 12px; // Default alignment for last cell
+      }
+    }
+  }
+
+  // Row Hover Styles (Replaces .md-table .md-table-row:hover)
+  // Vuetify often handles this, but overriding to ensure transparency/control:
+  &.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.075) !important;
+  }
+
+  // Checkbox Alignment (Adjusting for standard V3 checkbox structure)
+  .v-checkbox .v-selection-control__input {
+    // Top/Left adjustment is often handled by V3 sizing, but if needed:
+    // transform: translate(0, 0);
+  }
+
+  // Flag Image Styling
+  .flag img {
+    max-width: 18px;
+    margin-top: -2px;
+  }
+
+  // Table Header Color Overrides (Replaces attribute selectors like [table-header-color="orange"])
+  // Use data attributes on the table wrapper for custom theming:
+  &[data-header-color="orange"] thead th { color: $brand-warning !important; }
+  &[data-header-color="purple"] thead th { color: $brand-primary !important; }
+  &[data-header-color="blue"] thead th { color: $brand-info !important; }
+  &[data-header-color="red"] thead th { color: $brand-danger !important; }
+  &[data-header-color="green"] thead th { color: $brand-success !important; }
+}
+
+// --- Button Styling inside Table Cells (Replaces .md-table-cell-container .md-button) ---
+.v-table tbody td {
+  .v-btn {
+    // Small action button adjustments
+    margin: 0;
+    padding: 5px;
+    height: 27px;
+    min-width: 27px;
+    width: 27px;
+    line-height: 27px;
+
+    .v-icon {
+      font-size: 1.1rem !important;
+    }
+
+    // Spacing between adjacent buttons
+    &:not(:first-child):not(:last-child) {
+      margin-left: 3px;
+      margin-right: 3px;
+    }
+  }
+}
+
+// --- Specific Table Types ---
+
+// 1. Striped Table (Replaces .table-striped)
+.v-data-table.table-striped, .v-table.table-striped {
+  .v-table__wrapper tbody > tr:nth-of-type(odd) {
+    background-color: #f9f9f9;
+  }
+}
+
+// 2. Global Sales Table (Replaces .md-table-global-sales)
+.v-data-table.global-sales {
+  .v-table__wrapper tbody tr {
+    &:hover, &:focus {
+      background: transparent !important; // Prevent hover on the whole row
+    }
+
+    &:first-child td {
+      border-top: 0;
+    }
+
+    // Targeting the cell for right-alignment (e.g., the 3rd column)
+    td:nth-child(3) {
+      text-align: right;
+    }
+  }
+}
+
+// 3. Shopping Cart Table (Replaces .table-shopping)
+.v-data-table.table-shopping {
+  .v-table__wrapper > table {
+    thead th .v-data-table-header__wrapper {
+      font-size: $font-size-base; // Using base size for header text
+      text-transform: uppercase;
+
+      b {
+        display: block;
+        margin-bottom: 5px;
+      }
+    }
+
+    .td-name {
+      // Name cell
+      font-weight: $font-weight-default;
+      font-size: 1.5em !important;
+      line-height: 1.4;
+      min-width: 200px;
+
+      .v-label { // Assuming small description is wrapped in a V3 element or a small tag
+        color: $gray-light;
+        font-size: 0.75em;
+        font-weight: $font-weight-light;
+      }
+    }
+
+    .td-number {
+      // Price/Quantity cell
+      font-weight: $font-weight-light;
+      font-size: 1.25rem; // Equivalent to $font-size-h4
+      text-align: right;
+      min-width: 150px;
+
+      small {
+        margin-right: 3px;
+      }
+    }
+
+    .img-container {
+      // Image container
+      width: 120px;
+      max-height: 160px;
+      overflow: hidden;
+      display: block;
+
+      img {
+        width: 100%;
+      }
+    }
+  }
+}
+
+// 4. Paginated Table Adjustments (Replaces .paginated-table)
+.v-data-table.paginated-table {
+  // Toolbar adjustments (Replaces .md-table-toolbar)
+  .v-data-table-footer {
+    justify-content: space-between !important;
+    padding: 10px 0 !important;
+    .v-field {
+      width: auto;
+    }
+  }
+
+  // Header and cell alignment for last column (Actions/Options)
+  .v-table__wrapper table {
+    thead th:last-child {
+      text-align: right !important;
+      display: flex;
+      justify-content: flex-end;
+    }
+    tbody td:last-child {
+      text-align: right !important;
+    }
+  }
+
+  // Header padding adjustments
+  .v-table__wrapper thead th {
+    padding: 0; // Use wrapper for internal padding
+
+    .v-data-table-header__wrapper {
+      padding: 5px; // Provides padding inside the header area
+      height: auto;
+      overflow: hidden;
+    }
+
+    .v-data-table-header__content {
+       // Replaces .md-table-head-label
+       font-size: $font-size-h5;
+       padding-right: 20px;
+    }
+
+    // Sort icon position fix (assuming right-alignment of last column)
+    &.v-data-table__th--sortable .v-icon {
+      left: auto !important;
+      right: 0 !important;
+    }
+  }
+
+  // Cell padding for all cells in paginated table
+  .v-table__wrapper tbody td {
+    padding: 5px !important;
+    max-width: 150px;
+    width: 150px;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  // Remove top border from first row
+  .v-table__wrapper tbody > tr:first-child > td {
+    border-top: 0 !important;
+  }
+
+  // Adjustments for `v-btn` (icon-only buttons)
+  .v-btn {
+    height: 41px;
+    min-width: 41px;
+    width: 41px;
+    margin: .3125rem -10px;
+  }
+
+  // Icon size inside buttons
+  .v-btn .v-icon {
+    font-size: 18px !important;
+  }
+}
+
+// 5. Footer Table (Replaces .footer-table)
+.v-table.footer-table, .v-data-table.footer-table {
+  .v-table__wrapper tfoot th {
+    padding: 5px 8px;
+    max-width: 150px;
+    width: 150px;
+    border-right: 0;
+    border-bottom: 0;
+    border-top: 1px solid $border-color;
+    font-size: 14px;
+    font-weight: bold;
+
+    &:last-child {
+      text-align: right;
+    }
+  }
+}
+
+// 6. Full Width Table (Replaces .table-full-width)
+.v-table.table-full-width, .v-data-table.table-full-width {
+  // Margin for full-width visual effect
+  margin-left: -20px;
+  margin-right: -20px;
+
+  .v-table__wrapper table {
+    thead th:first-child {
+      padding-left: 20px;
+    }
+
+    tbody td:first-child {
+      padding-left: 28px;
+    }
+  }
+}
+
+// --- Custom Overrides for V3 Structure ---
+
+// Ensure table backgrounds are transparent in plain cards if needed (V3 typically handles this)
+.v-card--flat .v-table,
+.v-card--flat .v-data-table {
+  background-color: transparent !important;
+}
+
+// Hide thead in certain tab contexts (if tabs use v-window)
+.v-window-item table thead {
+  display: none;
+}
+.v-window-item tbody tr:first-child td {
+  border-top: 0; // Remove top border from first row if thead is hidden
+}

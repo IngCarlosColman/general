@@ -14,8 +14,8 @@ const getAuthenticatedUser = async (req, res) => {
     const { id: userId } = req.user;
     try {
         const result = await pool.query(
-            // ⚠️ CORRECCIÓN: Ahora seleccionamos también 'telefono' y 'direccion'
-            'SELECT id, username, email, rol, first_name, last_name, telefono, direccion FROM users WHERE id = $1',
+            // ⚠️ CORRECCIÓN: Agregamos suscripcion_vence, cedula y ruc
+            'SELECT id, username, email, rol, first_name, last_name, telefono, direccion, cedula, ruc, suscripcion_vence FROM users WHERE id = $1',
             [userId]
         );
         const user = result.rows[0];
@@ -64,7 +64,7 @@ const getAllUsers = async (req, res) => {
 
         // Consulta para obtener los datos paginados
         const dataQuery = `
-            SELECT id, username, email, rol, first_name, last_name, telefono, direccion, created_at 
+            SELECT id, username, email, rol, first_name, last_name, telefono, direccion, cedula, ruc, suscripcion_vence, created_at 
             FROM users 
             ${whereClause}
             ORDER BY created_at DESC
@@ -129,9 +129,9 @@ const updateUserProfile = async (req, res) => {
 
         const updateQuery = `
              UPDATE users 
-             SET ${fieldsToUpdate.join(', ')} 
+             SET ${fieldsToUpdate.join(', ')}, updated_at = NOW() 
              WHERE id = $${userIdParam} 
-             RETURNING id, username, email, first_name, last_name, rol, telefono, direccion;
+             RETURNING id, username, email, first_name, last_name, rol, telefono, direccion, suscripcion_vence;
         `;
 
         const result = await pool.query(updateQuery, values);
@@ -168,11 +168,11 @@ const updateUserByAdmin = async (req, res) => {
         // 1. Obtener el ID del usuario a modificar desde los parámetros de la ruta
         const { id: targetUserId } = req.params; 
         
-        // Campos que el ADMIN puede actualizar (incluyendo 'rol')
-        const { first_name, last_name, telefono, direccion, rol } = req.body;
+        // Campos que el ADMIN puede actualizar (incluyendo 'rol' y 'cedula/ruc')
+        const { first_name, last_name, telefono, direccion, rol, cedula, ruc } = req.body;
 
         // Validar si al menos un campo relevante está presente
-        if (!first_name && !last_name && !telefono && !direccion && !rol) {
+        if (!first_name && !last_name && !telefono && !direccion && !rol && !cedula && !ruc) {
             return res.status(400).json({ 
                 error: 'Debe proporcionar al menos un campo para actualizar.' 
             });
@@ -205,6 +205,15 @@ const updateUserByAdmin = async (req, res) => {
             fieldsToUpdate.push(`rol = $${paramIndex++}`);
             values.push(rol); 
         }
+        // ⚠️ CORRECCIÓN: Permitir la actualización de cedula y ruc por Admin
+        if (cedula !== undefined) {
+            fieldsToUpdate.push(`cedula = $${paramIndex++}`);
+            values.push(cedula); 
+        }
+        if (ruc !== undefined) {
+            fieldsToUpdate.push(`ruc = $${paramIndex++}`);
+            values.push(ruc); 
+        }
 
         // Agregar el ID del usuario al final de los valores para la cláusula WHERE
         values.push(targetUserId);
@@ -212,9 +221,9 @@ const updateUserByAdmin = async (req, res) => {
 
         const updateQuery = `
              UPDATE users 
-             SET ${fieldsToUpdate.join(', ')} 
+             SET ${fieldsToUpdate.join(', ')}, updated_at = NOW() 
              WHERE id = $${userIdParam} 
-             RETURNING id, username, email, first_name, last_name, rol, telefono, direccion;
+             RETURNING id, username, email, first_name, last_name, rol, telefono, direccion, suscripcion_vence;
         `;
 
         const result = await pool.query(updateQuery, values);

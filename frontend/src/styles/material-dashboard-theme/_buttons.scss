@@ -1,0 +1,263 @@
+/*
+ * Adaptación de .md-button al componente base .v-btn de Vuetify V3.
+ * Se han mantenido los mixins y las clases de color originales,
+ * mientras que los modificadores específicos de forma/tamaño se han redefinido
+ * con prefijos v3- donde es necesario sobrescribir el comportamiento de V3.
+ */
+.v-btn {
+    // Estilos base
+    border: none;
+    border-radius: $border-radius-base;
+    position: relative;
+    margin: 0.3125rem 1px;
+    height: auto;
+    line-height: 1.42857;
+
+    font-size: $mdb-btn-font-size-base;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0;
+
+    @include social-buttons();
+
+    will-change: box-shadow, transform;
+    transition: box-shadow 0.2s $mdb-animation-curve-fast-out-linear-in,
+        background-color 0.2s $mdb-animation-curve-default;
+
+    // Sustituyendo .md-ripple para padding de botones normales
+    &:not(.v-btn--icon):not(.v3-fab):not(.v3-just-icon) .v-btn__content {
+        padding: 12px 30px;
+    }
+
+    // Estilos para iconos en botones que no son solo icono
+    &:not(.v3-just-icon) .v-btn__content i {
+        font-size: 1.1rem !important;
+        height: 17px;
+    }
+
+    // Modificador de Ancho (md-wd)
+    &.v3-wd {
+        min-width: 140px;
+    }
+
+    // Modificador de Bloque (md-block) - Se utiliza la clase nativa de V3
+    &.v-btn--block {
+        width: 100%;
+    }
+
+    &:before {
+        display: none;
+    }
+
+    i {
+        width: 24px;
+        min-width: 24px;
+    }
+
+    // Estilos de Color (usando clases de utilidad para aplicar los mixins)
+    &.white { // md-white
+        @include btn-styles($white-color);
+        box-shadow: none;
+    }
+
+    &,
+    &.default { // md-default
+        @include btn-styles($gray-light);
+    }
+
+    &.primary { // md-primary
+        @include btn-styles($brand-primary);
+    }
+    &.info { // md-info
+        @include btn-styles($brand-info);
+    }
+    &.success { // md-success
+        @include btn-styles($brand-success);
+    }
+    &.warning { // md-warning
+        @include btn-styles($brand-warning);
+    }
+    &.danger { // md-danger
+        @include btn-styles($brand-danger);
+    }
+    &.rose { // md-rose
+        @include btn-styles($brand-rose);
+    }
+
+    &:focus,
+    &:active,
+    &:active:focus {
+        outline: 0;
+    }
+
+    // Modificador de forma redonda (md-round)
+    &.v3-round,
+    &.v3-round.v3-fab,
+    &.v3-round.v3-just-icon {
+        border-radius: $border-radius-extreme;
+    }
+
+    // Iconos FA para botones normales
+    &:not(.v3-just-icon):not(.v3-fab) {
+        .fa {
+            font-size: 18px;
+            margin-top: -2px;
+            position: relative;
+            top: 0;
+        }
+    }
+
+
+    // Botón FAB (md-btn-fab)
+    &.v3-fab {
+        border-radius: 50%;
+        font-size: $mdb-btn-fab-font-size;
+        height: $mdb-btn-fab-size;
+        margin: auto;
+        min-width: $mdb-btn-fab-size;
+        width: $mdb-btn-fab-size;
+        padding: 0;
+        overflow: hidden;
+        position: relative;
+        line-height: normal;
+
+        // Apuntando al contenedor de ripple de V3 o al contenedor general
+        .v-btn__overlay,
+        .v-btn__underlay {
+            border-radius: 50%;
+        }
+
+        &.v3-fab-mini,
+        .v-btn-group--small & {
+            height: $mdb-btn-fab-size-mini;
+            min-width: $mdb-btn-fab-size-mini;
+            width: $mdb-btn-fab-size-mini;
+        }
+
+        i.material-icons {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-($mdb-btn-fab-font-size * 0.5), -($mdb-btn-fab-font-size * 0.5));
+            line-height: $mdb-btn-fab-font-size;
+            width: $mdb-btn-fab-font-size;
+            font-size: $mdb-btn-fab-font-size;
+        }
+    }
+
+    // Modificadores de Tamaño (md-lg, md-sm)
+    &.v3-lg .v-btn__content {
+        font-size: $mdb-btn-font-size-lg;
+        padding: 18px 36px !important;
+    }
+    &.v3-sm .v-btn__content {
+        padding: 0.40625rem 1.25rem !important;
+        font-size: $mdb-btn-font-size-sm;
+    }
+
+    // Botón solo de Icono (btn-just-icon / md-just-icon)
+    &.v3-just-icon {
+        font-size: 20px;
+        height: 41px;
+        min-width: 41px;
+        width: 41px;
+        padding: 0;
+        overflow: hidden;
+        position: relative;
+        line-height: 41px;
+
+        i {
+            width: 20px;
+        }
+        &.v3-lg {
+            font-size: 22px;
+            // Se mantiene el padding original de md-lg para just-icon
+            padding: 13px 18px;
+        }
+    }
+
+    // Sustituyendo .md-button-content
+    .v-btn__content {
+        display: flex;
+        align-items: center;
+        i {
+            font-size: 20px !important;
+        }
+    }
+}
+
+// Estilos para el elemento base que contiene el botón (originalmente .btn)
+.btn {
+    .material-icons {
+        vertical-align: middle;
+        font-size: $mdb-btn-icon-size-mini;
+        top: -1px;
+        position: relative;
+    }
+}
+
+// Estilos de Navegación (sustituyendo .navbar .navbar-nav)
+.v-toolbar {
+    .v-toolbar__content > .v-btn,
+    .v-toolbar__content > .v-btn-group,
+    .v-toolbar__content > div > a.v-btn {
+        margin-top: 2px;
+        margin-bottom: 2px;
+
+        &.v3-fab {
+            margin: 5px 2px;
+        }
+    }
+
+    .v-toolbar__content > a:not(.v-btn),
+    .v-toolbar__content > div > a:not(.v-btn) {
+        .material-icons {
+            margin-top: -3px;
+            top: 0px;
+            position: relative;
+            margin-right: 3px;
+        }
+    }
+    
+    .profile-photo {
+        margin: 5px 2px;
+    }
+}
+
+// Colores de la barra de navegación (sustituyendo .navbar-default:not(.navbar-transparent))
+.v-toolbar:not(.v-toolbar--flat) {
+    .v-btn {
+        &.white.simple {
+            color: $gray;
+        }
+    }
+}
+
+.button-container {
+    display: flex;
+    align-items: center;
+}
+
+// Grupos de Botones (sustituyendo .md-group)
+.v3-btn-group {
+    display: inline-flex;
+    vertical-align: middle;
+
+    .v-btn {
+        min-width: auto !important;
+        width: auto !important;
+        margin-left: 0;
+        margin-right: 0;
+    }
+}
+
+// Reglas de redondeo para grupos de botones
+.v3-btn-group > .v-btn:not(:last-child):not(.v-btn--active) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.v3-btn-group > .v-btn:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}

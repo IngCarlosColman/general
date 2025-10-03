@@ -1,0 +1,356 @@
+// =================================================================
+// ADAPTACIÓN DE FORM SIZING, LABELS Y EFECTOS MATERIAL A VUETIFY V3
+//
+// Esta refactorización anula el comportamiento por defecto de Vuetify
+// para replicar el estilo de línea y la animación de label de Material Design
+// for Bootstrap (MDB).
+// =================================================================
+
+// Importación de variables de sizing (asumiendo que _inputs-size.scss existe y contiene las variables $mdb-input-*)
+@import '_inputs-size';
+
+// =================================================================
+// 1. MIXINS DE UTILIDAD (Adaptados a clases internas de Vuetify)
+// =================================================================
+
+// Mixin para definir el estado estático/flotante del label MDB
+@mixin mdb-label-static($static-font-size, $static-line-height, $top-position) {
+    .v-field__label {
+        // Aplica el estilo y la posición estática (flotante)
+        top: $top-position !important;
+        left: 0 !important;
+        font-size: $static-font-size !important;
+        line-height: $static-line-height !important;
+        color: $mdb-input-placeholder-color !important;
+        font-weight: 400;
+        // La animación de transform lo maneja Vuetify, solo ajustamos el origen si es necesario
+        transform-origin: left top !important; 
+    }
+}
+
+// Mixin para las variaciones de color de validación (aplica al underline y al label)
+@mixin vuetify-form-validation-state($color) {
+    // Cuando el campo está en estado de error, warning, success, etc.
+    &.v-input--error,
+    &.has-error, 
+    &.has-warning, 
+    &.has-success, 
+    &.has-info {
+        // Aplica el color al label y al helper/error text
+        .v-field__label,
+        .v-input__details .v-messages {
+            color: $color !important;
+        }
+        
+        // Aplica el color al underline de enfoque
+        .v-field--focused .v-field__field, 
+        .v-field--active .v-field__field {
+             background-image: linear-gradient($color, $color), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color) !important;
+        }
+
+        // Si hay una clase de enfoque manual
+        &.is-focused .v-field__field {
+             background-image: linear-gradient($color, $color), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color) !important;
+        }
+    }
+}
+
+
+// =================================================================
+// 2. ESTILOS BASE DE INPUT (Simulación Material Design Underline)
+// =================================================================
+
+.v-input {
+    // ------------------------------------------
+    // A. Sobreescritura del campo base de Vuetify
+    // ------------------------------------------
+    .v-field {
+        // Elimina el borde/sombra por defecto de Vuetify
+        background: transparent !important;
+        box-shadow: none !important;
+        border: 0 !important;
+
+        // Oculta la línea de Vuetify (solo necesitamos el efecto MDB)
+        .v-field__overlay,
+        .v-field__outline {
+            display: none !important;
+        }
+
+        // Aplica el MDB Underline al campo interno
+        .v-field__field {
+            border: 0;
+            background-image: linear-gradient($brand-primary, $brand-primary), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color);
+            background-size: 0 2px, 100% 1px; // Inicial: línea de color 0px, línea base 100%
+            background-repeat: no-repeat;
+            background-position: center bottom, center calc(100% - 1px);
+            background-color: transparent;
+            transition: background 0s ease-out; // Reset del transition
+            border-radius: 0;
+            
+            // Asegura que el input no tenga padding extra, solo el necesario de MDB
+            padding: $mdb-input-padding-base-vertical $mdb-input-padding-base-horizontal; 
+        }
+
+        // Estado Deshabilitado/Readonly
+        &.v-field--disabled .v-field__field,
+        .v-field__field[readonly] {
+            background-image: none !important;
+            border-bottom: 1px dotted $mdb-input-underline-color;
+        }
+
+        // ------------------------------------------
+        // B. Estado Enfocado (Material Ripple Line)
+        // ------------------------------------------
+        &.v-field--focused,
+        &.is-focused { // Para compatibilidad con clases externas
+            .v-field__field {
+                outline: none;
+                // Transición del ancho de la línea de color de 0 a 100%
+                background-image: linear-gradient($brand-primary, $brand-primary), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color);
+                background-size: 100% 2px, 100% 1px;
+                box-shadow: none;
+                transition-duration: 0.3s;
+            }
+        }
+    }
+
+    // ------------------------------------------
+    // C. Input, Textarea y Select Overrides
+    // ------------------------------------------
+
+    // Estilos del texto dentro del input
+    .v-field__input {
+        font-weight: 400;
+
+        // Placeholders
+        @include material-placeholder { // Se asume que este mixin existe para ::placeholder
+            color: $mdb-input-placeholder-color;
+            font-weight: 400;
+        }
+    }
+    
+    // Select (Remove default appearance, although Vuetify handles it better)
+    &.v-select {
+        .v-select__selection {
+            appearance: none;
+        }
+    }
+    
+    // Textarea (MDB original resize: none)
+    &.v-textarea {
+        .v-field__input {
+            resize: none;
+        }
+    }
+}
+
+
+// =================================================================
+// 3. LÓGICA DE LABEL FLOTANTE MDB (Vuetify Default Density)
+// =================================================================
+
+// Variables calculadas para el tamaño base (Vuetify --density-default)
+$default-static-font-size: ceil(($mdb-label-static-size-ratio * $mdb-input-font-size-base)) !default;
+$default-static-line-height: ($mdb-label-static-size-ratio * $mdb-input-line-height-base) !default;
+// Estas variables de shim son aproximaciones de la alineación vertical de MDB
+$default-label-as-placeholder-top: -1 * ($mdb-input-padding-base-vertical + $mdb-label-as-placeholder-shim-base) !default;
+$default-label-top-static: $default-label-as-placeholder-top - ($mdb-input-font-size-base + $mdb-input-padding-base-vertical) !default;
+
+
+.v-input--density-default {
+    // ------------------------------------------
+    // A. Estado de Placeholder (Inicial)
+    // ------------------------------------------
+    .v-field__label {
+        // Posición y estilo de "placeholder"
+        position: absolute !important;
+        pointer-events: none;
+        transition: 0.3s ease all;
+        
+        top: $default-label-as-placeholder-top !important; // Fuerza la alineación MDB
+        font-size: $mdb-input-font-size-base;
+        line-height: $mdb-input-line-height-base;
+        color: $mdb-input-placeholder-color;
+        font-weight: 400;
+        margin: 16px 0 0 0; // std and lg margin
+    }
+    
+    // ------------------------------------------
+    // B. Estado Flotante (is-focused o has-value)
+    // ------------------------------------------
+    
+    // Vuetify state classes: v-field--active = is-focused OR has-value
+    &.v-field--active {
+        @include mdb-label-static($default-static-font-size, $default-static-line-height, $default-label-top-static);
+    }
+
+    // Para labels estáticos (sin animación) o labels que actúan como placeholders
+    &.label-static,
+    &.label-placeholder {
+        // Las clases MDB se mapean al mismo estado flotante/estático
+        @include mdb-label-static($default-static-font-size, $default-static-line-height, $default-label-top-static);
+    }
+    
+    // Fix para autofill de Webkit/Chrome
+    // Vuetify puede manejar esto internamente, pero si el input tiene el estado
+    // de autofill, forzamos el label estático
+    .v-field__input:-webkit-autofill ~ .v-field__label {
+        @include mdb-label-static($default-static-font-size, $default-static-line-height, $default-label-top-static);
+    }
+
+    // Oculta el label-placeholder cuando tiene valor (similar a .label-placeholder:not(.is-empty))
+    &.label-placeholder:not(.v-field--active) .v-field__input:not(:placeholder-shown) ~ .v-field__label {
+        display: none;
+    }
+}
+
+// =================================================================
+// 4. VARIACIONES DE TAMAÑO (density)
+// NOTA: Se requeriría replicar la lógica de sizing (Se omiten para mantener la concisión,
+// ya que Vuetify maneja el sizing interno a través de density, y MDB usa variables
+// $mdb-input-height-small, $mdb-input-height-large, etc. que deben ser mapeadas al
+// padding/margin de Vuetify si se desea la réplica exacta de MDB en densidad compact/comfortable).
+// =================================================================
+
+
+// =================================================================
+// 5. ESTADOS DE VALIDACIÓN Y COLORES
+// =================================================================
+
+.v-input {
+    @include vuetify-form-validation-state($brand-warning);
+    .has-warning.is-focused, &.has-warning.v-field--focused {
+        .v-field__field {
+             background-image: linear-gradient($brand-warning, $brand-warning), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color) !important;
+        }
+    }
+    
+    @include vuetify-form-validation-state($brand-danger);
+    .has-error.is-focused, &.has-error.v-field--focused {
+        .v-field__field {
+             background-image: linear-gradient($brand-danger, $brand-danger), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color) !important;
+        }
+    }
+
+    @include vuetify-form-validation-state($brand-success);
+    .has-success.is-focused, &.has-success.v-field--focused {
+        .v-field__field {
+             background-image: linear-gradient($brand-success, $brand-success), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color) !important;
+        }
+    }
+    
+    @include vuetify-form-validation-state($brand-info);
+    .has-info.is-focused, &.has-info.v-field--focused {
+        .v-field__field {
+             background-image: linear-gradient($brand-info, $brand-info), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color) !important;
+        }
+    }
+    
+    // Colores enfocados MDB específicos (si se usan clases directas en lugar del prop color)
+    &.form-info .v-field--focused .v-field__field { background-image: linear-gradient($brand-info, $brand-info), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color); }
+    &.form-success .v-field--focused .v-field__field { background-image: linear-gradient($brand-success, $brand-success), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color); }
+    &.form-warning .v-field--focused .v-field__field { background-image: linear-gradient($brand-warning, $brand-warning), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color); }
+    &.form-danger .v-field--focused .v-field__field { background-image: linear-gradient($brand-danger, $brand-danger), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color); }
+    &.form-white .v-field--focused .v-field__field { background-image: linear-gradient($white-color, $white-color), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color); }
+
+
+    // Help Block (Reemplazo de .help-block con .v-messages)
+    .v-input__details {
+        // Vuetify maneja .v-messages, solo aplicamos la animación de opacidad/posición
+        .v-messages {
+            color: $mdb-input-placeholder-color !important;
+            font-size: ceil(($mdb-help-block-size-ratio * $mdb-input-font-size-base)) !important;
+            line-height: ($mdb-help-block-size-ratio * $mdb-input-line-height-base) !important;
+            
+            // Ocultar por defecto
+            opacity: 0; 
+            visibility: hidden;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            transform: translateY(8px); // Desplazamiento sutil hacia abajo
+        }
+    }
+    
+    // Mostrar help-block al enfocar
+    &.v-input--focused .v-input__details .v-messages {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    
+    // Iconos de feedback (Reemplazo de .form-control-feedback)
+    .v-input__append-inner .v-icon {
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    // Mostrar iconos de feedback en estados de éxito/error
+    &.has-success .v-input__append-inner .v-icon {
+        color: $brand-success;
+        opacity: 1;
+    }
+    &.has-error .v-input__append-inner .v-icon {
+        color: $brand-danger;
+        opacity: 1;
+    }
+}
+
+
+// =================================================================
+// 6. INPUT GROUPS y ADORNO (Reemplazo de .input-group-addon)
+// =================================================================
+.v-input {
+    // Adorno (íconos, prepend/append)
+    .v-input__prepend,
+    .v-input__append {
+        align-self: flex-start; // Alinea el add-on con el inicio del campo
+        padding-top: 15px; // Ajuste para alinear con el texto del input
+        padding-right: 15px;
+        padding-left: 15px;
+        
+        .v-icon {
+            color: $mdb-input-placeholder-color; // Color del add-on
+        }
+    }
+
+    // Botones dentro del input group
+    .v-input__prepend .v-btn,
+    .v-input__append .v-btn {
+        margin: 0 0 $mdb-input-padding-base-vertical 0;
+    }
+}
+
+
+// =================================================================
+// 7. OTROS ELEMENTOS NATIVOS Y DE UTILIDAD
+// =================================================================
+
+// Labels genéricos (no control-label)
+.label {
+    border-radius: $border-radius-small;
+}
+
+// Form Control Static
+.form-control-static {
+    margin: 0;
+}
+
+.form-category{
+  color: #333;
+}
+
+.md-label-on-right { // Clase de utilidad
+  padding: 20px 5px 0 0;
+  text-align: left;
+
+  code{
+    padding: 2px 4px;
+    font-size: 90%;
+    color: #c7254e;
+    background-color: #f9f2f4;
+    border-radius: 4px;
+  }
+}
+
+// El resto de las reglas `.md-field`, `.md-input`, etc. se eliminan
+// ya que provienen de Vue Material y han sido reemplazadas por las
+// sobreescrituras de la estructura interna de Vuetify V3 (`.v-input`, `.v-field`).

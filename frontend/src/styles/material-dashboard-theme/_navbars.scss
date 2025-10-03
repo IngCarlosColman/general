@@ -1,0 +1,304 @@
+// =================================================================
+// ADAPTACIÓN DE TOOLBAR Y MENÚS A VUETIFY V3 (v-app-bar, v-list, v-menu)
+// =================================================================
+
+// --------------------------------------------------
+// 1. Estilos de la Barra de Aplicación (v-app-bar)
+// --------------------------------------------------
+
+.v-app-bar {
+    // Estilos base
+    min-height: 64px !important; // Vuetify default is 64px, adjusting padding/margin
+    padding: 0 15px; // Ajuste de padding
+    border-radius: $border-radius-base;
+    transition: box-shadow 0.3s ease; // Mantener la transición de sombra
+
+    // Vuetify maneja 'will-change' internamente
+    // &.v-toolbar-row: { will-change: unset; }
+
+    // Toolbar transparente (v-app-bar flat)
+    &.v-app-bar--transparent {
+        background-color: transparent !important;
+        box-shadow: none !important;
+
+        // Asegura que el contenido sea oscuro en la barra transparente (por defecto en Vuetify es claro)
+        .v-toolbar-title,
+        .v-btn,
+        .v-list-item,
+        .v-app-bar-nav-icon {
+            color: $black-color !important;
+        }
+    }
+
+    // Posición fija/absoluta (manejo de esquinas)
+    &.v-app-bar--fixed, &.v-app-bar--absolute {
+        border-radius: 0;
+    }
+
+    // Toolbar Absoluta (para páginas de fondo)
+    &.v-app-bar--absolute {
+        position: absolute;
+        width: 100%;
+        padding-top: 10px; // Padding superior para mejor diseño en páginas de fondo
+        z-index: 1029;
+
+        .v-toolbar-title {
+            color: $white-color !important;
+        }
+    }
+
+    .v-toolbar-title {
+        height: 50px;
+        display: flex;
+        align-items: center;
+        font-size: 18px;
+        margin-left: 0;
+        margin-right: 15px;
+        padding: 10px 0;
+        font-weight: 300;
+        letter-spacing: normal;
+    }
+
+    // Vuetify V3 usa .v-toolbar-items para contener botones/elementos de navegación.
+    .v-toolbar-items {
+        padding-right: 5px;
+        padding-left: 5px;
+        color: inherit !important;
+        background-color: transparent !important;
+        display: flex;
+        align-items: center; // Asegurar alineación vertical
+
+        .v-btn {
+            margin: 0 5px; // Espaciado entre botones
+        }
+    }
+
+    // Toggle para Sidebar (Menu Icon) - Custom styling for icon-bar structure
+    .v-app-bar-nav-icon {
+        width: 40px;
+        // El icono de navegación de Vuetify es un v-icon simple.
+        // Si necesitas la animación de "hamburguesa" original con icon-bar, se debe inyectar CSS custom:
+        .icon-bar {
+            position: relative;
+            display: block;
+            width: 22px;
+            height: 2px;
+            background-color: inherit;
+            border: 1px solid;
+            border-radius: 1px;
+
+            & + .icon-bar{
+                margin-top: 4px;
+            }
+        }
+    }
+
+    // Estilo para el campo de búsqueda/input en el toolbar
+    .v-input {
+        padding: 0;
+        margin: 0;
+
+        // Ajuste de los campos internos de Vuetify para inputs en el app bar
+        .v-field__overlay,
+        .v-field__underlay {
+            bottom: 0;
+        }
+
+        .v-field__input {
+            margin-top: 6px;
+        }
+
+        .v-label {
+            top: 15px;
+        }
+
+        &.v-input--focused .v-label,
+        &.v-input--dirty .v-label {
+            top: -4px;
+        }
+    }
+
+    // Contenedor de colapso (para menú responsive, manejado por v-toolbar-items/v-row en V3)
+    .v-toolbar-collapse {
+        display: flex;
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    // Estilo para toolbar transparente (navbar-transparent)
+    &.v-app-bar--transparent { // Reutilizamos la clase
+         box-shadow: none;
+         border-bottom: 0;
+
+         .logo-container .brand {
+             color: $white-color;
+         }
+    }
+}
+
+// --------------------------------------------------
+// 2. Esquema de Colores (Usando Mixins Adaptados)
+// --------------------------------------------------
+
+// Color por defecto (gray-light)
+.v-app-bar:not([color]):not(.v-app-bar--transparent) {
+    @include v-app-bar-colors($gray-light);
+    // Asegurar que el icono del toggle mantenga el color por defecto
+    .v-app-bar-nav-icon {
+         color: inherit !important;
+    }
+}
+
+// Colores específicos
+.v-app-bar {
+    &.v-app-bar--primary { @include v-app-bar-colors($brand-primary); }
+    &.v-app-bar--danger { @include v-app-bar-colors($brand-danger); }
+    &.v-app-bar--warning { @include v-app-bar-colors($brand-warning); }
+    &.v-app-bar--info { @include v-app-bar-colors($brand-info); }
+    &.v-app-bar--success { @include v-app-bar-colors($brand-success); }
+    &.v-app-bar--rose { @include v-app-bar-colors($brand-rose); }
+
+    &.v-app-bar--white {
+        background-color: $white-color !important;
+        @include shadow-navbar-color($white-color); // Asumiendo mixin de sombra
+
+        .v-toolbar-title,
+        .v-btn:not(.v-btn--icon) {
+            color: inherit !important;
+        }
+    }
+}
+
+// --------------------------------------------------
+// 3. Dropdowns (v-menu) y Listas (v-list) en el App Bar
+// --------------------------------------------------
+
+.v-menu > .v-overlay__content { // Reemplaza .md-menu-content
+    box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26);
+    border-radius: $border-radius-base !important;
+    overflow: hidden; // Asegura que el contenido respete el border-radius
+
+    .v-list {
+        padding: 0; // Remueve el padding por defecto de Vuetify
+        .v-list-item {
+            .v-list-item-title {
+                font-size: 10px;
+            }
+            // Asegura que los items dentro del menú usen los colores del mixin V3
+            @include v-menu-item-color($brand-primary); // Default color para hover
+        }
+    }
+}
+
+// Listas de navegación (botones directos o elementos de lista)
+.v-list-item { // Base list item styles
+    margin-left: 5px;
+    list-style: none;
+
+    // Estilos para el contenido/link dentro del v-list-item (si se usa un <a>)
+    &.v-list-item--link > .v-list-item__content,
+    a {
+        color: inherit !important;
+        padding-top: 15px;
+        padding-bottom: 15px;
+
+        font-weight: $font-weight-default;
+        font-size: $mdb-btn-font-size-base;
+        text-transform: uppercase;
+        overflow: visible;
+
+        border-radius: $border-radius-base;
+        position: relative;
+        display: block;
+        padding: 0;
+        text-decoration: none;
+
+        // Override de hover/focus para links simples
+        &:hover,
+        &:focus {
+            color: inherit;
+            background-color: transparent;
+        }
+
+        .v-icon,
+        .fa {
+            font-size: 20px;
+        }
+
+        // Estilo para iconos dentro de botones elevados (v-btn)
+        .v-btn:not(.v-btn--icon) .v-icon {
+            position: relative;
+            top: 2px;
+            margin-top: -4px;
+            margin-right: 4px;
+        }
+    }
+}
+
+// Estilos de Elementos Específicos del App Bar
+
+// Botones de icono
+.v-app-bar .v-list-item .v-btn.v-btn--icon { // Reemplaza .md-just-icon
+    width: auto;
+    min-width: auto;
+    min-height: 48px;
+    color: $black-color !important;
+
+    // Colores de icono/botón en estado normal/hover
+    &,
+    &:hover,
+    &:focus,
+    &:active {
+        background-color: transparent !important; // Evita el fondo de Vuetify en hover/focus
+        color: $black-color !important;
+        box-shadow: none;
+
+        .v-icon {
+            width: 20px;
+            min-width: 20px;
+            color: $black-color !important;
+        }
+    }
+}
+
+// Notificación (Badge)
+.v-badge {
+    .v-badge__badge { // Target the badge indicator
+        position: absolute;
+        top: -6px;
+        border: 1px solid #FFF;
+        right: -8px;
+        font-size: 9px;
+        background: #f44336;
+        color: #FFFFFF;
+        z-index: 1;
+        min-width: 20px;
+        padding: 0 5px;
+        height: 20px;
+        border-radius: 10px;
+        text-align: center;
+        line-height: 19px;
+        vertical-align: middle;
+        display: block;
+    }
+}
+
+// Foto de perfil
+.v-app-bar .v-toolbar-items {
+    .profile-photo {
+        padding: 0 5px 0;
+        .profile-photo-small {
+            height: 40px;
+            width: 40px;
+            border-radius: 50%;
+        }
+    }
+}
+
+// Estilos de Dropdown Menus (Antiguos .navbar-nav)
+.v-app-bar .v-menu {
+    // Manejo de margen para dropdowns (generalmente no necesario en V3)
+    .v-overlay__content {
+         margin-top: 0; // Elimina el margen negativo antiguo
+    }
+}

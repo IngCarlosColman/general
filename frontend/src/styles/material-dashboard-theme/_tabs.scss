@@ -1,0 +1,167 @@
+//
+// Refactoring of legacy .md-tabs SCSS to modern Vuetify 3 (V3) standards.
+// Targets v-tabs and v-tab components.
+//
+
+// --- Placeholder Variables (Adjust these to match your project's variables) ---
+$border-radius-base: 4px;
+$padding-base: 15px;
+$gray-color: #999; // Using a medium gray placeholder
+$white-color: #fff;
+
+// Placeholder for shadow-big (Vuetify recommends using elevation classes, e.g., elevation-6)
+@mixin shadow-big() {
+  box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.25), 0 4px 20px 0px rgba(0, 0, 0, 0.12), 0 7px 8px -5px rgba(0, 0, 0, 0.2);
+}
+
+// --- Main Tabs Container Styling (Replaces .md-tabs-navigation) ---
+// Selectors target the main v-tabs component when not vertical
+.v-tabs:not(.v-tabs--vertical) {
+  // Apply custom shadow (recommend using V3 elevation classes like elevation-4 instead of this mixin)
+  @include shadow-big();
+
+  // Custom layout and color
+  margin-top: -35px; // Negative top margin for overlap effect
+  border-radius: $border-radius-base;
+  padding: $padding-base $padding-base $padding-base 75px; // Specific padding, heavy on the left
+  background-color: $gray-color !important;
+
+  // The wrapper that contains the tabs (v-slide-group)
+  .v-slide-group {
+    // Ensure the tab buttons themselves take up the full space
+    .v-slide-group__content {
+      align-items: center; // Vertically align tabs
+    }
+  }
+
+  // --- Hiding the default indicator (Replaces .md-tabs-indicator) ---
+  // Vuetify 3 typically uses the v-slide-group__indicator for the slider
+  .v-slide-group__indicator {
+    display: none !important;
+    height: 0 !important;
+  }
+
+  // --- Tab Item Styling (Replaces .md-icon-label) ---
+  .v-tab {
+    // Basic sizing and typography
+    height: auto !important; // Match md-icon-label height: auto
+    min-width: 0 !important;
+    border-radius: 3px;
+    line-height: 24px;
+    text-transform: uppercase !important;
+    font-size: 12px !important;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+
+    // Spacing between tabs
+    &:not(:last-child) {
+      margin-right: 5px;
+    }
+
+    // Ripple padding and size (Replaces .md-ripple padding)
+    & .v-btn__content {
+      padding: 10px 15px !important;
+    }
+
+    // Icon and Label layout (Replaces .md-icon-label .md-button-content)
+    // Overriding V3's default (which is usually vertical) to be horizontal:
+    .v-tab__content {
+      flex-direction: row; // Arrange icon and text horizontally
+
+      // Icon spacing when next to text
+      .v-icon + span {
+        margin-top: 1px; // Fine tune vertical alignment
+        margin-left: 5px; // Spacing between icon and label
+      }
+    }
+
+    // Default button states (Replaces .md-button, .md-button:hover, .md-button:focus)
+    background-color: transparent !important;
+    box-shadow: none !important;
+    opacity: 1 !important; // Ensure non-active tabs have full opacity
+
+    // Active state (Replaces .md-active)
+    &.v-tab--selected {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      box-shadow: none !important;
+      color: $white-color !important; // Ensure active text color is legible
+    }
+
+    // Hover/Focus state (Disable Vuetify's default dark overlay)
+    &::before {
+      opacity: 0 !important;
+    }
+  }
+}
+
+// --- Custom Tabs Title (Replaces .md-nav-tabs-title) ---
+// Apply this class (.nav-tabs-with-title) to your v-tabs component
+.v-tabs.nav-tabs-with-title {
+  position: relative; // Establish context for absolute title
+
+  .tabs-title {
+    // You must add this element with class="tabs-title" inside your v-tabs
+    position: absolute;
+    z-index: 9999;
+    top: 6px;
+    left: 0;
+    color: $white-color;
+    font-size: initial;
+    margin-left: 15px;
+  }
+
+  // Shift tabs to the right to make space for the title
+  .v-slide-group {
+    padding-left: 75px; // Push tabs past the title area (same width as custom padding)
+  }
+}
+
+// --- Content Area Checkbox Fix (Replaces & + .md-tabs-content) ---
+// Targets the V3 v-window content panel immediately following the v-tabs
+.v-tabs + .v-window {
+  // If custom checkbox alignment is needed inside the tab content:
+  .v-checkbox {
+    .v-selection-control__input {
+      // Custom positioning logic for the checkmark inside the input area if V3 defaults are off
+    }
+  }
+}
+
+
+// --- Responsive Column Layout (Replaces @media all and (max-width: 540px)) ---
+@media (max-width: 540px) {
+  .v-tabs:not(.v-tabs--vertical) {
+    .v-slide-group__content {
+      flex-direction: column !important; // Force stack tabs vertically
+      align-items: stretch !important; // Make them full width
+
+      .v-tab {
+        margin-right: 0 !important; // Remove horizontal margin
+        margin-bottom: 5px; // Add vertical margin
+      }
+    }
+
+    // Reset padding when in column mode
+    padding-left: $padding-base !important;
+    padding-right: $padding-base !important;
+  }
+
+  // Adjust title position in mobile
+  .v-tabs.nav-tabs-with-title {
+    .tabs-title {
+      position: static !important; // Make title flow normally
+      margin-left: 0 !important;
+      padding: 5px $padding-base;
+      display: block;
+      width: 100%;
+    }
+    .v-slide-group {
+      padding-left: 0 !important; // Reset tab group padding
+    }
+  }
+}
+
+// --- Tab Content Padding (Replaces .md-tab) ---
+.v-window-item {
+  padding: 15px 0 0 0; // Padding for the content inside each tab
+}

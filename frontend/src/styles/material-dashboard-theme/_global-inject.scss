@@ -1,0 +1,7 @@
+// src/styles/material-dashboard-theme/_global-inject.scss
+
+// Importa solo lo que necesitas usar en cada componente SCSS (sin duplicar CSS)
+@import "variables"; 
+@import "mixins"; 
+@import "shadows";
+// Puedes añadir otras importaciones que SOLO contengan variables, mixins o funciones.

@@ -1,0 +1,162 @@
+// ========================================================================
+// REGLAS ESPECÍFICAS DE COMPONENTE: _card-pricing.scss
+// Targets the V3 v-card component with a custom class: <v-card class="v-card-pricing">
+// ========================================================================
+
+.v-card-pricing {
+    position: relative;
+    text-align: center;
+
+    // Overlay (Típicamente usado en tarjetas con imagen de fondo)
+    &:after {
+        content: "";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.7) !important; // Fondo semi-transparente oscuro
+        z-index: 1;
+        border-radius: inherit; // Hereda el border-radius de la tarjeta principal
+    }
+
+    // Estilo de Categoría (Texto pequeño)
+    .category {
+        font-weight: 500;
+        margin-top: 10px;
+        margin-bottom: 0.5rem;
+        // Usamos una variante de color de superficie para texto secundario
+        color: rgba(var(--v-theme-on-surface-rgb), 0.7) !important;
+    }
+
+    // Título (Normalmente el nombre del plan)
+    .v-card-title {
+        margin-top: 20px;
+        color: var(--v-theme-on-surface);
+        font-weight: 500;
+        line-height: 1.2;
+    }
+
+    // Estilo para tarjeta "plana" (sin elevación/sombra)
+    &.v-card-plain {
+        .v-card-title {
+            color: var(--v-theme-on-background) !important;
+        }
+    }
+    
+    // Contenido de la Tarjeta (md-card-content -> v-card-text)
+    .v-card-text {
+        // Forzamos los paddings originales para un look denso
+        padding: 15px !important;
+        margin: 0 !important;
+    }
+    
+    // ------------------------------------
+    // Ícono Central Grande (md-card-icon -> v-card-pricing-icon)
+    // ------------------------------------
+    .v-card-pricing-icon {
+        padding: 10px 0 0px;
+
+        i {
+            font-size: 55px !important;
+            border: 1px solid #E5E5E5; // Borde gris claro fijo
+            border-radius: 50%;
+            width: 130px;
+            line-height: 130px;
+            height: 130px;
+            text-align: center;
+            color: var(--v-theme-on-surface); // Color de ícono por defecto
+        }
+
+        // Mapeo de colores de marca para el ícono
+        &.icon-primary i { color: var(--v-theme-primary); }
+        &.icon-info i    { color: var(--v-theme-info); }
+        &.icon-success i { color: var(--v-theme-success); }
+        &.icon-warning i { color: var(--v-theme-warning); }
+        &.icon-danger i  { color: var(--v-theme-error); } // Usamos 'error' como sinónimo de 'danger' en V3
+        &.icon-rose i    { color: $brand-rose; } // Manteniendo $brand-rose si no hay mapeo nativo
+        &.icon-white i   { color: var(--v-theme-on-primary); }
+        &.icon-black i   { color: var(--v-theme-on-surface); }
+    }
+
+    // ------------------------------------
+    // Estilo de Precio (h1)
+    // ------------------------------------
+    h1 {
+        small {
+            font-size: 18px;
+            display: inline-flex;
+            height: 0;
+
+            &:first-child { // El símbolo de moneda ($)
+                position: relative;
+                top: -17px;
+                font-size: 26px;
+            }
+        }
+    }
+
+    // ------------------------------------
+    // Lista de Características (ul)
+    // ------------------------------------
+    ul {
+        list-style: none;
+        padding: 0;
+        max-width: 240px;
+        margin: 10px auto;
+
+        li {
+            color: rgba(var(--v-theme-on-surface-rgb), 0.7); // Color gris claro
+            text-align: center;
+            padding: 12px 0;
+            // Borde inferior usando el color de borde de Vuetify para coherencia
+            border-bottom: 1px solid rgba(var(--v-border-color-rgb), .5);
+
+            &:last-child {
+                border: 0;
+            }
+            b {
+                color: var(--v-theme-on-surface); // Texto en negrita en color principal
+            }
+            i {
+                top: 6px;
+                position: relative;
+            }
+        }
+    }
+
+    // Estilos para tarjetas con fondo de color/imagen
+    &.card-background,
+    &[class*="bg-"] {
+        ul {
+            li {
+                color: var(--v-theme-on-primary);
+                border-color: rgba(var(--v-theme-on-primary-rgb), .3);
+
+                b {
+                    color: var(--v-theme-on-primary);
+                    font-weight: 700;
+                }
+            }
+        }
+        [class*="text-"],
+        .card-category {
+            color: var(--v-theme-on-primary) !important;
+        }
+    }
+
+    // ------------------------------------
+    // Acciones (md-card-actions -> v-card-actions)
+    // ------------------------------------
+    .v-card-actions {
+        z-index: 2;
+        display: flex;
+        justify-content: center;
+        border: 0;
+
+        .v-btn { // Botones
+            margin: 5px 0;
+        }
+    }
+}

@@ -1,0 +1,58 @@
+/*
+ * Actualización total a la convención de clases de Vuetify V3.
+ * Este SCSS personaliza los ítems de lista (<v-list-item>) dentro de un menú (<v-menu> o <v-select>).
+ */
+.v-list {
+  // El selector .v-list ya actúa como el contenedor principal del menú/lista.
+  // Es común forzar el padding a cero si se desea replicar el diseño de menú compacto
+  padding: 0;
+
+  .v-list-item {
+    // 1. Estilos base del ítem (equivalente a .md-list-item)
+    margin: 0 0.3125rem;
+    padding: 0; // Remover el padding predeterminado de V3 para más control
+    border-radius: 3px;
+
+    &:not(:last-child) {
+      margin-bottom: 5px;
+    }
+
+    // 2. Aplicar el color base al contenido
+    .v-list-item__content {
+      // .v-list-item__content contiene el título/subtítulo.
+      min-height: 38px;
+      font-size: 13px;
+    }
+
+    // 3. Aplicar el color de texto a los elementos internos (título/subtítulo)
+    .v-list-item-title,
+    .v-list-item-subtitle {
+      color: $gray-dark !important;
+    }
+
+    // 4. Estilos de Hover (equivalente a .md-list-item-button:hover)
+    // El modificador :hover o la clase generada por Vuetify (.v-list-item--active / .v-list-item--hover)
+    // se usan para aplicar los efectos de interacción.
+    &.v-list-item--active,
+    &:hover {
+      background-color: $brand-primary !important;
+      @include shadow-big-color($brand-primary);
+    }
+    
+    // 5. Asegurar que el texto sea blanco en hover
+    &.v-list-item--active,
+    &:hover {
+      .v-list-item-title,
+      .v-list-item-subtitle,
+      .v-list-item__content {
+        color: #FFF !important;
+      }
+    }
+
+    /*
+    NOTA: Los selectores anidados como 'span' fueron eliminados
+    para seguir la estructura de HTML limpia de Vuetify V3, donde el
+    posicionamiento lo maneja el framework internamente.
+    */
+  }
+}

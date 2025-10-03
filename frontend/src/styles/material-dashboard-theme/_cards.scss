@@ -1,0 +1,550 @@
+/*
+ * Adaptación del diseño de tarjeta (v-card) a las clases de Vuetify V3.
+ * Se mantienen las clases personalizadas (.card-icon, .card-text, etc.) que definen
+ * el estilo único del dashboard (cabeceras flotantes, animaciones).
+ */
+.v-card {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
+    margin: 30px 0;
+    overflow: unset; // Necesario para que las cabeceras elevadas 'salgan' de la tarjeta
+    font-size: 0.875rem;
+    box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.14);
+    border-radius: $border-radius-base + 3;
+    color: $mdb-card-body-text;
+    background: $mdb-card-body-background;
+
+    .card-height-indicator {
+        margin-top: 100%;
+    }
+
+    [data-header-animation="true"] {
+        transition: all 0.3s cubic-bezier(0.34, 1.61, 0.7, 1);
+    }
+
+    &:hover [data-header-animation="true"] {
+        transform: translate3d(0, -50px, 0);
+    }
+
+    &.row-space {
+        .header {
+            // 'header' es un selector personalizado y se mantiene
+            padding: 15px 20px 0;
+        }
+    }
+
+    // En V3, el borde se aplica al v-card. Se aplica al primer v-card-item solo si es un contenedor de cabecera.
+    .v-card-item:first-child {
+        // Asumiendo que el primer v-card-item actúa como la cabecera
+        border-radius: $border-radius-base + 3;
+    }
+
+    .title {
+        // 'title' es un selector de texto personalizado, no el componente <v-card-title>
+        margin-top: 0;
+        margin-bottom: 3px;
+
+        a,
+        a:hover,
+        a:focus {
+            color: $black-color !important;
+        }
+    }
+
+    .category:not([class*="text-"]) {
+        color: $gray-color;
+    }
+
+    .v-card-text {
+        // Clase estándar de Vuetify V3
+        padding: 15px 20px;
+        line-height: 1.75em;
+        position: relative;
+
+        .category {
+            margin: 0;
+        }
+    }
+
+    // Estilo para tarjetas que contienen gráficos
+    &.v-card-chart {
+        .v-card-item:not(.v-card-item-icon):not(.v-card-item-text) {
+            padding: 0 !important;
+            min-height: 160px;
+        }
+
+        + .content {
+            h4 {
+                margin-top: 0;
+            }
+        }
+    }
+
+    .v-card-item {
+        // Clase estándar de Vuetify V3
+        padding: 0.75rem 1.25rem;
+        margin-bottom: 0;
+        background-color: #fff;
+
+        &.v-card-item-icon,
+        &.v-card-item-text {
+            .category {
+                margin: 0;
+                color: rgba($white-color, 0.8);
+            }
+
+            .title {
+                color: $white-color;
+            }
+        }
+
+        &.v-card-item-image {
+            position: relative;
+            padding: 0;
+            z-index: 2;
+            margin-left: 15px;
+            margin-right: 15px;
+            margin-top: -30px; // Esto crea el efecto de elevación flotante
+            border-radius: $border-radius-large;
+
+            img {
+                width: 100%;
+                border-radius: $border-radius-large;
+                pointer-events: none;
+                @include shadow-big-image();
+            }
+
+            .card-title {
+                position: absolute;
+                bottom: 15px;
+                left: 15px;
+                color: $white-color;
+                font-size: $font-size-h4;
+                text-shadow: 0 2px 5px rgba(33, 33, 33, 0.5);
+            }
+        }
+
+        .card-icon,
+        .card-text {
+            // Clases custom para los headers de estadísticas (flotantes)
+            border-radius: $border-radius-base;
+            background-color: $gray-color;
+            padding: 15px;
+            margin-top: -20px;
+            margin-right: 15px;
+            float: left;
+
+            i {
+                color: $white-color;
+            }
+        }
+
+        &.v-card-item-icon,
+        &.v-card-item-text {
+            .title {
+                color: $black-color;
+                margin-top: 15px;
+            }
+
+            i {
+                width: 33px;
+                height: 33px;
+                text-align: center;
+                line-height: 33px;
+            }
+        }
+
+        h4 {
+            font-weight: 300;
+        }
+
+        a {
+            color: $white-color !important;
+        }
+
+        // Estilos para la integración de Chartist (gráfico)
+        .ct-label {
+            color: rgba($white-color, 0.7);
+        }
+        .ct-grid {
+            stroke: rgba(255, 255, 255, 0.2);
+        }
+        .ct-series-a .ct-point,
+        .ct-series-a .ct-line,
+        .ct-series-a .ct-bar,
+        .ct-series-a .ct-slice-donut {
+            stroke: rgba(255, 255, 255, 0.8);
+        }
+        .ct-series-a .ct-slice-pie,
+        .ct-series-a .ct-area {
+            fill: rgba(255, 255, 255, 0.4);
+        }
+    }
+
+    [class*="v-card-item-"] {
+        // Estilos generales para todos los tipos de cabecera personalizados
+        margin: 0 $margin-base;
+        border-radius: $border-radius-base;
+        padding: 0;
+        background-color: transparent;
+
+        .card-text {
+            float: none;
+            display: inline-block;
+            margin-right: 0;
+
+            .title {
+                color: $white-color;
+                margin-top: 0;
+            }
+
+            .category {
+                font-size: 0.875rem;
+            }
+        }
+
+        &:not(.v-card-item-icon):not(.v-card-item-text):not(.v-card-item-image) {
+            margin-top: -20px;
+            padding: 15px;
+            z-index: 2;
+        }
+    }
+
+    .chart-title {
+        position: absolute;
+        top: 25px;
+        width: 100%;
+        text-align: center;
+
+        h3 {
+            margin: 0;
+            color: $white-color;
+        }
+
+        h6 {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.4);
+        }
+    }
+
+    .v-card-actions {
+        // Clase estándar de Vuetify V3
+        margin: 0 15px 10px;
+        font-size: 14px;
+        padding: 10px 0 0 0;
+        border-top: 1px solid #eeeeee;
+
+        .content {
+            display: block;
+        }
+
+        .author {
+            color: $gray-color;
+        }
+
+        .stats {
+            line-height: 22px;
+            color: $gray-color;
+            font-size: $font-size-small;
+
+            i {
+                position: relative;
+                top: -1px;
+                font-size: $font-paragraph + 2 !important;
+                color: $gray-light;
+            }
+
+            .category {
+                padding-top: 7px;
+                padding-bottom: 7px;
+                margin: 0;
+            }
+        }
+
+        h6 {
+            color: $gray-color;
+        }
+    }
+
+    img {
+        width: 100%;
+        height: auto;
+    }
+
+    .category {
+        i {
+            position: relative;
+            top: 6px;
+            line-height: 0;
+        }
+    }
+
+    .category-social {
+        .fa {
+            font-size: 24px;
+            position: relative;
+            margin-top: -4px;
+            top: 2px;
+            margin-right: 5px;
+        }
+    }
+
+    .author {
+        .avatar {
+            // Vuetify V3 usa <v-avatar> con sus propias clases
+            width: 30px;
+            height: 30px;
+            overflow: hidden;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        a {
+            color: $black-color;
+            text-decoration: none;
+
+            .ripple-container {
+                // Elimina la clase de ripple antigua/custom
+                display: none;
+            }
+        }
+    }
+
+    .table {
+        // Asume que usa una tabla HTML simple o <v-table>
+        margin-bottom: 0;
+
+        tr:first-child td {
+            border-top: none;
+        }
+    }
+
+    // Mixins de color (Gradients)
+    .v-card-item-primary .card-icon,
+    .v-card-item-primary .card-text,
+    .v-card-item-primary:not(.v-card-item-icon):not(.v-card-item-text),
+    [data-background-color="purple"] {
+        background: linear-gradient(60deg, $purple-400, $purple-600);
+    }
+
+    .v-card-item-blue .card-icon,
+    .v-card-item-blue .card-text,
+    .v-card-item-blue:not(.v-card-item-icon):not(.v-card-item-text),
+    [data-background-color="blue"] {
+        background: linear-gradient(60deg, $cyan-400, $cyan-600);
+    }
+
+    .v-card-item-green .card-icon,
+    .v-card-item-green .card-text,
+    .v-card-item-green:not(.v-card-item-icon):not(.v-card-item-text),
+    [data-background-color="green"] {
+        background: linear-gradient(60deg, $green-400, $green-600);
+    }
+
+    .v-card-item-warning .card-icon,
+    .v-card-item-warning .card-text,
+    .v-card-item-warning:not(.v-card-item-icon):not(.v-card-item-text),
+    [data-background-color="orange"] {
+        background: linear-gradient(60deg, $orange-400, $orange-600);
+    }
+
+    .v-card-item-danger .card-icon,
+    .v-card-item-danger .card-text,
+    .v-card-item-danger:not(.v-card-item-icon):not(.v-card-item-text),
+    [data-background-color="red"] {
+        background: linear-gradient(60deg, $red-400, $red-600);
+    }
+
+    .v-card-item-rose .card-icon,
+    .v-card-item-rose .card-text,
+    .v-card-item-rose:not(.v-card-item-icon):not(.v-card-item-text),
+    [data-background-color="rose"] {
+        background: linear-gradient(60deg, $pink-400, $pink-600);
+    }
+
+    // REEMPLAZANDO SOMBRAS DE HEADERS
+    [data-background-color="red"],
+    .v-card-item-danger .card-icon,
+    .v-card-item-danger:not(.v-card-item-icon):not(.v-card-item-text),
+    .v-card-item-danger .card-text {
+        @include shadow-big-color($brand-danger);
+    }
+
+    [data-background-color="purple"],
+    .v-card-item-primary .card-icon, // Se ajustó a v-card-item-primary
+    .v-card-item-primary:not(.v-card-item-icon):not(.v-card-item-text),
+    .v-card-item-primary .card-text {
+        @include shadow-big-color($brand-primary);
+    }
+
+    [data-background-color="rose"],
+    .v-card-item-rose .card-icon,
+    .v-card-item-rose:not(.v-card-item-icon):not(.v-card-item-text),
+    .v-card-item-rose .card-text {
+        @include shadow-big-color($brand-rose);
+    }
+
+    [data-background-color="orange"],
+    .v-card-item-warning .card-icon,
+    .v-card-item-warning:not(.v-card-item-icon):not(.v-card-item-text),
+    .v-card-item-warning .card-text {
+        @include shadow-big-color($brand-warning);
+    }
+
+    [data-background-color="blue"],
+    .v-card-item-blue .card-icon,
+    .v-card-item-blue:not(.v-card-item-icon):not(.v-card-item-text),
+    .v-card-item-blue .card-text {
+        @include shadow-big-color($brand-info);
+    }
+
+    [data-background-color="green"],
+    .v-card-item-green .card-icon,
+    .v-card-item-green:not(.v-card-item-icon):not(.v-card-item-text),
+    .v-card-item-green .card-text {
+        @include shadow-big-color($brand-success);
+    }
+
+    [data-background-color] {
+        color: $white-color;
+
+        a {
+            color: $white-color;
+        }
+    }
+}
+
+.v-card-stats {
+    .title {
+        margin: 0;
+
+        small {
+            color: $gray-color;
+            font-size: 65%;
+            line-height: 1;
+            font-weight: 400;
+        }
+    }
+    .v-card-item {
+        text-align: center;
+
+        .category:not([class*="text-"]) {
+            color: $gray-light;
+            font-size: 14px;
+        }
+
+        .card-icon + .category,
+        .card-icon + .title {
+            padding-top: 10px;
+        }
+
+        + .v-card-actions {
+            margin-top: 20px;
+        }
+
+        &.v-card-item-icon,
+        &.v-card-item-text {
+            text-align: right;
+
+            .title {
+                margin: 0;
+            }
+
+            i {
+                font-size: 36px !important;
+                line-height: 56px;
+                width: 56px;
+                height: 56px;
+                text-align: center;
+            }
+        }
+    }
+    .v-card-text {
+        text-align: right;
+        padding-top: 10px;
+    }
+}
+
+.card-nav-tabs {
+    .header-raised {
+        margin-top: -$margin-base * 2;
+    }
+    .nav-tabs {
+        background: transparent;
+        padding: 0;
+    }
+    .nav-tabs-title {
+        float: left;
+        padding: 10px 10px 10px 0;
+        line-height: 24px;
+    }
+}
+
+.v-card-plain {
+    background: transparent !important;
+    box-shadow: none !important;
+
+    .content {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    .v-card-item:not(.v-card-avatar) .category,
+    & .v-card-item:not(.v-card-avatar) .description {
+        color: $gray-color;
+    }
+
+    .card-image {
+        margin: 0;
+        border-radius: $border-radius-base;
+
+        img {
+            border-radius: $border-radius-base;
+        }
+    }
+}
+
+.iframe-container {
+    margin: 0 -20px 0;
+
+    iframe {
+        width: 100%;
+        height: 500px;
+        border: 0;
+        @include shadow-big();
+    }
+}
+
+.v-card-profile,
+.card-testimonial {
+    margin-top: 30px;
+    text-align: center;
+
+    .btn-just-icon.btn-raised {
+        margin-left: 6px;
+        margin-right: 6px;
+    }
+
+    .v-card-avatar {
+        // En V3, esto es típicamente <v-avatar> dentro del slot del v-card
+        max-width: 130px;
+        max-height: 130px;
+        margin: -50px auto 0;
+        border-radius: 50%;
+        overflow: hidden;
+
+        @include shadow-big();
+
+        + .v-card-text {
+            margin-top: 15px;
+        }
+    }
+
+    &.v-card-plain {
+        .card-avatar {
+            margin-top: 0;
+        }
+    }
+}

@@ -1,0 +1,59 @@
+// =================================================================
+// ADAPTACIÓN DE MD-PROGRESS-BAR A VUETIFY V3 (v-progress-linear)
+//
+// Clase principal a aplicar a <v-progress-linear>: .v-md-progress-linear
+// =================================================================
+
+// NOTA: Se asume que las variables de color (`$brand-rose`, etc.) y la función 
+// `lighten()` (o su equivalente) están definidas.
+
+// Mixin conceptual para aplicar el color al track y a la barra
+@mixin v-md-progress-linear-color($color) {
+    // Targeteamos el fondo del track (suele ser un color más claro)
+    .v-progress-linear__background {
+        background-color: lighten($color, 40%) !important;
+        opacity: 0.5; // Ajuste de transparencia si es necesario
+    }
+
+    // Targeteamos la barra de progreso principal
+    .v-progress-linear__determinate {
+        background-color: $color !important;
+    }
+}
+
+.v-md-progress-linear {
+    // 1. Estilos Base
+    height: 4px !important;
+    margin-bottom: 20px;
+    
+    // Aseguramos que el contenedor principal respete la altura
+    .v-progress-linear__background,
+    .v-progress-linear__determinate {
+        height: 100% !important;
+    }
+
+    // 2. Variantes de Color
+    &.v-md-rose {
+        @include v-md-progress-linear-color($brand-rose);
+    }
+
+    &.v-md-danger {
+        @include v-md-progress-linear-color($brand-danger);
+    }
+
+    &.v-md-primary {
+        @include v-md-progress-linear-color($brand-primary);
+    }
+
+    &.v-md-info {
+        @include v-md-progress-linear-color($brand-info);
+    }
+
+    &.v-md-success {
+        @include v-md-progress-linear-color($brand-success);
+    }
+
+    &.v-md-warning {
+        @include v-md-progress-linear-color($brand-warning);
+    }
+}

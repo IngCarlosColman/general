@@ -1,0 +1,252 @@
+//
+// Refactoring of legacy .timeline SCSS to modern Vuetify 3 (V3) standards.
+// Targets v-timeline and v-timeline-item components to recreate a centered,
+// two-sided, card-based timeline structure.
+//
+// NOTE: This SCSS requires applying the custom class .legacy-timeline to the
+// <v-timeline> component, and the class .inverted to the <v-timeline-item>
+// to achieve the right-side alignment.
+//
+
+// --- Placeholder Variables ---
+$gray-dark: #444;
+$white-color: #fff;
+$border-radius-large: 6px; // Using a standard size
+$mdb-card-body-text: #666; // Placeholder for panel content color
+$mdb-card-body-background: #fcfcfc; // Placeholder for panel background color
+
+// Brand Colors (Inferred from previous refactoring)
+$brand-primary: #9c27b0;
+$brand-success: #4caf50;
+$brand-warning: #ffb300;
+$brand-info: #00bcd4;
+$brand-danger: #f44336;
+
+// --- Placeholder Mixin for Badge Color ---
+@mixin timeline-badge-color($color) {
+    background-color: $color !important;
+}
+
+// --- Main Timeline Container (Applied to <v-timeline class="legacy-timeline">) ---
+.v-timeline.legacy-timeline {
+    list-style: none;
+    padding: 20px 0 20px;
+    position: relative;
+    margin-top: 30px;
+
+    // Hide the default V3 line structure to replace it with the custom centered line
+    .v-timeline-divider__line {
+        display: none !important;
+    }
+
+    // 1. Central Vertical Line (Replaces .timeline:before)
+    // We target the main V3 element to place the pseudo-line
+    &::before {
+        top: 50px; // Start position of the line
+        bottom: 0;
+        position: absolute;
+        content: " ";
+        width: 3px;
+        background-color: #E5E5E5;
+        left: 50%;
+        transform: translateX(-50%); // Center the line precisely
+        z-index: 0;
+    }
+
+    // General list item resets
+    .v-timeline-item {
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    // --- Badge/Dot Styling (Replaces .timeline-badge) ---
+    .v-timeline-item__dot {
+        color: $white-color;
+        width: 50px;
+        height: 50px;
+        font-size: 1.4em;
+        text-align: center;
+        position: absolute;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%); // Center it over the 50% line
+        z-index: 100;
+        border-radius: 50%;
+        padding: 0;
+        min-width: 50px;
+        min-height: 50px;
+        line-height: 50px !important; // Center content vertically
+
+        // Icon inside the badge
+        .v-icon {
+            line-height: inherit;
+            color: $white-color;
+        }
+
+        // Color Modifiers (Assuming classes like bg-primary are applied via V3 dot-color prop or a class)
+        // These classes should be used in the template (e.g., dot-color="primary")
+        // If overriding, we use direct classes:
+        &.bg-primary { @include timeline-badge-color($brand-primary); }
+        &.bg-success { @include timeline-badge-color($brand-success); }
+        &.bg-warning { @include timeline-badge-color($brand-warning); }
+        &.bg-info { @include timeline-badge-color($brand-info); }
+        &.bg-danger { @include timeline-badge-color($brand-danger); }
+    }
+
+
+    // --- Panel Styling (Replaces .timeline-panel) ---
+    // Targets the content area (v-timeline-item__body), which should contain a v-card
+    .v-timeline-item__body {
+        width: 45%;
+        padding: 20px;
+        margin-bottom: 20px;
+        position: relative;
+        box-shadow: 0 1px 4px 0 rgba(0,0,0,0.14);
+        border-radius: $border-radius-large;
+        color: $mdb-card-body-text;
+        background: $mdb-card-body-background;
+        z-index: 1;
+
+        // Default: Left Panel
+        float: left;
+
+        // Panel Arrow (Outer/Border) pointing right
+        &::before {
+            position: absolute;
+            top: 26px;
+            right: -15px;
+            display: inline-block;
+            border-top: 15px solid transparent;
+            border-left: 15px solid #e4e4e4; // Light gray border color
+            border-right: 0 solid #e4e4e4;
+            border-bottom: 15px solid transparent;
+            content: " ";
+            pointer-events: none;
+        }
+
+        // Panel Arrow (Inner/Content color) pointing right
+        &::after {
+            position: absolute;
+            top: 27px;
+            right: -14px;
+            display: inline-block;
+            border-top: 14px solid transparent;
+            border-left: 14px solid $white-color; // Inner color
+            border-right: 0 solid $white-color;
+            border-bottom: 14px solid transparent;
+            content: " ";
+            pointer-events: none;
+        }
+
+        // Content Styles (Assuming content elements are direct children or within a specific wrapper)
+        h6 {
+            color: $gray-dark;
+            font-weight: 400;
+            margin: 10px 0px 0px;
+        }
+    }
+
+    // --- Inverted Timeline Item (Right Panel) ---
+    // Requires class="inverted" on the <v-timeline-item>
+    .v-timeline-item.inverted {
+        .v-timeline-item__body {
+            float: right;
+            background-color: $white-color;
+
+            // Panel Arrow (Outer/Border) pointing left
+            &::before {
+                border-left-width: 0;
+                border-right-width: 15px;
+                left: -15px;
+                right: auto;
+            }
+
+            // Panel Arrow (Inner/Content color) pointing left
+            &::after {
+                border-left-width: 0;
+                border-right-width: 14px;
+                left: -14px;
+                right: auto;
+            }
+        }
+    }
+
+
+    // --- Simple Timeline (Single-sided, Replaces .timeline-simple) ---
+    &.timeline-simple {
+        padding: 0 0 20px;
+
+        // Move vertical line to the left
+        &::before {
+            left: 5%;
+        }
+
+        // Move badge to the left
+        .v-timeline-item__dot {
+            left: 5%;
+        }
+
+        // Make all panels wide and float right
+        .v-timeline-item__body {
+            width: 86%;
+            float: right;
+            background-color: $white-color; // Set a default white background
+
+            // Ensure all arrows point left for the single-sided look
+            &::before {
+                border-left-width: 0;
+                border-right-width: 15px;
+                left: -15px;
+                right: auto;
+            }
+
+            &::after {
+                border-left-width: 0;
+                border-right-width: 14px;
+                left: -14px;
+                right: auto;
+            }
+        }
+
+        // Reset inverted class to ensure it stays right-aligned in simple mode
+        .v-timeline-item.inverted .v-timeline-item__body {
+             float: right;
+        }
+    }
+}
+
+// --- Content Section Styling ---
+
+.timeline-heading {
+    margin-bottom: 15px;
+}
+
+.timeline-title {
+    margin-top: 0;
+    color: inherit;
+    font-weight: 500;
+}
+
+.timeline-body {
+    hr {
+        margin-top: 10px;
+        margin-bottom: 5px;
+        border: 0;
+        border-top: 1px solid rgba(0,0,0,.1);
+    }
+
+    .v-btn { // Targeting V3 buttons
+        margin-bottom: 0;
+    }
+
+    // Text and list styling
+    & > p,
+    & > ul {
+        margin-bottom: 0;
+        line-height: 1.7;
+    }
+
+    & > p + p {
+        margin-top: 5px;
+    }
+}

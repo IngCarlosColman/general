@@ -1,0 +1,110 @@
+// ========================================================================
+// REGLAS ESPECÍFICAS DE COMPONENTE: _card-signup.scss
+// Targets the V3 v-card component with a custom class: <v-card class="v-card-signup">
+// ========================================================================
+
+.v-card-signup {
+    // ------------------------------------
+    // Encabezado Superpuesto (md-card-header -> .v-card-header-floating)
+    // ------------------------------------
+    // Usamos esta clase para apuntar al v-card-title o v-card-header que contiene el fondo de color.
+    .v-card-header-floating {
+        // Asume que tienes un mixin para sombras en tu mixins/_shadows.scss
+        // @include shadow-big(); 
+        
+        // Estilos de desplazamiento y superposición
+        margin-left: 20px;
+        margin-right: 20px;
+        margin-top: -40px; // Sube el encabezado por encima del borde de la tarjeta
+        padding: 20px 0;
+        width: calc(100% - 40px); // Asegura que el ancho respete los 20px de margen a cada lado
+        margin-bottom: 15px;
+        
+        // Estilos del título dentro del encabezado (asumiendo que contiene texto)
+        .v-card-title {
+            color: var(--v-theme-on-primary) !important; // Texto del encabezado en color contrastante
+            font-weight: 500;
+            text-align: center;
+            line-height: 1.2;
+        }
+    }
+
+    // ------------------------------------
+    // Contenido, Título y Divisores
+    // ------------------------------------
+    
+    // Contenido de la tarjeta (md-card-content -> v-card-text)
+    .v-card-text {
+        padding: 0px 30px 0px 10px; // Padding ajustado
+    }
+    
+    // Título dentro del contenido (por ejemplo, "Register")
+    .title {
+        color: var(--v-theme-on-surface); // Mapeo de $black-color a V3 on-surface
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 15px;
+        font-weight: 400;
+    }
+    
+    // Divisor de texto (e.g., "o")
+    .text-divider {
+        margin-top: 30px;
+        margin-bottom: 0px;
+        text-align: center;
+        // Color de texto tenue
+        color: rgba(var(--v-theme-on-surface-rgb), 0.7);
+        font-weight: 300;
+    }
+
+    // ------------------------------------
+    // Estilos de Checkbox (Vuetify 3 v-checkbox)
+    // ------------------------------------
+    
+    // Apunta a la clase que envuelve el v-checkbox o la clase global .form-check
+    .form-check {
+        padding-top: 27px;
+        
+        // Esto asume una estructura donde la etiqueta está separada
+        label {
+            margin-left: 18px;
+            cursor: pointer;
+        }
+        
+        // En V3, el v-checkbox maneja su propia estructura, pero mantenemos la clase
+        // para asegurar el espaciado si se usa HTML/JS simple para el checkbox.
+        .form-check-sign {
+            padding-right: 27px;
+        }
+    }
+
+    // ------------------------------------
+    // Línea Social (Botones de Redes)
+    // ------------------------------------
+    
+    .social-line {
+        margin-top: 1rem;
+        text-align: center;
+        padding: 0;
+
+        .v-btn { // Mapeo de .md-button
+            color: var(--v-theme-on-primary); // Mapeo de $white-color
+            margin-left: 5px;
+            margin-right: 5px;
+            font-weight: 500;
+            // Asegura que los íconos de redes sociales sean planos y circulares
+            &.v-btn--icon {
+                border-radius: 50%;
+            }
+        }
+    }
+
+    // ------------------------------------
+    // Acciones (md-card-actions -> v-card-actions)
+    // ------------------------------------
+
+    .v-card-actions {
+        border: 0;
+        justify-content: center; // Centra los botones de acción
+    }
+}

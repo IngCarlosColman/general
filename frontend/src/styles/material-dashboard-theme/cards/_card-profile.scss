@@ -1,0 +1,59 @@
+// ========================================================================
+// REGLAS ESPECÍFICAS DE COMPONENTE: _card-profile.scss
+// Targets the V3 v-card component with a custom class: <v-card class="v-card-profile">
+// ========================================================================
+
+.v-card-profile {
+    position: relative;
+    text-align: center; // Las tarjetas de perfil/testimonial suelen centrar el contenido.
+    
+    // Si tienes un mixin o placeholder global para testimonios, puedes incluirlo aquí.
+    // @include common-card-testimonial-mixin(); 
+
+    // ------------------------------------
+    // Avatar de Perfil Flotante
+    // Mapeo: .md-card-avatar -> .v-card-profile-avatar
+    // ------------------------------------
+    .v-card-profile-avatar {
+        max-width: 130px;
+        max-height: 130px;
+        // Centra el avatar y lo desplaza hacia arriba para que se superponga con el borde.
+        margin: -65px auto 0; 
+        border-radius: 50%;
+        overflow: hidden;
+        z-index: 3; // Asegura que esté por encima de la tarjeta
+        box-shadow: 0 4px 20px 0px rgba(0, 0, 0, 0.14), 0 7px 10px -5px rgba(0, 0, 0, 0.2);
+    }
+    
+    // ------------------------------------
+    // Header Transparente
+    // Mapeo: .md-card-header:not([class*="card-header-"])
+    // ------------------------------------
+    // Esto se usa para hacer el fondo del header transparente si no tiene una clase de color específica.
+    .v-card-title:not([class*="bg-"]) {
+        background: transparent;
+        padding-top: 50px; // Añade padding superior para compensar el avatar
+    }
+
+    // ------------------------------------
+    // Componentes de Texto y Botones
+    // ------------------------------------
+
+    // Título (generalmente el nombre)
+    .title {
+        color: var(--v-theme-on-surface); // Mapeo de $black-color a V3 on-surface
+        font-weight: 500;
+        margin-top: 15px;
+    }
+    
+    // Acciones de la tarjeta (Botones)
+    .v-card-actions {
+        border: 0; // Elimina el borde de las acciones
+        display: flex;
+        justify-content: center; // Centra los botones de acción
+
+        .v-btn { // Mapeo de .md-button
+            margin: 5px 1px;
+        }
+    }
+}

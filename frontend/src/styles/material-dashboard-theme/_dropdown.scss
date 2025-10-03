@@ -1,0 +1,156 @@
+// =================================================================
+// ADAPTACIÓN COMPLETA DE DROPDOWN A VUETIFY V3 (v-menu / v-list)
+// NOTA: Se asume que variables como $brand-primary, $gray-dark, $border-radius-small,
+// y $mdb-dropdown-font-size están definidas en tu configuración global de SCSS.
+// =================================================================
+
+// 1. Contenedor flotante del menú (v-overlay__content es el wrapper del menú)
+// Reemplaza la clase .dropdown-menu
+.v-overlay__content {
+    // Vuetify gestiona la posición absoluta y el z-index.
+    min-width: 160px;
+    padding: 5px 0; // Padding del menú general
+    margin: 2px 0 0;
+    background-color: #fff;
+    border-radius: 4px;
+
+    // Sombra personalizada (Reemplaza box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26))
+    border: 0;
+    box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26) !important;
+}
+
+// 2. Estilos de la lista (v-list reemplaza el <ul>)
+.v-list {
+    padding: 0; // Reinicia el padding por defecto de v-list para un control más preciso
+}
+
+// 3. Estilos para cada elemento (v-list-item reemplaza li > a)
+.v-list-item {
+    min-height: 48px; // Altura estándar Material Design para ítems de lista
+    margin: 0 5px; // Margen para dar espacio a los lados
+    text-transform: none;
+    font-weight: 400;
+    line-height: 1.428571;
+    white-space: nowrap;
+    color: $gray-dark !important; // Color de texto
+    border-radius: $border-radius-small; // Redondeo
+
+    // Transición de sombra y color de fondo (Reemplaza @include transition)
+    transition: box-shadow 0.2s cubic-bezier(0.4, 0, 1, 1), background-color 0.15s linear;
+
+    // Ajuste de contenido para replicar el padding original
+    .v-list-item__content {
+        // Original: padding: 10px 1.5rem; (ajustamos por el margen de 5px)
+        padding: 10px calc(1.5rem - 5px) 10px calc(1.5rem - 5px) !important;
+        font-size: $mdb-dropdown-font-size;
+        display: flex;
+        align-items: center;
+    }
+
+    // Estado Hover, Focus y Active (Reemplaza a:hover, a:focus, a:active)
+    &:hover,
+    &:focus-visible,
+    &.v-list-item--active,
+    &.v-list-item--selected {
+        // Reemplaza @include shadow-8dp() con un valor explícito
+        box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12) !important;
+
+        // Colores de hover/active
+        background-color: $brand-primary !important;
+        color: #ffffff !important;
+    }
+}
+
+// 4. Estilos para el divisor (Reemplaza .dropdown-menu .divider)
+.v-divider {
+    margin: 5px 0;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+// 5. Variante con Iconos (Reemplaza &.dropdown-with-icons)
+// Aplica la clase `dropdown-with-icons` al <v-list>
+.v-list.dropdown-with-icons {
+    .v-list-item {
+        .v-list-item__content {
+            // Ajusta el padding para dar más espacio a la izquierda para el icono
+            padding: 12px 8px 12px 7px !important;
+        }
+
+        .v-icon {
+            // Estilos para .material-icons
+            vertical-align: middle;
+            font-size: 24px;
+            position: relative;
+            margin-top: -4px;
+            top: 1px;
+            margin-right: 12px;
+            opacity: 0.5;
+        }
+    }
+}
+
+// 6. Variantes de color/estilo para elementos dentro de Navbars y Sidebars
+
+// Para menús dentro de Navbars (Reemplaza .navbar & li a:hover)
+.v-toolbar,
+.v-app-bar {
+    .v-overlay__content {
+        .v-list-item {
+            &:hover,
+            &:focus-visible,
+            &.v-list-item--active,
+            &.v-list-item--selected {
+                background-color: $brand-primary !important;
+                color: #ffffff !important;
+                // Si necesitas la sombra grande del mixin @include shadow-big-color($brand-primary):
+                // box-shadow: ...
+            }
+        }
+    }
+}
+
+// Para menús dentro del Sidebar/Navigation Drawer (Reemplaza .sidebar .dropdown-menu li a:hover)
+.v-navigation-drawer {
+    .v-overlay__content {
+        .v-list-item {
+            &:hover,
+            &:focus-visible,
+            &.v-list-item--active,
+            &.v-list-item--selected {
+                // Color más sutil
+                background-color: rgba(200, 200, 200, 0.2) !important;
+                color: inherit !important;
+            }
+        }
+    }
+}
+
+// 7. Estilos para Sub-menús anidados (Reemplaza .dropdown .dropdown-menu .dropdown-menu)
+// Requiere anidar componentes v-menu/v-list-group.
+.v-list-group {
+    // Este selector apunta al sub-menú flotante (overlay)
+    .v-list-group__content > .v-menu > .v-overlay__content {
+        right: 102%;
+        left: auto;
+        top: 0;
+
+        // Para sub-menús alineados a la derecha
+        &.dropdown-menu-right { // Clase opcional aplicada si el menú anidado es a la derecha
+            left: 102%;
+            right: auto;
+        }
+    }
+}
+
+// 8. Caret (Flecha desplegable)
+// Reemplaza .dropdown-toggle:after. Vuetify maneja esto con un icono (`mdi-menu-down`) en el v-btn.
+.v-btn[aria-haspopup="menu"] {
+    .v-icon.mdi-menu-down {
+        transition: transform 0.15s linear;
+    }
+
+    // La clase v-btn--active es una forma de detectar la apertura del menú
+    &.v-btn--active .v-icon.mdi-menu-down {
+        transform: rotate(180deg);
+    }
+}

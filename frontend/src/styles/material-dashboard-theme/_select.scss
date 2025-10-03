@@ -1,0 +1,108 @@
+// =================================================================
+// ADAPTACIÓN DE ESTILOS DE SELECT MENU (MD) A VUETIFY V3 (v-select)
+//
+// NOTA: Se sobrescriben los estilos de v-list-item dentro del overlay 
+// para replicar el espaciado, forma y el efecto de selección con sombra.
+// =================================================================
+
+// -----------------------------------------------------------------
+// 1. VARIABLES Y MIXINS (Placeholder para entorno SCSS)
+// -----------------------------------------------------------------
+$brand-primary: #9c27b0;     // Color primario (Ejemplo: Morado)
+$gray-dark: #3c4858;         // Color de texto no seleccionado
+$white-color: #FFF;          // Color del texto seleccionado
+$border-radius-small: 0.1875rem; // 3px
+$font-size-base: 1rem;       // 16px (usaremos 15px en el contenido)
+
+// Simulación del mixin de sombra
+@mixin shadow-big-color($color) {
+    $shadow-color: rgba(red($color), green($color), blue($color), 0.4);
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.14), 0 7px 10px -5px $shadow-color;
+}
+
+// -----------------------------------------------------------------
+// 2. ESTILOS DEL MENÚ DESPLEGABLE (v-overlay__content > v-list)
+// -----------------------------------------------------------------
+
+// Targeteamos el contenedor del menú desplegable del v-select
+.v-overlay__content {
+    // Targeteamos la lista de ítems dentro del menú
+    .v-list {
+        padding: 0; // Asegura que no haya padding global en la lista
+
+        // Targeteamos cada ítem de la lista (v-list-item)
+        .v-list-item {
+            margin: 0 0.3125rem; // 5px de margen lateral
+            border-radius: $border-radius-small;
+
+            &:not(:last-child) {
+                margin-bottom: 5px;
+            }
+
+            // Estilo por defecto del contenido
+            .v-list-item__content {
+                color: $gray-dark !important;
+                min-height: 38px;
+                font-size: $font-size-base - 0.0625rem; // Aproximadamente 15px
+                // Vuetify maneja padding, pero forzamos el padding del contenido si es necesario
+                padding: 0 15px; 
+            }
+
+            // Hover State
+            &:hover {
+                background-color: $brand-primary !important;
+                @include shadow-big-color($brand-primary);
+                .v-list-item__content {
+                    color: $white-color !important;
+                }
+                // Si el ítem contiene un control de selección (checkbox/radio)
+                .v-selection-control__wrapper .v-icon {
+                    color: $white-color !important; // Mantiene el ícono blanco en hover
+                }
+            }
+
+            // -----------------------------------------------------------------
+            // 3. ESTADO SELECCIONADO (Active State)
+            // -----------------------------------------------------------------
+
+            // Estado seleccionado/activo
+            &.v-list-item--active {
+                background-color: $brand-primary;
+                @include shadow-big-color($brand-primary);
+
+                .v-list-item__content {
+                    color: $white-color !important;
+                }
+                // Asegura que los íconos de selección sean blancos en el estado activo
+                .v-selection-control__wrapper .v-icon {
+                    color: $white-color !important;
+                }
+            }
+            
+            // -----------------------------------------------------------------
+            // 4. ALINEACIÓN DE CHECKBOXES/RADIOS (Multiple Select)
+            // -----------------------------------------------------------------
+
+            // Targeteamos los controles de selección que inician el contenido (para alineación a la derecha en RTL si aplica, o al final)
+            // En LTR, el original usaba margin-left: auto para moverlo a la derecha.
+            .v-selection-control:first-child { 
+                margin: 0;
+                margin-left: auto; 
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------
+// 5. AJUSTES FINALES DEL SELECTOR PRINCIPAL (v-select)
+// -----------------------------------------------------------------
+
+// Ajuste del margen del ícono del selector (flecha hacia abajo)
+.v-input.v-select:not(.v-input--disabled) {
+    overflow: hidden; // Simula .md-menu.md-select { overflow: hidden; }
+
+    .v-field__append-inner .v-icon {
+        // Targetea la flecha de dropdown
+        margin-bottom: 5px;
+    }
+}

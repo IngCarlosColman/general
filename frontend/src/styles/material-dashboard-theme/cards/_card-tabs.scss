@@ -1,0 +1,152 @@
+// ========================================================================
+// REGLAS ESPECÍFICAS DE COMPONENTE: _card-tabs.scss
+// Targets the V3 v-card component with a custom class: <v-card class="v-card-tabs">
+// Los estilos de pestañas (pills) se dirigen a los elementos internos de v-tabs.
+// ========================================================================
+
+// ------------------------------------
+// Base de la Tarjeta con Pestañas
+// ------------------------------------
+.v-card-tabs {
+
+    // Contenedor de las pestañas (v-slide-group o v-tabs)
+    // El v-tabs en V3 usa .v-slide-group__content para los botones
+    .v-slide-group__content {
+        // Mapeo de .md-list -> flex-flow: initial
+        flex-flow: initial; 
+        padding: 0 15px;
+    }
+
+    // Estilos para tarjetas planas (sin elevación ni color de fondo)
+    &.v-card--plain { // Mapeo de &.md-card-plain
+        .v-card-title,
+        .v-slide-group {
+            background-color: transparent !important;
+        }
+
+        .v-slide-group__content,
+        .title {
+            justify-content: center;
+        }
+    }
+    
+    // Título de la subcategoría de la página
+    &.page-subcategories > .v-card-title .title {
+        margin-top: 30px !important;
+        margin-bottom: 25px !important;
+        min-height: 32px;
+    }
+
+    // Contenido de la pestaña (v-window-item)
+    .v-window-item {
+        padding: 20px 0 9px; // Mapeo de .tab-content
+    }
+
+    // ------------------------------------
+    // Estilos de Píldoras (Tabs Pills)
+    // ------------------------------------
+
+    // Separación entre pestañas (Mapeo de .md-list-item + .md-list-item)
+    .v-slide-group__content > .v-tab + .v-tab {
+        margin-left: 5px;
+    }
+
+    // Estilos base para el botón de la pestaña (Mapeo de .md-list .md-list-item .md-list-item-button)
+    .v-tab {
+        line-height: 24px;
+        text-transform: uppercase;
+        font-size: 12px;
+        font-weight: 500;
+        min-width: 100px;
+        color: var(--v-theme-on-surface) !important; // Mapeo de $black-color
+        transition: all .3s;
+        border-radius: 30px; // Forma de píldora
+        padding: 0;
+        
+        // Estilo del texto y contenido interno de la pestaña
+        .v-btn__content { // Contenido interno del botón
+            min-height: auto;
+            padding: 10px 15px;
+            justify-content: center;
+            display: flex;
+        }
+
+        // Estilo de Ícono
+        .v-icon { // Mapeo de .md-icon
+            display: flex;
+            width: auto;
+            height: auto;
+            margin: 0;
+            font-size: 30px !important;
+            padding: 15px 0;
+        }
+
+        // Efecto hover y focus
+        &:hover,
+        &:focus {
+            // Usamos un color transparente que se adapte al tema
+            background-color: rgba(var(--v-theme-on-surface-rgb), .12) !important; 
+        }
+    }
+    
+    // ------------------------------------
+    // Estado Activo de las Píldoras (Colores)
+    // Vuetify 3 maneja el estado activo con la clase .v-tab--selected
+    // ------------------------------------
+
+    .v-tab--selected {
+        // En Vuetify 3, el color de fondo y de texto se gestiona con clases de utilidad (bg-* y text-*)
+        // Si el componente se crea con un prop "color" o una clase bg-*, no necesitamos aplicar el fondo aquí.
+        // Aquí forzamos el texto blanco para asegurar contraste en la píldora activa de color.
+        color: var(--v-theme-on-primary) !important; // Forzamos el texto blanco ($white-color)
+
+        .v-icon,
+        & {
+            color: var(--v-theme-on-primary) !important;
+        }
+        
+        // La implementación del mixin @include tabs-color($gray-color); 
+        // se reemplaza por clases de fondo en el componente.
+        // Si no se usa un color específico, la píldora debería usar el color primario de Vuetify.
+    }
+}
+
+
+// ------------------------------------
+// Estilos de Píldoras Verticales (flex-column)
+// ------------------------------------
+.flex-column {
+    .v-card-text { // Mapeo de .md-card-content
+        display: flex;
+        flex-flow: initial;
+    }
+
+    .v-slide-group__content { // Mapeo de .md-list
+        flex-direction: column;
+        min-width: 148px;
+        padding: 0;
+
+        .v-tab + .v-tab {
+            margin: 0;
+            margin-top: 5px;
+        }
+    }
+
+    .v-window-item { // Mapeo de .tab-content
+        padding: 0;
+        padding-left: 30px;
+    }
+}
+
+// ------------------------------------
+// Estilos de Píldoras con Ícono Arriba (nav-pills-icons)
+// ------------------------------------
+.nav-pills-icons {
+    .v-tab {
+        border-radius: 4px;
+
+        .v-btn__content {
+            flex-direction: column-reverse; // Invierte el orden de texto e ícono
+        }
+    }
+}

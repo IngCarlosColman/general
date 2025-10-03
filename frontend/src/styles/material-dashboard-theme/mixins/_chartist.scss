@@ -1,0 +1,103 @@
+// ========================================================================
+// MIXIN / VARIABLES ESPECÍFICAS DE PLUGINS: _chartist.scss
+// Adapta las variables de color de Chartist a la convención de Vuetify 3 
+// y el sistema de variables CSS (var(--v-theme-name)).
+// ========================================================================
+@use "sass:math";
+
+// Variables de Escala (sin cambios, son internas de Chartist)
+$ct-scales: ((1), math.div(15, 16), math.div(8, 9), math.div(5, 6), (4*0.2), (3*0.25), math.div(2, 3), (5*0.125), math.div(1, 1.618), (3*0.2), math.div(9, 16), math.div(8, 15), (1*0.5), (2*0.2), (3*0.125), math.div(1, 3), (1*0.25)) !default;
+$ct-scales-names: (ct-square, ct-minor-second, ct-major-second, ct-minor-third, ct-major-third, ct-perfect-fourth, ct-perfect-fifth, ct-minor-sixth, ct-golden-section, ct-major-sixth, ct-minor-seventh, ct-major-seventh, ct-octave, ct-major-tenth, ct-major-eleventh, ct-major-twelfth, ct-double-octave) !default;
+
+// Clases de Chartist (sin cambios)
+$ct-class-chart: ct-chart !default;
+$ct-class-chart-line: ct-chart-line !default;
+$ct-class-chart-bar: ct-chart-bar !default;
+$ct-class-horizontal-bars: ct-horizontal-bars !default;
+$ct-class-chart-pie: ct-chart-pie !default;
+$ct-class-chart-donut: ct-chart-donut !default;
+$ct-class-label: ct-label !default;
+$ct-class-series: ct-series !default;
+$ct-class-line: ct-line !default;
+$ct-class-point: ct-point !default;
+$ct-class-area: ct-area !default;
+$ct-class-bar: ct-bar !default;
+$ct-class-slice-pie: ct-slice-pie !default;
+$ct-class-slice-donut: ct-slice-donut !default;
+$ct-class-grid: ct-grid !default;
+$ct-class-vertical: ct-vertical !default;
+$ct-class-horizontal: ct-horizontal !default;
+$ct-class-start: ct-start !default;
+$ct-class-end: ct-end !default;
+
+$ct-container-ratio: math.div(1, 1.618) !default;
+
+// ------------------------------------
+// Estilos de Texto y Cuadrícula
+// Se usan variables CSS de V3 para color de texto y superficie para adaptabilidad.
+// ------------------------------------
+
+// Color de texto: Usamos el color 'on-surface' con baja opacidad
+$ct-text-color: rgba(var(--v-theme-on-surface-rgb), 0.6) !default; 
+$ct-text-size: 0.875rem !default;
+$ct-text-align: flex-start !default;
+$ct-text-justify: flex-start !default;
+$ct-text-line-height: 1;
+
+// Grid styles: Usamos el color de borde de Vuetify
+$ct-grid-color: var(--v-border-color) !default;
+$ct-grid-dasharray: 2px !default;
+$ct-grid-width: 1px !default;
+
+// ------------------------------------
+// Líneas, Puntos y Barras (sin cambios)
+// ------------------------------------
+$ct-line-width: 3px !default;
+$ct-line-dasharray: false !default;
+$ct-point-size: 8px !default;
+$ct-point-shape: round !default;
+$ct-area-opacity: 0.8 !default;
+$ct-bar-width: 10px !default;
+$ct-donut-width: 60px !default;
+
+// Variables de Inclusión (sin cambios)
+$ct-include-classes: true !default;
+$ct-include-colored-series: $ct-include-classes !default;
+$ct-include-alternative-responsive-containers: $ct-include-classes !default;
+
+// ------------------------------------
+// Colores de Series (Mapeo a V3)
+// ------------------------------------
+
+$ct-series-names: (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) !default;
+$ct-series-colors: (
+    // Colores Primarios Mapeados a V3 Theme Variables
+    var(--v-theme-info),        // Mapeo: $brand-info
+    var(--v-theme-error),       // Mapeo: $brand-danger
+    var(--v-theme-warning),     // Mapeo: $brand-warning
+    var(--v-theme-primary),     // Mapeo: $brand-primary
+    var(--v-theme-success),     // Mapeo: $brand-success
+    var(--v-theme-surface-variant), // Mapeo: $font-background-light-grey (gris claro)
+    var(--v-theme-on-surface),      // Mapeo: $gray-color (gris oscuro)
+    
+    // Colores de Redes Sociales y Custom (se mantienen como strings hex)
+    #db4437,                    // Mapeo: $social-google
+    #a6192e,                    // Mapeo: $social-tumblr (usando un color de ejemplo)
+    #ff0000,                    // Mapeo: $social-youtube
+    #1da1f2,                    // Mapeo: $social-twitter
+    #bd081c,                    // Mapeo: $social-pinterest
+    #1769ff,                    // Mapeo: $social-behance
+    #6188e2,                     
+    #a748ca
+) !default;
+
+// ------------------------------------
+// Sobreescritura de Grid para Gráficos Grandes (White Background)
+// ------------------------------------
+.ct-big-chart-white{
+    .ct-grid {
+        // En un tema oscuro, esto será blanco, lo forzamos a un gris claro 
+        // usando la variable CSS de un color en el tema.
+        stroke: rgba(250, 250, 250, 0.7) !important;
+    }
+}

@@ -1,0 +1,155 @@
+// ========================================================================
+// VUETIFY 3 SASS GLOBAL SETTINGS (TOTAL REFACTOR)
+// Este archivo define variables SASS (Bootstrap/MDB Legacy) y las mapea
+// al nuevo sistema de configuración de Vuetify 3 a través de @forward.
+// ========================================================================
+
+// --- 1. CORE VARIABLE DEFINITIONS (Legacy MDB/Bootstrap Source) ---
+
+// COLOR DEFINITIONS
+$white-color: #FFFFFF;
+$black-color: #000000; // Usando 000000 para consistencia en V3, aunque se usó #333333
+$gray-light: #AAAAAA;       // $text-muted equivalent
+$gray-color: #9A9A9A;       // General gray text
+$brand-primary: #9c27b0;    // Purple
+$brand-success: #4caf50;    // Green
+$brand-danger: #f44336;     // Red (Error)
+$brand-warning: #ffb300;    // Yellow/Amber
+$brand-info: #00bcd4;       // Cyan/Blue (Secondary)
+$brand-rose: #e91e63;       // Rose/Pink (Accent)
+$body-bg-light: #EEEEEE;    // Background
+
+// TYPOGRAPHY DEFINITIONS
+$font-family-sans-serif: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+// $font-family-serif: 'Roboto Slab', 'Times New Roman', serif; // No incluido en V3 defaults, se usaría en clases custom
+
+$font-weight-light: 300;
+$font-weight-regular: 400;
+$font-weight-bold: 500;     // Estándar Material Bold (Medium)
+$font-weight-extra-bold: 700; // Legacy emphasis (Bold)
+
+// SPACING & BORDER RADIUS
+$margin-base: 15px;
+$padding-base: 15px;
+
+$border-radius-small: 2px;
+$border-radius-base: 4px;
+$border-radius-large: 6px;
+$border-radius-extreme: 30px;
+
+// TEXT OPACITY (Mapeado a los valores estándar de Material Design)
+$text-opacity-primary: 0.87;
+$text-opacity-secondary: 0.60;
+$text-opacity-disabled: 0.38;
+
+
+// --- 2. VUETIFY 3 GLOBAL SETTINGS OVERRIDE ---
+// Usamos la directiva @forward para configurar V3 globalmente
+
+@forward 'vuetify/settings' with (
+    // =================================================================
+    // THEME CONFIGURATION
+    // =================================================================
+    $themes: (
+        'light': (
+            dark: false,
+            colors: (
+                // Colores Primarios Mapeados
+                'primary': $brand-primary,        // #9c27b0
+                'secondary': $brand-info,         // #00bcd4
+                'accent': $brand-rose,            // #e91e63
+                'success': $brand-success,
+                'info': $brand-info,
+                'warning': $brand-warning,
+                'error': $brand-danger,
+
+                // Colores de Superficie y Fondo Mapeados
+                'background': $body-bg-light,      // $body-bg-light: #EEEEEE
+                'surface': $white-color,          // Base $white-color
+
+                // Colores de Texto (usando las opacidades estándar de Material sobre el fondo blanco)
+                'on-surface': rgba($black-color, $text-opacity-primary),  // $text-color-primary
+                'on-background': rgba($black-color, $text-opacity-primary),
+
+                // Colores de Texto Muteado (Para <v-label>, <v-hint>, etc.)
+                'on-surface-variant': $gray-light, // $gray-light / $text-color-secondary
+                'text-disabled': rgba($black-color, $text-opacity-disabled), // $text-color-disabled
+
+                // Variable Custom para texto claro (Mapeado de 'text-color-light')
+                'text-white': $white-color,
+            ),
+
+            // Variables CSS (Para ajustes finos no-color, como la sombra legacy)
+            variables: (
+                // Sombra Mapeada (Usando la elevación por defecto, puedes sobrescribir 'shadow-key-umbra' si es necesario)
+                'shadow-key-umbra-opacity': 0.2,      // MDB shadow opacity
+                'shadow-key-penumbra-opacity': 0.14, // MDB shadow opacity
+                'shadow-ambient-shadow-opacity': 0.12, // MDB shadow opacity
+
+                // Transición Mapeada (general-transition-time)
+                'transition-general': 300ms,
+
+                // Separador Mapeado ($breadcrumb-separator: "/")
+                'breadcrumb-separator': '/',
+            )
+        ),
+    ),
+
+    // =================================================================
+    // TIPOGRAFÍA
+    // =================================================================
+    $typography: (
+        // Mapeo de $font-family-sans-serif
+        'font-family': $font-family-sans-serif,
+
+        // Mapeo de Pesos de Fuente
+        'font-weights': (
+            'light': $font-weight-light,      // 300
+            'regular': $font-weight-regular,  // 400 (V3 default)
+            'medium': $font-weight-bold,       // 500 (V3 standard for buttons/titles)
+            'bold': $font-weight-extra-bold, // 700
+        )
+    ),
+
+    // =================================================================
+    // BORDER RADIUS
+    // =================================================================
+    $rounded: (
+        'default': $border-radius-base,      // 4px
+        'sm': $border-radius-small,          // 2px
+        'lg': $border-radius-large,          // 6px
+        'xl': $border-radius-extreme,        // 30px (pills)
+    ),
+
+    // =================================================================
+    // BREAKPOINTS (Mapeo de Bootstrap 3 a V3)
+    // =================================================================
+    $breakpoints: (
+        'sm': 768px, // Coincide con el breakpoint de Bootstrap 3
+        'md': 992px, // Coincide con el breakpoint de Bootstrap 3
+        'lg': 1200px, // Coincide con el breakpoint de Bootstrap 3
+        'xl': 1440px,
+    )
+);
+
+// -----------------------------------------------------------------
+// VARIABLES SASS CUSTOM ADICIONALES (No relacionadas con el tema V3)
+// Se mantienen para uso en clases CSS custom/legacy
+// -----------------------------------------------------------------
+
+$custom-margin-base: $margin-base;
+$custom-padding-base: $padding-base;
+
+// Mapeo de $fancy-shadow (Requiere mixin o clase CSS custom)
+$custom-fancy-shadow: 0 13px 39px -10px rgba(0, 0, 0, 0.65), 0 1px 25px 0px rgba(0, 0, 0, 0.15);
+
+@mixin apply-fancy-shadow {
+    box-shadow: $custom-fancy-shadow !important;
+    // Usa la variable CSS generada por V3 para la transición
+    transition: box-shadow var(--v-transition-general) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// Ejemplo de uso:
+// .custom-card {
+//     @include apply-fancy-shadow;
+// }

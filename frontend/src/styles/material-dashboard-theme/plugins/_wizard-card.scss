@@ -1,0 +1,110 @@
+// ========================================================================
+// PLUGIN: _custom-stepper.scss (Refactorizado para Vuetify 3 / Material Design)
+// Este archivo reemplaza a '_wizard-card.scss'.
+// Contiene estilos personalizados para el componente <v-stepper> de Vuetify,
+// diseñado para verse como una "Tarjeta Asistente" (Wizard Card).
+// ========================================================================
+
+// ------------------------------------------------------------------------
+// 1. ESTILO DE LA TARJETA CONTENEDORA (V-CARD + V-STEPPER)
+// ------------------------------------------------------------------------
+
+.v-stepper-card {
+    // Clase wrapper para aplicar estilos a la tarjeta que contiene el stepper
+    .v-card {
+        // Replicar la sombra elevada de .md-card-wizard
+        box-shadow: 0 16px 38px -12px rgba(0, 0, 0, 0.56), 0 4px 25px 0px rgba(0, 0, 0, 0.12), 0 8px 10px -5px rgba(0, 0, 0, 0.2) !important;
+        border-radius: 8px;
+        min-height: 410px; // Mantener la altura mínima del original
+    }
+
+    // Asegurar que el contenido del paso tenga el padding adecuado
+    .v-stepper-window-item {
+        padding: 24px;
+    }
+
+    // Estilo para los títulos y descripciones que suelen ir en el encabezado
+    .wizard-title {
+        font-size: 1.75rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        color: rgb(var(--v-theme-on-surface));
+    }
+
+    .category {
+        color: rgba(var(--v-theme-on-surface), 0.6);
+        font-size: 1rem;
+        margin-top: 0;
+        margin-bottom: 20px;
+    }
+}
+
+
+// ------------------------------------------------------------------------
+// 2. ESTILOS DE NAVEGACIÓN (V-STEPPER-HEADER)
+//    Personalización de los círculos de pasos y la barra de navegación.
+// ------------------------------------------------------------------------
+
+.v-stepper-header {
+    // Fondo similar al nav-pills original
+    background-color: rgba(var(--v-theme-primary), 0.05); // Fondo muy claro
+    border-radius: 8px 8px 0 0;
+    padding: 16px 24px;
+    margin: 0;
+    
+    // Evitar que el header tenga sombra si el v-card ya la tiene
+    box-shadow: none !important;
+}
+
+// Estilo del paso individual
+.v-stepper-item {
+    padding: 0 16px; // Ajustar el espaciado
+}
+
+// Estilo del círculo del número/icono
+.v-stepper-item__icon {
+    // Aplicar el borde circular y tamaño del "picture" original
+    width: 36px !important; 
+    height: 36px !important;
+    border: 2px solid rgba(var(--v-theme-on-surface), 0.25) !important; 
+    border-radius: 50% !important;
+    margin-right: 8px;
+    
+    // Fondo blanco o de superficie para que el borde se destaque
+    background-color: rgb(var(--v-theme-surface)) !important; 
+}
+
+// Estilo del paso activo/completado
+.v-stepper-item--selected,
+.v-stepper-item--complete {
+    .v-stepper-item__icon {
+        // En Vuetify, el color primario se aplica automáticamente al fondo. 
+        // Solo sobrescribimos el borde si queremos un anillo diferente al color de fondo.
+        border-color: rgb(var(--v-theme-primary)) !important;
+        background-color: rgb(var(--v-theme-primary)) !important;
+        color: rgb(var(--v-theme-on-primary)) !important; // Texto/Icono blanco
+    }
+}
+
+// ------------------------------------------------------------------------
+// 3. ESTILOS DE LAS ACCIONES (V-STEPPER-ACTIONS)
+// ------------------------------------------------------------------------
+
+.v-stepper-actions {
+    // Mover las acciones abajo del stepper (si no están ya centradas)
+    padding: 16px 24px;
+    justify-content: space-between;
+    
+    // El botón de 'Siguiente' / 'Finalizar' debe usar el color primario
+    .v-btn[type="submit"], 
+    .v-btn--variant-elevated, 
+    .btn-finish {
+        background-color: rgb(var(--v-theme-primary)) !important;
+        color: rgb(var(--v-theme-on-primary)) !important;
+    }
+    
+    // Botón de 'Anterior' (por defecto)
+    .v-btn--variant-text {
+        color: rgba(var(--v-theme-on-surface), 0.7) !important;
+    }
+}

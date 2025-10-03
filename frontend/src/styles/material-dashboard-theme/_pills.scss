@@ -1,0 +1,152 @@
+// =================================================================
+// ADAPTACIÓN DE NAV PILLS (TABS) A VUETIFY V3 (v-tabs)
+//
+// Clase principal: .v-pill-tabs
+// Clases modificadoras: .v-pill-tabs--info, .v-pill-tabs--stacked, etc.
+// =================================================================
+
+// NOTA: Se asume que mixins como `shadow-big-color`, variables como 
+// `$mdb-btn-font-size-base`, `$font-weight-bold`, `$gray-color`, 
+// `$white-color`, `$brand-primary`, y `$border-radius-extreme` están definidos.
+
+.v-pill-tabs { // Clase principal que se aplica al componente <v-tabs>
+
+    // --------------------------------------------------
+    // 1. Estilos Contextuales (Secciones Oscuras/con Imagen)
+    // --------------------------------------------------
+    .section-dark &,
+    .section-image & {
+        // Targeteando los botones de tabulación
+        .v-tabs-bar .v-btn {
+            color: $gray-color !important;
+        }
+        
+        // Hover/Focus en contextos oscuros
+        .v-tabs-bar .v-btn:hover:not(.v-btn--active),
+        .v-tabs-bar .v-btn:focus:not(.v-btn--active) {
+             background-color: #EEEEEE !important;
+             color: $gray-color !important;
+        }
+    }
+
+    // --------------------------------------------------
+    // 2. Estilos Base del Item de Tabulación (v-tab / v-btn)
+    // --------------------------------------------------
+    .v-tabs-bar .v-btn { 
+        // Tipografía y tamaño
+        line-height: $mdb-btn-font-size-base * 2 !important;
+        text-transform: uppercase !important;
+        font-size: $mdb-btn-font-size-base !important;
+        font-weight: $font-weight-bold !important;
+        min-width: 100px !important;
+        text-align: center;
+        
+        // Apariencia
+        color: $gray !important; // Color de texto por defecto
+        transition: all .3s;
+        height: auto !important;
+        background-color: transparent !important;
+        box-shadow: none !important; // Eliminar sombra por defecto de Vuetify
+        
+        // Efecto de hover
+        &:hover:not(.v-btn--active) {
+            background-color: rgba(200, 200, 200, 0.2) !important;
+        }
+    }
+
+    // --------------------------------------------------
+    // 3. Estilo Activo (Color Primario por defecto)
+    // --------------------------------------------------
+    .v-tabs-bar .v-btn--active {
+        &,
+        &:focus,
+        &:hover {
+            background-color: $brand-primary !important;
+            color: $white-color !important;
+            
+            @include shadow-big-color($brand-primary); // Sombra custom
+        }
+    }
+
+    // --------------------------------------------------
+    // 4. Estilo para Pestañas con Iconos (nav-pills-icons)
+    // --------------------------------------------------
+    i.v-icon { // Targeteando el icono dentro del v-btn
+        display: block;
+        font-size: 30px !important;
+        padding: 15px 0; // Padding para separar el icono del texto
+        margin: 0 auto;
+    }
+    
+    // --------------------------------------------------
+    // 5. Radio del Borde (Solo aplicado cuando no hay iconos)
+    // --------------------------------------------------
+    &:not(.v-pill-tabs--icons) {
+        .v-tabs-bar .v-btn {
+            border-radius: $border-radius-extreme !important;
+        }
+    }
+
+    // --------------------------------------------------
+    // 6. Pestañas Apiladas/Verticales (nav-stacked)
+    // --------------------------------------------------
+    &.v-pill-tabs--stacked { 
+        // Se asume que el componente v-tabs se usa con direction="vertical"
+        .v-tabs-bar .v-btn {
+            margin-bottom: 5px; // Margen entre elementos apilados
+        }
+    }
+
+    // --------------------------------------------------
+    // 7. Variantes de Color para el Estado Activo
+    // --------------------------------------------------
+
+    // Info
+    &.v-pill-tabs--info {
+        .v-tabs-bar .v-btn--active {
+            &, &:focus, &:hover {
+                background-color: $brand-info !important;
+                @include shadow-big-color($brand-info);
+            }
+        }
+    }
+
+    // Success
+    &.v-pill-tabs--success {
+        .v-tabs-bar .v-btn--active {
+            &, &:focus, &:hover {
+                background-color: $brand-success !important;
+                @include shadow-big-color($brand-success);
+            }
+        }
+    }
+
+    // Warning
+    &.v-pill-tabs--warning {
+        .v-tabs-bar .v-btn--active {
+            &, &:focus, &:hover {
+                background-color: $brand-warning !important;
+                @include shadow-big-color($brand-warning);
+            }
+        }
+    }
+
+    // Danger
+    &.v-pill-tabs--danger {
+        .v-tabs-bar .v-btn--active {
+            &, &:focus, &:hover {
+                background-color: $brand-danger !important;
+                // CORRECCIÓN: Se cambió $brand-warning a $brand-danger para la sombra.
+                @include shadow-big-color($brand-danger); 
+            }
+        }
+    }
+    
+}
+
+// --------------------------------------------------
+// 8. Clase de Utilidad para Espaciado
+// --------------------------------------------------
+.tab-space {
+    padding: 20px 0 50px 0px;
+}

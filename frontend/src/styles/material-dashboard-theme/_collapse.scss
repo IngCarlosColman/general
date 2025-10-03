@@ -1,0 +1,121 @@
+// =================================================================
+// MIXIN DE COLOR VUETIFY V3 (Emula el antiguo @include collapse-color)
+// NOTA: Asume que al estar activo, el fondo es el color de tema y el texto es blanco.
+// =================================================================
+@mixin vuetify-expansion-color($bg-color) {
+  // Solo se aplica el color de tema cuando el panel está activo
+  &.v-expansion-panel--active {
+    .v-expansion-panel-title {
+      background-color: $bg-color !important;
+      color: $white-color !important; // Texto blanco en fondos de color
+
+      .v-expansion-panel-title__icon {
+        color: $white-color !important;
+      }
+
+      // El pseudo-elemento que actúa como el borde inferior también toma el color
+      &:after {
+        background-color: $bg-color !important;
+      }
+    }
+  }
+}
+
+// =================================================================
+// ESTILOS BASE DEL COMPONENTE V-EXPANSION-PANEL (Reemplaza .md-collapse)
+// =================================================================
+.v-expansion-panel {
+  position: relative;
+
+  // Estado Activo: Rotación del icono (Reemplaza &.is-active .md-collapse-label .md-icon)
+  &.v-expansion-panel--active {
+    .v-expansion-panel-title {
+      // El icono de Vuetify ya tiene rotación, esto lo garantiza/sobrescribe si es necesario
+      .v-expansion-panel-title__icon {
+        transform: rotate(180deg);
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      }
+    }
+  }
+
+  // --- Implementación de Temas de Color ---
+  // Aplica el color a la cabecera activa según las clases personalizadas
+  &.md-warning {
+    @include vuetify-expansion-color($brand-warning);
+  }
+  &.md-rose {
+    @include vuetify-expansion-color($brand-rose);
+  }
+  &.md-primary {
+    @include vuetify-expansion-color($brand-primary);
+  }
+  &.md-danger {
+    @include vuetify-expansion-color($brand-danger);
+  }
+  &.md-success {
+    @include vuetify-expansion-color($brand-success);
+  }
+  &.md-info {
+    @include vuetify-expansion-color($brand-info);
+  }
+
+  // Color por defecto (Reemplaza @include collapse-color($gray-light);)
+  &.v-expansion-panel--active {
+    &:not(.md-warning):not(.md-rose):not(.md-primary):not(.md-danger):not(.md-success):not(.md-info) {
+      .v-expansion-panel-title {
+        @include vuetify-expansion-color($gray-light);
+      }
+    }
+  }
+}
+
+// =================================================================
+// ESTILOS DEL TÍTULO (Reemplaza .md-collapse-label y .md-collapse-title)
+// =================================================================
+.v-expansion-panel-title {
+  padding: 25px 10px 20px 0; // Sobrescribe el padding por defecto de Vuetify
+  cursor: pointer;
+  position: relative;
+  
+  // Borde inferior personalizado (Reemplaza &:after en .md-collapse-label)
+  &:after {
+    content: "";
+    position: absolute;
+    bottom: 14px;
+    left: 0;
+    height: 1px;
+    width: 100%;
+    background-color: #ddd;
+  }
+
+  // Título del Panel (Reemplaza .md-collapse-title)
+  .v-expansion-panel-title__text {
+    color: $black-color !important;
+    font-size: 0.9375rem;
+    margin: 0;
+    display: block;
+  }
+
+  // Icono (Reemplaza .md-collapse-title .md-icon)
+  .v-expansion-panel-title__icon {
+    color: $black-color !important;
+    position: absolute;
+    right: 7px;
+    top: 24px;
+  }
+}
+
+// =================================================================
+// ESTILOS DEL CONTENIDO (Reemplaza .md-collapse-content)
+// =================================================================
+.v-expansion-panel-text {
+  // Contenedor interno del contenido en Vuetify V3
+  .v-expansion-panel-text__wrapper {
+    padding: 0px 20px;
+
+    p {
+      margin: 0;
+      padding-bottom: 20px;
+    }
+  }
+}

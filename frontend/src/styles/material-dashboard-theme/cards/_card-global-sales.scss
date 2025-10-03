@@ -1,0 +1,61 @@
+// ========================================================================
+// REGLAS ESPECÍFICAS DE COMPONENTE: _card-global-sales.scss
+// Targets the V3 v-card component with a custom class.
+// ========================================================================
+
+.v-card-global-sales {
+    // 1. General Card Styling
+    // Ensuring the card visually stands out or fits the dashboard context.
+    // Assuming the base v-card styling is handled in _cards.scss.
+    
+    // 2. Grid (Row) Overrides
+    // V3 handles grid spacing using padding on v-col. If you need tight,
+    // custom spacing, the best practice is to override the gap or the
+    // default margin/padding, though often classes like 'no-gutters' are preferred.
+    // If $margin-base is 15px, this mimics the negative margin compensation.
+    // NOTE: This might be unnecessary if you use the 'no-gutters' prop on <v-row>.
+    .v-row {
+        // Adjusting margins to remove default V3 row padding (if necessary for layout compensation)
+        margin-left: calc(-1 * var(--v-layout-gap-x, 12px)); // Use V3 variables or fall back
+        margin-right: calc(-1 * var(--v-layout-gap-x, 12px));
+        
+        // Fallback for custom variable if V3 gap isn't exactly $margin-base
+        /* margin-left: -$margin-base;
+        margin-right: -$margin-base; */
+    }
+    
+    // 3. Table Styles
+    // This card often contains a dense table, so we target the <table> element.
+    table {
+        // Hiding the table header for a dense/compact design (typical for mobile or summary data).
+        thead {
+            display: none;
+        }
+
+        // Ensuring the table body rows (v-data-table) are dense and styled
+        tbody {
+            tr {
+                border-bottom: 1px solid var(--v-border-color); // Use V3 border color variable
+                
+                &:last-child {
+                    border-bottom: none;
+                }
+            }
+        }
+        
+        // Styling for all table cells (td)
+        td {
+            padding: 8px 16px !important; // Reduce padding for a compact look
+            line-height: 1.5;
+            font-size: 0.875rem;
+
+            // Alignments if needed (e.g., align text left, numbers right)
+            &:first-child {
+                text-align: left;
+            }
+            &:last-child {
+                text-align: right;
+            }
+        }
+    }
+}

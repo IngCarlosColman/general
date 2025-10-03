@@ -1,0 +1,146 @@
+//
+// Refactoring of legacy typography SCSS to modern Vuetify 3 (V3) standards.
+// This file overrides base HTML elements (body, h1-h6) and defines custom
+// semantic and color utility classes using project-specific variables.
+//
+
+// --- Placeholder Variables (Set to common Material/Bootstrap values) ---
+$font-family-sans-serif: "Roboto", sans-serif;
+$font-weight-light: 300;
+$font-weight-regular: 400;
+$font-weight-bold: 700;
+$font-weight-extra-bold: 800; // Legacy definition
+
+$font-size-base: 1rem;
+$font-size-h1: 2.25rem; // ~36px
+$font-size-h2: 1.875rem; // ~30px
+$font-size-h3: 1.5rem;   // ~24px
+$font-size-h4: 1.125rem; // ~18px
+$font-size-h5: 1.063rem; // ~17px
+$font-size-h6: 0.75rem;  // ~12px
+
+$black-color: #333333;
+$gray-light: #AAAAAA;
+$gray-color: #9A9A9A;
+$margin-base: 15px;
+
+// Brand Colors (Inferred from previous context)
+$brand-warning: #ffb300; // Yellow/Amber
+$brand-primary: #9c27b0; // Purple
+$brand-danger: #f44336;  // Red
+$brand-success: #4caf50; // Green
+$brand-info: #00bcd4;    // Cyan/Blue
+$brand-rose: #e91e63;    // Rose/Pink
+
+
+// --- 1. Global Typography Reset & Overrides ---
+
+body,
+.v-application, // Target V3 wrapper
+h1, h2, h3, h4, h5, h6,
+.text-h1, .text-h2, .text-h3, .text-h4 { // Targeting V3 utility classes for consistency
+  font-family: $font-family-sans-serif !important;
+  font-weight: $font-weight-light; // Base font-weight: 300
+  font-size: $font-size-base; // Base font-size: 1rem
+  line-height: 1.5em;
+}
+
+// H1 Overrides
+h1, .h1, .text-h1 {
+  font-size: $font-size-h1;
+  line-height: 1.15em;
+  font-weight: $font-weight-light; // Ensure custom weight is applied
+}
+
+// H2 Overrides
+h2, .h2, .text-h2 {
+  font-size: $font-size-h2;
+  font-weight: $font-weight-light;
+}
+
+// H3 Overrides
+h3, .h3, .text-h3 {
+  font-size: $font-size-h3;
+  line-height: 1.4em;
+  margin: 20px 0 10px;
+  font-weight: $font-weight-light;
+}
+
+// H4 Overrides
+h4, .h4, .text-h4 {
+  font-size: $font-size-h4;
+  line-height: 1.4em;
+  font-weight: $font-weight-light; // Font-weight: 300
+}
+
+// H5 Overrides
+h5, .h5, .text-h5 {
+  font-size: $font-size-h5;
+  line-height: 1.4em;
+  margin-bottom: 15px;
+  font-weight: $font-weight-light;
+}
+
+// H6 Overrides
+h6, .h6, .text-h6 {
+  font-size: $font-size-h6;
+  text-transform: uppercase;
+  font-weight: $font-weight-bold;
+}
+
+// --- 2. Custom Semantic Classes ---
+
+.title,
+.card-title,
+.info-title,
+.media-heading {
+  // Original SCSS had this commented out, but we apply the color reset
+  // font-weight: $font-weight-extra-bold;
+  // font-family: $font-family-serif;
+
+  &,
+  a {
+    color: $black-color !important;
+    text-decoration: none;
+  }
+}
+
+.card-blog .card-title {
+  font-weight: $font-weight-extra-bold !important;
+}
+
+h2.title {
+  margin-bottom: $margin-base * 2;
+}
+
+.description,
+.card-description,
+.footer-big p {
+  color: $gray-light !important;
+}
+
+// --- 3. Custom Text Color Utilities ---
+// NOTE: These utility classes are explicitly redefined using SCSS variables
+// and !important to ensure they override Vuetify's defaults or theme colors.
+
+.text-warning {
+  color: $brand-warning !important;
+}
+.text-primary {
+  color: $brand-primary !important;
+}
+.text-danger {
+  color: $brand-danger !important;
+}
+.text-success {
+  color: $brand-success !important;
+}
+.text-info {
+  color: $brand-info !important;
+}
+.text-rose{
+  color: $brand-rose !important;
+}
+.text-gray{
+  color: $gray-color !important;
+}

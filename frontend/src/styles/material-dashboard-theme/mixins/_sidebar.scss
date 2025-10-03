@@ -1,0 +1,86 @@
+// ========================================================================
+// MIXINS ESPECÍFICOS DE COMPONENTE: _sidebar.scss
+// Adaptado para v-navigation-drawer de Vuetify 3.
+// NOTA: Asume que el v-navigation-drawer tiene la clase .v-sidebar-mdb
+// en el markup (HTML).
+// ========================================================================
+
+/**
+ * Mixin para establecer el color de fondo de la barra lateral y el color de fuente base.
+ * @param {color} $background-color - Color de fondo para el overlay (ej. $brand-primary).
+ * @param {color} $font-color - Color base para la fuente y los íconos de la navegación.
+ */
+@mixin mdb-sidebar-background-color($background-color, $font-color){
+
+    // 1. Aplicar el color de fondo/overlay al pseudo-elemento del drawer
+    .v-navigation-drawer__content {
+        // Mapeo: .sidebar-background:after
+        &::after{
+            background: $background-color;
+            opacity: .8;
+        }
+    }
+    
+    // 2. Aplicar el color de fuente a los elementos de lista y texto base
+    .v-list {
+        // Estilos para v-list-item
+        .v-list-item {
+            .v-list-item-title,
+            &[data-toggle="collapse"] { // Mapeo para elementos que abren submenús
+                color: $font-color !important;
+            }
+            
+            // Íconos
+            .v-icon {
+                color: rgba($font-color, .8);
+            }
+            
+            // Estado hover y activo para submenús
+            &.v-list-item--active,
+            &:hover {
+                [data-toggle="collapse"] {
+                    color: $font-color;
+                    .v-icon {
+                        color: rgba($font-color, .8);
+                    }
+                }
+            }
+        }
+        
+        // Estilos para el texto de usuario (si existe)
+        .v-list-item--user a {
+            color: $font-color !important;
+        }
+    }
+    
+    // Mapeo: .simple-text (Título del logo/marca)
+    .v-sidebar-simple-text {
+        color: $font-color;
+    }
+}
+
+/**
+ * Mixin para establecer el estilo (color, sombra, fuente) del elemento activo de la barra lateral.
+ * @param {color} $active-color - Color primario para el fondo del elemento activo.
+ */
+@mixin mdb-sidebar-active-style($active-color){
+
+    // Se dirige al elemento activo de la lista, excluyendo los encabezados de grupo de lista (v-list-group)
+    .v-list-item--active:not(.v-list-group__header):not(.v-list-group) { 
+        
+        // Fondo de la píldora activa
+        background-color: $active-color !important;
+
+        // NOTA: Se asume que @include shadow-big-color($color) está definido en _shadows.scss o _mixins.scss
+        // @include shadow-big-color($active-color); 
+        
+        // Forzar color de texto e ícono blanco (o color de contraste) en el elemento activo
+        .v-list-item-title,
+        .v-icon {
+            // Utilizamos una variable de alto contraste (asume que on-primary es blanco/claro)
+            color: var(--v-theme-on-primary) !important; 
+            opacity: 1;
+            transition: none;
+        }
+    }
+}

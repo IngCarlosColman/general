@@ -1,0 +1,26 @@
+// =================================================================
+// ADAPTACIÓN DE RIPPLE A VUETIFY V3 (v-ripple directive)
+//
+// NOTA IMPORTANTE: Vuetify V3 maneja el efecto ripple nativamente. 
+// Las clases originales (`.withripple`, `.ripple-container`, etc.) 
+// deben eliminarse por completo.
+//
+// Esta clase de utilidad permite replicar el color exacto de la onda 
+// original (rgba(0, 0, 0, 0.05)) cuando se aplica el `v-ripple` a un elemento.
+// =================================================================
+
+.v-md-ripple-black-light {
+    // Targeteamos el contenedor del ripple de Vuetify que se inyecta
+    .v-ripple__container {
+        // Sobrescribimos la animación de la onda inyectada por Vuetify
+        .v-ripple__animation {
+            // El color original era rgba(0, 0, 0, 0.05)
+            // Usamos background-color para forzar el color deseado,
+            // dejando que Vuetify maneje la transición de escala y la opacidad dinámica.
+            background-color: rgba(0, 0, 0, 0.05) !important;
+            
+            // Aseguramos que la opacidad inicial no sea 0 si usamos rgba en el background
+            opacity: 1; 
+        }
+    }
+}

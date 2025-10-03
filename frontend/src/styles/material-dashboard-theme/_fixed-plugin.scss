@@ -1,0 +1,286 @@
+// =================================================================
+// ADAPTACIÓN DE FIXED PLUGIN (PANEL DE CONFIGURACIÓN) A VUETIFY V3
+// NOTA: Se asume que variables como $brand-info, $brand-success, etc., están definidas.
+// =================================================================
+
+// 1. Contenedor principal del plugin fijo (El botón de engranaje)
+.fixed-plugin {
+    position: fixed;
+    right: 0;
+    top: 85px; // Posicionamiento vertical fijo
+    width: 64px;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1031;
+    border-radius: 8px 0 0 8px;
+    text-align: center;
+
+    // Transiciones generales (Aplicadas a elementos internos)
+    li > a,
+    .color-badge,
+    .v-btn {
+        transition: all 0.34s ease-in-out;
+    }
+
+    // Estilo del botón activador (v-btn con icono de engranaje)
+    .v-btn.plugin-activator {
+        color: #ffffff;
+        padding: 10px;
+        border-radius: 0 0 6px 6px;
+        width: 100%;
+        min-width: unset;
+        height: auto;
+        
+        .v-icon {
+            font-size: 24px;
+        }
+    }
+
+    // Estilo para el ícono 'fa-circle-thin'
+    .fa-circle-thin {
+        color: #ffffff;
+    }
+
+    .active .fa-circle-thin {
+        color: #00bbff;
+    }
+
+    // Títulos internos
+    h5 {
+        font-size: 14px;
+        margin: 10px;
+        text-align: center;
+    }
+}
+
+// 2. Estilos del menú flotante (v-menu)
+// .v-overlay__content es el contenedor real que flota
+.fixed-plugin .v-overlay__content {
+    // Posicionamiento personalizado (Reemplaza .dropdown-menu)
+    right: 80px !important; // 64px (ancho plugin) + 16px (espacio)
+    left: auto !important;
+    top: -41px !important; // Ajuste para centrar verticalmente con el activador
+    width: 290px;
+    border-radius: 10px;
+    padding: 0 10px;
+    background-color: #fff;
+    box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+
+    // Flecha/Punta (Reemplaza .dropdown-menu:before, .dropdown-menu:after)
+    &::before,
+    &::after {
+        content: "";
+        display: inline-block;
+        position: absolute;
+        top: 65px;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-bottom: 16px solid transparent;
+        border-top: 16px solid transparent;
+    }
+    
+    // Borde exterior (Simula sombra)
+    &::before {
+        border-left: 16px solid rgba(0, 0, 0, 0.2);
+        right: -16px;
+        z-index: 9;
+    }
+
+    // Flecha interior (Color del menú)
+    &::after {
+        border-left: 16px solid #fff;
+        right: -15px; 
+        z-index: 10;
+    }
+}
+
+// 3. Estilos de los elementos de la lista (v-list-item)
+.fixed-plugin {
+    .v-list {
+        padding: 0;
+    }
+    
+    // Estilos generales de los items (Reemplaza .dropdown-menu li)
+    .v-list-item {
+        display: block;
+        padding: 5px 2px !important; 
+        min-height: unset;
+        font-weight: 400;
+        font-size: 0.95em;
+        width: 25%;
+        float: left;
+        text-align: center;
+
+        // Estilos para links internos (Asegura que no haya sombra ni fondo en hover)
+        .v-list-item__content a:hover,
+        .v-list-item__content a:focus {
+            box-shadow: none;
+            background-color: transparent !important;
+        }
+
+        // Títulos de sección (Reemplaza li.header-title)
+        &.header-title {
+            width: 100%;
+            float: none;
+            height: 30px;
+            line-height: 25px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            text-transform: uppercase;
+            padding: 0;
+        }
+
+        // Líneas de ajuste y toggles (Reemplaza li.adjustments-line)
+        &.adjustments-line {
+            width: 100%;
+            float: none;
+            min-height: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 2px;
+            border-bottom: 1px solid #ddd;
+            
+            p {
+                float: left;
+                display: inline-block;
+                margin-bottom: 0;
+                font-size: 1em;
+                color: #3C4858;
+            }
+
+            // Estilos para v-switch (Reemplaza .togglebutton)
+            .v-switch {
+                // Ajustes de posicionamiento si usas v-switch con etiquetas custom
+                .v-label {
+                    position: relative;
+                    left: -10px;
+                    color: $gray-light;
+                }
+            }
+        }
+        
+        // Contenedor de botones (Reemplaza li.button-container)
+        &.button-container {
+            width: 100%;
+            float: none;
+            height: auto;
+            padding: 18px 0;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap; 
+
+            .v-btn {
+                margin: 0 5px;
+            }
+        }
+    }
+}
+
+// 4. Estilos de selectores de color (Badges)
+.fixed-plugin {
+    // Clase personalizada para los selectores de color
+    .color-badge { // Reemplaza .badge
+        border: 3px solid #ffffff;
+        border-radius: 50%;
+        cursor: pointer;
+        display: inline-block;
+        height: 23px;
+        margin-right: 5px;
+        width: 23px;
+        padding: 8px;
+        transition: all 0.34s ease-in-out;
+        
+        &.active,
+        &:hover {
+            border-color: #00bbff;
+        }
+    }
+
+    // Asignación de colores
+    .badge-azure { background-color: $brand-info; }
+    .badge-green { background-color: $brand-success; }
+    .badge-purple { background-color: $brand-primary; }
+    .badge-orange { background-color: $brand-warning; }
+    .badge-red { background-color: $brand-danger; }
+    .badge-black { background-color: #000; }
+    .badge-white { background-color: rgba(200, 200, 200, 0.2); }
+}
+
+// 5. Selectores de imagen (Backgrounds)
+.fixed-plugin {
+    .img-holder { // Clase para el contenedor de la imagen
+        font-size: 16px;
+        text-align: center;
+        border-radius: 10px;
+        background-color: #fff;
+        border: 3px solid #fff;
+        padding: 0;
+        opacity: 1;
+        cursor: pointer;
+        display: block;
+        max-height: 100px;
+        overflow: hidden;
+        min-width: 100%; // Ocupa el 100% del 25% asignado al item padre
+
+        img {
+            border-radius: 0;
+            width: 100%;
+            height: 100px;
+            margin: 0 auto;
+        }
+        
+        &:hover {
+            border-color: rgba(0, 187, 255, 0.53);
+        }
+    }
+    
+    // Estado Activo
+    .v-list-item.active .img-holder {
+        border-color: #00bbff;
+        background-color: #ffffff;
+    }
+}
+
+// 6. Botones Sociales
+.fixed-plugin {
+    .btn-social-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+
+        .v-btn { // Reemplaza .btn-social y span.md-button
+            padding: 12px 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 0;
+            width: 48%; 
+            
+            &:first-child {
+                margin-right: 2%; 
+            }
+            
+            .v-icon {
+                margin-right: 5px;
+                font-size: 1.1rem;
+                width: auto;
+                min-width: auto;
+                vertical-align: middle;
+            }
+        }
+    }
+
+    // Botones de GitHub
+    .github-buttons {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+}
+
+// Utilidad
+.text-center {
+    text-align: center;
+}

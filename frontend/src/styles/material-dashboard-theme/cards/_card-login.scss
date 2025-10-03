@@ -1,0 +1,70 @@
+// ========================================================================
+// REGLAS ESPECÍFICAS DE COMPONENTE: _card-login.scss
+// Targets the V3 v-card component with a custom class: <v-card class="v-card-login">
+// ========================================================================
+
+// Targeting the custom class applied to the v-card component
+.v-card-login {
+    position: relative;
+    max-width: 340px; // Mantiene el tamaño original de la tarjeta
+    margin: 0 auto; // Centra la tarjeta
+
+    // Estado oculto (md-card-hidden) para animaciones de entrada/salida
+    &.v-card-hidden {
+        opacity: 0;
+        transform: translate3d(0, -60px, 0);
+        transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+    }
+    
+    // ------------------------------------
+    // Estilo del Header (md-card-header)
+    // Se usa un elemento custom dentro del v-card para el header flotante/de color.
+    // ------------------------------------
+    .v-card-login-header {
+        text-align: center;
+        margin-top: -30px; // Desplazamiento hacia arriba para el efecto flotante
+        margin-bottom: 20px;
+        
+        // Aplicando el look de gradiente primario de Material Dashboard
+        background-image: linear-gradient(60deg, var(--v-theme-primary-darken1), var(--v-theme-primary));
+        color: var(--v-theme-on-primary); // Color de texto blanco sobre el color primario
+        box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.2), 0 13px 24px -11px var(--v-theme-primary-opacity-50);
+        border-radius: 6px;
+        padding: 15px;
+    }
+    
+    // Descripción de texto (description)
+    .description {
+        text-align: center;
+        margin-top: 0;
+        font-size: 1rem;
+        color: var(--v-theme-on-surface);
+    }
+    
+    // ------------------------------------
+    // Contenido y Acciones
+    // ------------------------------------
+    
+    // Contenido (md-card-content)
+    .v-card-text {
+        // padding: 0 30px 20px; // Se mantiene un padding horizontal para el contenido
+        padding-top: 0 !important; // Fuerza el padding-top a 0 como en la versión antigua
+        padding-left: 30px;
+        padding-right: 30px;
+        padding-bottom: 20px;
+    }
+
+    // Acciones de la tarjeta (md-card-actions)
+    .v-card-actions {
+        border: 0;
+        // Centra los botones de acción
+        justify-content: center;
+
+        // Estilo específico para los botones (md-button)
+        .v-btn {
+            // .3125rem es equivalente a 5px
+            margin: 5px 1px;
+            text-transform: uppercase; // Los botones de MD suelen ser uppercase
+        }
+    }
+}

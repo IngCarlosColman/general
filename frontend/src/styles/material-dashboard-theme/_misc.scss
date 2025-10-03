@@ -1,0 +1,229 @@
+// =================================================================
+// ADAPTACIÓN DE ESTILOS GLOBALES Y UTILIDADES A VUETIFY V3
+// =================================================================
+
+// --------------------------------------------------
+// 1. Estilos Globales y Body
+// --------------------------------------------------
+
+body {
+    background-color: #EEEEEE;
+    letter-spacing: unset;
+    color: $black-color;
+
+    // Simulación del modo inverso (dark mode toggle)
+    &.inverse {
+        background: #333333;
+        color: $mdb-text-color-light;
+
+        // Vuetify maneja automáticamente los colores de fondo de componentes
+        // en modo oscuro. Esta es una anulación si se requiere forzar el color.
+        .v-card,
+        .v-sheet,
+        .v-dialog {
+            background-color: initial !important;
+            color: initial !important;
+        }
+    }
+}
+
+html *{
+    // Optimización de fuentes
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+// Reseteo de focus y anti-highlight en móvil
+* {
+    -webkit-tap-highlight-color: transparent; // Prevent highlight on mobile
+
+    // Permite que Vuetify maneje sus propios anillos de enfoque (por ejemplo, en botones)
+    &:focus:not(.v-btn--focus):not(.v-field--focus) {
+        outline: 0 !important;
+    }
+}
+// Resets adicionales
+a:focus, a:active,
+button:active, button:focus, button:hover,
+input[type="reset"],
+input[type="button"],
+input[type="submit"],
+select,
+input[type="file"] > input[type="button"] {
+    outline : 0 !important;
+}
+
+// --------------------------------------------------
+// 2. Layout y Wrapper
+// --------------------------------------------------
+
+.wrapper{
+    position: relative;
+    top: 0;
+    height: 100vh;
+
+    &.wrapper-full-page{
+        height: auto;
+        min-height: 100vh;
+    }
+}
+
+// --------------------------------------------------
+// 3. Tipografía y Componentes Nativos
+// --------------------------------------------------
+
+legend {
+    border-bottom: 0;
+}
+
+blockquote{
+    p{
+        font-style: italic;
+    }
+}
+
+.life-of-material-dashboard{
+    background: #FFFFFF;
+}
+
+.serif-font{
+    font-family: $font-family-serif;
+}
+
+h1, h2, h3,
+h4, h5, h6 {
+    @extend %headings;
+}
+
+small,
+.small{
+    font-size: 80%;
+    font-weight: 400;
+}
+
+// --------------------------------------------------
+// 4. Links e Interacciones
+// --------------------------------------------------
+
+a{
+    color: $link-color;
+
+    &:hover,
+    &:focus{
+        color: darken($link-color, 5%) !important;
+        text-decoration: none !important;
+    }
+
+    &.text-info{
+        &:hover, &:focus{
+            color: darken($brand-info, 5%);
+        }
+    }
+
+    // Los iconos son ahora <v-icon>
+    .v-icon {
+        vertical-align: middle;
+    }
+}
+
+// Rotación del icono en selectores/dropdowns (Vuetify maneja la rotación automáticamente,
+// aquí se asegura que la clase general de transición se aplique al icono).
+.v-field__append-inner .v-icon, // Icono en v-text-field, v-select, etc.
+.v-expansion-panel-title__icon, // Icono en v-expansion-panel
+.v-list-item__append .v-icon { // Icono en listas
+
+    // Asegura una transición rápida y suave
+    @include transition($fast-transition-time, $transition-ease-in);
+}
+
+// --------------------------------------------------
+// 5. Animaciones
+// --------------------------------------------------
+
+// Sustitución de mixins de animación por propiedades CSS directas
+.animation-transition-general{
+    transition: all $general-transition-time $transition-linear;
+}
+
+.animation-transition-slow{
+    transition: all $slow-transition-time $transition-linear;
+}
+
+.animation-transition-fast{
+    transition: all $fast-transition-time $transition-ease;
+}
+
+// --------------------------------------------------
+// 6. Utilidades y Componentes Específicos
+// --------------------------------------------------
+
+// Pull left/right son reemplazados por utilidades de Vuetify
+.pull-left{
+    float: left;
+}
+
+.pull-right{
+    float: right;
+}
+
+// Clases de alineación de texto (adaptadas para posibles usos en flex containers)
+.text-center{
+    justify-content: center;
+}
+.text-left{
+    justify-content: flex-start;
+}
+.text-right{
+    justify-content: flex-end;
+}
+
+// Utilidades de margin (Vuetify tiene sus propias como .mt-4, pero se mantienen estas por si acaso)
+.mt-4{
+    margin-top: 1.5rem!important;
+}
+
+.ml-auto,
+.mx-auto {
+    margin-left: auto !important;
+}
+
+.mr-auto,
+.mx-auto {
+    margin-right: auto!important;
+}
+
+// Adaptación de los estilos de botones de lugares
+.places-buttons{
+    .v-btn{ // Reemplaza .md-button
+        width: 30%;
+        margin-left: 10px;
+        margin-right: 10px;
+    }
+}
+
+// Sobreescritura del color del icono (generalmente manejado por la propiedad 'color' en v-icon)
+.v-icon svg {
+    fill: $black-color;
+}
+
+.black-color{
+    color: $black-color !important;
+}
+
+// Mapas
+#worldMap{
+    width: 100%;
+}
+
+.map{
+    height: 300px;
+}
+
+// Vuetify maneja el ripple con la directiva v-ripple. 
+// Estos overrides de .md-ripple se eliminan ya que son obsoletos y pueden 
+// interferir con el comportamiento nativo de V3.
+
+// Color de selección de texto
+.v-theme-default :not(input):not(textarea)::selection{ // Adaptando md-theme-default
+    background-color: #c8c8c8 !important;
+}

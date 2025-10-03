@@ -1,0 +1,82 @@
+// ========================================================================
+// MIXINS ESPECÍFICOS: _vendor-prefixes.scss
+// NOTA CRÍTICA: La mayoría de estos mixins son OBSOLETOS.
+// Vuetify 3 asume que estás usando Autoprefixer, el cual se encarga
+// automáticamente de agregar los prefijos -webkit- y -moz- al CSS final.
+// Se recomienda ELIMINAR O COMENTAR estos mixins.
+// Solo se mantienen y simplifican los mixins de @keyframes definidos a continuación.
+// ========================================================================
+
+// --- MIXINS OBSOLETOS (Deben ser gestionados por Autoprefixer) ---
+
+/*
+@mixin mdb-user-select($select) { user-select: $select; }
+@mixin mdb-box-shadow($shadow...) { box-shadow: $shadow; }
+@mixin mdb-box-sizing($boxmodel) { box-sizing: $boxmodel; }
+@mixin mdb-transition($time, $type){ transition: all $time $type; }
+@mixin mdb-transform-scale($value){ transform: scale($value); }
+@mixin mdb-transform-translate-x($value){ transform: translate3d($value, 0, 0); }
+@mixin mdb-transform-origin($coordinates){ transform-origin: $coordinates; }
+@mixin mdb-radial-gradient($extern-color, $center-color){
+    background: $extern-color;
+    background: radial-gradient(ellipse at center, $center-color 0%, $extern-color 100%);
+    background-size: 550% 450%;
+}
+@mixin mdb-vertical-align {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+@mixin mdb-rotate-180(){
+    transform: rotate(180deg);
+}
+*/
+
+/**
+ * Mantiene el wrapper para aplicar la animación de la barra (bar-animation),
+ * pero elimina los prefijos internos.
+ * @param {string} $type - Nombre del keyframe.
+ */
+@mixin mdb-bar-animation($type){
+    animation: $type 500ms linear 0s;
+    animation-fill-mode: forwards;
+}
+
+// --- DEFINICIONES DE KEYFRAMES SIMPLIFICADAS ---
+// Los prefijos para @keyframes deben ser añadidos por Autoprefixer.
+
+@mixin mdb-topbar-x-rotation(){
+    @keyframes topbar-x {
+        0% {top: 0px; transform: rotate(0deg); }
+        45% {top: 6px; transform: rotate(145deg); }
+        75% {transform: rotate(130deg); }
+        100% {transform: rotate(135deg); }
+    }
+}
+
+@mixin mdb-topbar-back-rotation(){
+    @keyframes topbar-back {
+        0% { top: 6px; transform: rotate(135deg); }
+        45% { transform: rotate(-10deg); }
+        75% { transform: rotate(5deg); }
+        100% { top: 0px; transform: rotate(0); }
+    }
+}
+
+@mixin mdb-bottombar-x-rotation(){
+    @keyframes bottombar-x {
+        0% {bottom: 0px; transform: rotate(0deg);}
+        45% {bottom: 6px; transform: rotate(-145deg);}
+        75% {transform: rotate(-130deg);}
+        100% {transform: rotate(-135deg);}
+    }
+}
+
+@mixin mdb-bottombar-back-rotation{
+    @keyframes bottombar-back {
+        0% { bottom: 6px; transform: rotate(-135deg);}
+        45% { transform: rotate(10deg);}
+        75% { transform: rotate(-5deg);}
+        100% { bottom: 0px; transform: rotate(0);}
+    }
+}

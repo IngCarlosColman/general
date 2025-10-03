@@ -1,0 +1,92 @@
+// ========================================================================
+// PLUGIN: _custom-dialogs.scss (Refactorizado para Vuetify 3 / Material Design)
+// Este archivo reemplaza a '_sweetalert2.scss'.
+// Contiene estilos personalizados para los diálogos nativos de Vuetify (<v-dialog>).
+// ========================================================================
+
+// ------------------------------------------------------------------------
+// 1. ESTILOS BASE DEL CONTENEDOR DE DIÁLOGO (V-DIALOG)
+//    Asegura que el diálogo se comporte como un modal de SweetAlert2 en cuanto a tamaño y fuente.
+// ------------------------------------------------------------------------
+
+.v-dialog {
+    // Definir un ancho máximo y mínimo para asegurar un tamaño consistente,
+    // similar al 31.25rem (500px) de swal2-popup.
+    max-width: 500px !important; 
+    min-height: 190px !important;
+    
+    // Asegurar la tipografía de Material Design (Vuetify ya usa Roboto o Inter por defecto,
+    // pero podemos forzar la fuente si es necesario).
+    font-family: var(--v-font-family, Roboto, sans-serif) !important; 
+}
+
+// ------------------------------------------------------------------------
+// 2. ESTILOS DE LA TARJETA DEL DIÁLOGO (V-CARD)
+//    Aplica la elevación y el fondo del tema.
+// ------------------------------------------------------------------------
+
+.v-card {
+    // Usar variables de tema para fondo y color.
+    background-color: rgb(var(--v-theme-surface)) !important;
+    color: rgb(var(--v-theme-on-surface)) !important;
+    border-radius: 8px !important; // Bordes redondeados de Material
+}
+
+// ------------------------------------------------------------------------
+// 3. ESTILOS DE ICONOS Y TÍTULOS
+//    Aplica a elementos de encabezado dentro del diálogo.
+// ------------------------------------------------------------------------
+
+.v-card-title {
+    // Replicar el gran line-height de swal2-title
+    padding: 20px 24px 0 !important;
+    font-size: 1.5rem !important;
+    line-height: 1.4 !important;
+    font-weight: 500; // Medium
+}
+
+.dialog-icon-wrapper {
+    // Este wrapper debe contener iconos personalizados (ej. para success, error, warning)
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px auto 30px !important; // Margen similar al swal2-icon
+    width: 80px;
+    height: 80px;
+    
+    // Contenedor circular con borde para replicar el estilo de SweetAlert2
+    border-radius: 50%;
+    border: 4px solid transparent; 
+}
+
+// Estilos de color para iconos (usando clases de acento de Vuetify)
+.dialog-icon-warning {
+    border-color: rgba(var(--v-theme-warning), 0.5) !important;
+    color: rgb(var(--v-theme-warning)) !important;
+}
+
+.dialog-icon-error {
+    border-color: rgba(var(--v-theme-error), 0.5) !important;
+    color: rgb(var(--v-theme-error)) !important;
+}
+
+// ------------------------------------------------------------------------
+// 4. ESTILOS DE ACCIONES Y BOTONES
+// ------------------------------------------------------------------------
+
+.v-card-actions {
+    justify-content: center !important;
+    padding: 16px 24px 20px !important;
+    margin-top: 20px !important; // Espacio superior similar a swal2-actions
+}
+
+// Sobrescribir estilos de botones de acción para que coincidan con el diseño del tema.
+.v-card-actions .v-btn {
+    // padding, min-width, margin de swal2-container .md-button
+    padding: 12px 30px !important; 
+    min-width: 100px !important;
+    margin: 0 8px !important;
+    height: auto !important;
+    font-weight: 500; // Medium
+    letter-spacing: 0.5px;
+}

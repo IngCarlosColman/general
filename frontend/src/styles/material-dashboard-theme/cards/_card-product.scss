@@ -1,0 +1,102 @@
+// ========================================================================
+// REGLAS ESPECÍFICAS DE COMPONENTE: _card-product.scss
+// Targets the V3 v-card component with a custom class: <v-card class="v-card-product">
+// ========================================================================
+
+.v-card-product {
+    margin-top: 30px; // Espaciado superior de la tarjeta
+    
+    // ------------------------------------
+    // Alineación y Componentes de Texto
+    // ------------------------------------
+    
+    // Asegura que los textos principales se centren
+    .v-card-title,
+    .v-card-subtitle,
+    .card-title, // Fallback/Clase antigua para el título
+    .card-category,
+    .card-description {
+        text-align: center;
+    }
+    
+    // Estilo para la categoría (Texto pequeño y secundario)
+    .category {
+        margin-bottom: 0;
+        // Color tenue para la categoría
+        color: rgba(var(--v-theme-on-surface-rgb), 0.6); 
+    }
+    
+    // Si la categoría está presente, elimina el margen superior del título que le sigue
+    .category ~ .v-card-title, 
+    .category ~ .title {
+        margin-top: 0;
+    }
+
+    // Reset de margen en párrafos
+    p {
+        margin: 0;
+    }
+    
+    // ------------------------------------
+    // Estilo de Precios
+    // ------------------------------------
+    
+    .price,
+    .price-old,
+    .price-new {
+        margin: 0; // Elimina márgenes de elementos de precio
+        // Aplicación del estilo de heading si se usa un placeholder %headings (mixin/placeholder)
+        & %headings { 
+            color: inherit; 
+        }
+    }
+    
+    .price {
+        font-size: 18px;
+        color: #9A9A9A; // Gris claro específico
+    }
+    
+    .price-old {
+        text-decoration: line-through;
+        font-size: 16px;
+        color: #9A9A9A; // Gris claro específico
+        display: inline-block; 
+        margin-right: 5px;
+    }
+    
+    .price-new {
+        // Mapea $brand-danger a la variable de color de error de V3
+        color: var(--v-theme-error) !important;
+        font-weight: 700;
+        font-size: 18px;
+        display: inline-block;
+    }
+
+    // ------------------------------------
+    // Acciones y Estadísticas (Stats)
+    // ------------------------------------
+
+    // Botones con estilo 'simple' y 'just-icon'
+    .v-btn.v-btn--icon {
+        padding: 0 !important; // Fuerza la eliminación del padding para botones de ícono
+    }
+    
+    // Bloque de estadísticas dentro de las acciones
+    .v-card-actions {
+        .stats {
+            display: flex;
+            align-items: center;
+            font-size: 0.875rem;
+            // Color tenue para el texto de estadísticas
+            color: rgba(var(--v-theme-on-surface-rgb), 0.7);
+
+            // md-icon -> v-icon
+            .v-icon {
+                font-size: 16px !important;
+                margin-right: 5px;
+                // Color tenue para el ícono de estadísticas
+                color: rgba(var(--v-theme-on-surface-rgb), 0.7) !important; 
+            }
+        }
+    }
+}

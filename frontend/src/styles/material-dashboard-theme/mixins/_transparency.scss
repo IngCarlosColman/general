@@ -1,0 +1,34 @@
+// ========================================================================
+// MIXINS ESPECÍFICOS: _transparency.scss
+// Limpia mixins obsoletos y adapta el mixin de filtro de fondo.
+// ========================================================================
+
+// NOTA: El mixin @mixin opacity no es necesario en entornos modernos (V3).
+// La propiedad 'opacity' es universalmente compatible. Lo mantenemos
+// comentado por si se necesita una implementación específica, pero se
+// recomienda usar la propiedad CSS directamente.
+/*
+@mixin opacity($opacity) {
+    opacity: $opacity;
+}
+*/
+
+/**
+ * Crea un overlay de color negro con la opacidad especificada.
+ * Este mixin se usa típicamente para crear fondos oscuros sobre imágenes
+ * o elementos con z-index alto.
+ * @param {number} $opacity - Valor de opacidad (0 a 1).
+ */
+@mixin mdb-black-filter($opacity){
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    // Usamos un color RGB común para el negro que no depende del tema
+    // para mantener el color constante del filtro.
+    background-color: rgba(17, 17, 17, $opacity); 
+    display: block;
+    content: "";
+    z-index: 1; 
+}

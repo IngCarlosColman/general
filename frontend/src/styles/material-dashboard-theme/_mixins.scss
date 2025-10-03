@@ -1,0 +1,411 @@
+// =================================================================
+// ADAPTACIÓN DE MIXINS A VUETIFY V3
+// Se han eliminado prefijos de proveedor obsoletos (ej. -webkit-)
+// y se han actualizado los selectores a componentes de V3.
+// =================================================================
+
+// --------------------------------------------------
+// 1. Utilities (Asumiendo que estos archivos existen)
+// --------------------------------------------------
+
+@import "mixins/transparency";
+@import "mixins/vendor-prefixes"; // Mantener si necesario, aunque las mezclas abajo se simplifican
+@import "mixins/chartist";
+@import "mixins/sidebar";
+// Se asume que también existen: shadow-2dp-color, button-shadow-color, shadow-big-color, shadow-navbar-color, etc.
+
+// --------------------------------------------------
+// 2. Transiciones y Transformaciones (Simplificadas sin Prefijos)
+// --------------------------------------------------
+
+@mixin transition($time, $type){
+    transition: all $time $type;
+}
+
+@mixin transform-scale($value){
+    transform: scale($value);
+}
+
+@mixin transform-scale3d($value){
+    transform: scale3d($value);
+}
+
+@mixin transform-translate-x($value){
+    transform: translate3d($value, 0, 0);
+}
+
+@mixin transform-translate-y($value){
+    transform: translate3d(0, $value, 0);
+}
+
+@mixin transform-origin($coordinates){
+    transform-origin: $coordinates;
+}
+
+@mixin rotate-180(){
+    transform: rotate(180deg);
+}
+
+@mixin rotate() {
+    transform: rotate(45deg);
+}
+
+// --------------------------------------------------
+// 3. Estilos de Componentes Específicos (Adaptados a V3)
+// --------------------------------------------------
+
+// Placeholder text - Adaptado a la sintaxis estándar de CSS
+@mixin v-placeholder {
+    ::placeholder { @content; } // Sintaxis moderna y Firefox
+    :-ms-input-placeholder { @content; } // IE 10+ legacy
+}
+
+// Toolbar/App-Bar Colors - Adaptado a v-app-bar
+@mixin v-app-bar-colors($color){
+    .v-app-bar {
+        background-color: $color !important;
+        @include shadow-navbar-color($color); // Asumiendo mixin de sombra
+
+        // Selector para el contenido de la barra (título, iconos, listas)
+        .v-toolbar-title,
+        .v-btn,
+        .v-list-item,
+        .v-app-bar-nav-icon,
+        & {
+            color: $white-color !important;
+        }
+    }
+}
+
+// Progress Bar - Adaptado a v-progress-linear
+@mixin v-progress-bar-colors($color) {
+    .v-progress-linear {
+        // Fondo de la barra (track)
+        &:not(.v-progress-linear--indeterminate) .v-progress-linear__background {
+            background: rgba($color, .2) !important;
+        }
+
+        // Color de la barra de progreso (determinate bar)
+        .v-progress-linear__determinate {
+            background-color: $color !important;
+        }
+
+        // Buffer (si se usa)
+        &.v-progress-linear--buffer {
+            .v-progress-linear__determinate {
+                background-color: $color;
+            }
+            .v-progress-linear__buffer {
+                border-color: rgba($color, .2);
+            }
+        }
+    }
+}
+
+// Timeline/Badge Color (Utility)
+@mixin v-timeline-badge-color($color) {
+    background-color: $color;
+    @include shadow-big-color($color);
+}
+
+// Input Color en Lock Page (Adaptado a la estructura de V3 v-field)
+@mixin lock-page-input-color($color) {
+    &.lock-page{
+        .v-field {
+            // Esto simula la línea de fondo de Material Design Input
+            .v-field__overlay {
+                background-image: linear-gradient($color, $color), linear-gradient($mdb-input-underline-color, $mdb-input-underline-color);
+            }
+        }
+    }
+}
+
+// Badge Colors (Clases de utilidad)
+@mixin create-utility-badges() {
+    &.badge-primary { background-color: $brand-primary; }
+    &.badge-info { background-color: $brand-info; }
+    &.badge-success { background-color: $brand-success; }
+    &.badge-warning { background-color: $brand-warning; }
+    &.badge-danger { background-color: $brand-danger; }
+    &.badge-rose { background-color: $brand-rose; }
+    &.badge-default { background-color: $gray-light; }
+}
+
+// Dropdown/Menu Colors - Adaptado a v-menu y v-list-item
+@mixin v-menu-item-color($color) {
+    .v-menu {
+        .v-list-item {
+            &:hover,
+            &:focus,
+            &:active {
+                background-color: $color !important;
+                color: $white-color !important;
+                @include shadow-big-color($color);
+            }
+        }
+        .v-list-item--active { // Clase para elemento activo
+            background-color: $color !important;
+            color: $white-color !important;
+            @include shadow-big-color($color);
+        }
+    }
+}
+
+@mixin alert-color($color) {
+    background-color: $color;
+    color: $white-color;
+    border-radius: $border-radius-base;
+    @include shadow-big-color($color);
+}
+
+@mixin alert-icon-color($color) {
+    .v-icon {
+        color: $color;
+    }
+}
+
+// Botones - Adaptado a v-btn, manejando los variantes 'text' (simple) y 'elevated' (raised/default)
+@mixin v-btn-styles($btn-color) {
+
+    // Estilo Base/Elevado (Raised/Default)
+    .v-btn:not(.v-btn--variant-text):not(.v-btn--disabled) {
+        background-color: $btn-color !important;
+        @include shadow-2dp-color($btn-color);
+
+        &:hover,
+        &:focus,
+        &:active {
+            @include button-shadow-color($btn-color);
+            background-color: darken($btn-color, 3%) !important;
+        }
+
+        // Color del texto/icono
+        color: $white-color !important;
+        .v-icon {
+            color: $white-color !important;
+        }
+
+        @if $btn-color == $white-color {
+            color: $gray-light !important;
+            .v-icon {
+                color: $gray-light !important;
+            }
+        }
+    }
+
+    // Estilo Simple (md-simple -> v-btn variant="text")
+    .v-btn.v-btn--variant-text:not(.v-btn--disabled) {
+        background-color: transparent !important;
+        color: $btn-color !important;
+        box-shadow: none;
+
+        .v-icon {
+            color: $btn-color !important;
+        }
+
+        &:hover,
+        &:focus {
+            // Mantener transparente o usar el hover estándar de Vuetify si se desea
+            background-color: transparent;
+            box-shadow: none;
+            // Opcionalmente: background-color: rgba($btn-color, 0.1) !important;
+        }
+    }
+
+    // Estado deshabilitado (generalmente manejado por Vuetify, esto es un override de estilo)
+    &.v-btn--disabled {
+        box-shadow: none !important;
+        opacity: .65;
+        pointer-events: none;
+    }
+}
+
+// Botones Sociales
+@mixin v-social-buttons-color ($color){
+    .v-btn:not(.v-btn--variant-text) {
+        background-color: $color !important;
+        color: #fff !important;
+        @include shadow-2dp-color($color);
+
+        &:hover,
+        &:focus,
+        &:active {
+            background-color: $color !important; // Mantenemos el color base al hacer hover
+            @include button-shadow-color($color);
+        }
+    }
+
+    // Estilo Simple (Social md-simple -> v-btn variant="text")
+    .v-btn.v-btn--variant-text {
+        &,
+        &:hover,
+        &:focus,
+        &:active {
+            color: $color !important;
+            background-color: transparent !important;
+            box-shadow: none;
+
+            .v-icon {
+                color: $color !important;
+            }
+        }
+    }
+}
+
+@mixin v-social-buttons(){
+    &.v-btn.v-btn--facebook { @include v-social-buttons-color($social-facebook); }
+    &.v-btn.v-btn--pinterest { @include v-social-buttons-color($social-pinterest); }
+    &.v-btn.v-btn--google { @include v-social-buttons-color($social-google); }
+    &.v-btn.v-btn--linkedin { @include v-social-buttons-color($social-linkedin); }
+    &.v-btn.v-btn--dribbble { @include v-social-buttons-color($social-dribbble); }
+    &.v-btn.v-btn--github { @include v-social-buttons-color($social-github); }
+    &.v-btn.v-btn--youtube { @include v-social-buttons-color($social-youtube); }
+    &.v-btn.v-btn--instagram { @include v-social-buttons-color($social-instagram); }
+    &.v-btn.v-btn--reddit { @include v-social-buttons-color($social-reddit); }
+    &.v-btn.v-btn--tumblr { @include v-social-buttons-color($social-tumblr); }
+    &.v-btn.v-btn--behance { @include v-social-buttons-color($social-behance); }
+    &.v-btn.v-btn--twitter { @include v-social-buttons-color($social-twitter); }
+}
+
+// Tabs Color - Adaptado a v-tabs-slider o v-tab (si es color de fondo)
+@mixin v-tabs-color($color) {
+    .v-tabs-slider { // Si se quiere colorear la barra de selección
+        background-color: $color !important;
+    }
+    .v-tab { // Si se quiere colorear toda la pestaña
+        &.v-tab--selected,
+        &:hover,
+        &:focus {
+            // Si el objetivo es colorear la barra completa del tab header (como si fuera un header)
+            // Se necesitaría un contenedor
+        }
+    }
+    // Asumiendo que se refiere a colorear un contenedor de tabs:
+    &,
+    &:hover,
+    &:focus{
+        background-color: $color !important;
+        @include shadow-big-color($color);
+    }
+}
+
+// Collapse/Expansion Panel - Adaptado a v-expansion-panel
+@mixin v-expansion-panel-color($color) {
+    .v-expansion-panel-title {
+        &:hover,
+        &:focus {
+            color: $color !important;
+            .v-expansion-panel-title__icon .v-icon {
+                color: $color !important;
+            }
+        }
+    }
+
+    .v-expansion-panel--active .v-expansion-panel-title {
+        color: $color !important;
+        .v-expansion-panel-title__icon .v-icon {
+            color: $color !important;
+        }
+    }
+}
+
+// Wizard (Stepper) Color - Adaptado a v-stepper, v-checkbox, v-radio
+@mixin set-v-wizard-color($color) {
+    .v-stepper-item {
+        // Estilo del paso activo o completado
+        &.v-stepper-item--selected,
+        &.v-stepper-item--complete {
+            .v-stepper-item__marker-dot {
+                background-color: $color !important;
+            }
+        }
+    }
+
+    .moving-tab { // El indicador flotante del wizard (si es un componente custom)
+        background-color: $color;
+        @include shadow-big-color($color);
+    }
+
+    .picture { // Si es un selector de imagen custom
+        &:hover {
+            border-color: $color;
+        }
+    }
+
+    .choice { // Si es un selector de opciones custom
+        &:hover,
+        &.active {
+            .icon {
+                border-color: $color;
+                color: $color;
+            }
+        }
+    }
+
+    // Checkbox y Radio
+    .v-checkbox .v-selection-control__input,
+    .v-radio .v-selection-control__input {
+        // Vuetify usa variables CSS para los colores. Esto es un override.
+        .v-selection-control__wrapper {
+            .v-icon {
+                color: $color !important; // Para el ícono de check/radio
+            }
+        }
+
+        // Color del borde del círculo de radio (simulado con el track)
+        .v-radio-group .v-radio--active .v-selection-control__input {
+            .v-selection-control__track {
+                 border-color: $color;
+            }
+        }
+    }
+}
+
+// --------------------------------------------------
+// 4. Backgrounds y Gradients (Simplificados)
+// --------------------------------------------------
+
+@mixin black-filter(){
+    background: rgba(0,0,0,.55);
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    content: "";
+    z-index: 0;
+    left: 0;
+    top: 0;
+}
+
+@mixin radial-gradient($extern-color, $center-color){
+    background: radial-gradient(ellipse at center, $center-color 0%,$extern-color 100%);
+    background-size: 550% 450%;
+}
+
+@mixin linear-gradient($color1, $color2){
+    background: linear-gradient(60deg, $color1 , $color2);
+}
+
+// --------------------------------------------------
+// 5. Tags (Adaptado a clases de utilidad genéricas)
+// --------------------------------------------------
+
+@mixin tag-color ($color){
+    .tag {
+        background-color: $color;
+        color: $white-color;
+        .tagsinput-remove-link {
+            color: $white-color;
+        }
+    }
+    .tagsinput-add {
+        color: $color;
+    }
+}
+@mixin create-colored-tags(){
+    &.tag-primary { @include tag-color($brand-primary); }
+    &.tag-info { @include tag-color($brand-info); }
+    &.tag-success { @include tag-color($brand-success); }
+    &.tag-warning { @include tag-color($brand-warning); }
+    &.tag-danger { @include tag-color($brand-danger); }
+    &.tag-rose { @include tag-color($brand-rose); }
+}

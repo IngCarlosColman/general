@@ -1,0 +1,298 @@
+// ====================================================================
+// VUETIFY 3 (V3) REFACTORIZATION
+// This file adapts old Material framework SCSS to modern Vuetify 3 classes.
+// Custom mixins and variables are replaced with standard CSS or placeholders.
+// ====================================================================
+
+// --- Custom Variable and Mixin Placeholders (Adapt these to your project's global SCSS) ---
+$sidebar-default-width: 260px;
+$sidebar-mini-width-limit: 80px;
+$general-transition-time: 0.3s;
+$transition-cubic: cubic-bezier(0.685, 0.0473, 0.346, 1);
+$transition-linear: linear;
+
+// Placeholder for custom shadow (e.g., for sidebar)
+@mixin shadow-big {
+    box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.42), 0 4px 25px 0px rgba(0, 0, 0, 0.12), 0 8px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+// Standard transition property replacement
+.animation-transition-general {
+    transition: all $general-transition-time $transition-cubic;
+}
+
+// Placeholder for transforms
+@mixin transform-translate-x($value) {
+    transform: translateX($value);
+}
+
+// --- 1. V-LIST-ITEM STYLES ---
+.v-list-item {
+    // Remove default list item padding/margin to apply custom layout
+    padding: 0;
+    margin: 0 15px 0 15px;
+
+    // Targeting the content area for padding and rounding
+    .v-list-item__content {
+        padding: 10px 15px;
+        border-radius: 8px; // Assuming a standard Material 3 rounding
+        min-height: auto;
+    }
+
+    // Ripple and Overlay styling
+    .v-list-item__overlay,
+    .v-list-item__underlay {
+        border-radius: 8px;
+    }
+
+    // Hover state using a transparent background overlay
+    &:hover .v-list-item__content {
+        background-color: rgba(200, 200, 200, 0.2);
+    }
+}
+
+// --- 2. FULL PAGE AND V-TOOLBAR STYLES ---
+.full-page {
+    .v-container {
+        width: 100%;
+    }
+
+    // Styles for v-toolbar inside main content
+    .v-toolbar {
+        .v-list {
+            .v-list-item {
+                .v-list-item__content {
+                    font-weight: 500;
+                    color: #fff !important;
+
+                    .v-icon {
+                        color: #fff !important;
+                        margin-right: 3px;
+                        max-width: 24px;
+                        font-size: 1.25rem !important;
+                        margin-left: 0;
+                    }
+                }
+
+                margin-right: 5px;
+
+                // Toolbar list item active/hover states
+                .v-list-item__overlay {
+                    &:hover,
+                    &:focus {
+                        background-color: rgba(199, 199, 199, .2) !important;
+                    }
+
+                    &.v-list-item--active {
+                        background-color: rgba(199, 199, 199, .1) !important;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- 3. MAIN PANEL WRAPPER (Custom class for positioning next to the drawer) ---
+.v-main-container {
+    position: relative;
+    float: right;
+    background-color: #EEEEEE;
+    // Initial width and position calculated for default sidebar
+    width: calc(100% - $sidebar-default-width);
+    @include transform-translate-x(0);
+    transition: width 0.33s $transition-cubic, transform 0.33s $transition-cubic;
+
+    // Vuetify's v-main component inner content
+    .v-main {
+        padding: 30px 15px;
+        min-height: calc(100vh - 123px);
+    }
+
+    .app-footer {
+        border-top: 1px solid #e7e7e7;
+    }
+
+    .app-header {
+        margin: 0 10px 30px;
+        .title { margin-top: 10px; margin-bottom: 10px; }
+        .category { margin-top: 0; }
+    }
+}
+
+
+// --- 4. NAVIGATION DRAWER (V-NAVIGATION-DRAWER) STYLES ---
+.v-navigation-drawer {
+    // Structural properties
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 9999;
+    width: $sidebar-default-width;
+    background-color: #FFFFFF;
+    @include shadow-big();
+    background-size: cover;
+    background-position: 50%;
+    transition: all 0.33s $transition-cubic; // Ensure transition is set
+
+    // Default icon color for non-active links
+    .v-icon {
+        color: #a9afbb !important;
+        opacity: .8
+    }
+    
+    // Custom background overlay logic (mimics the old :after overlay)
+    .v-navigation-drawer__content {
+        position: relative;
+        z-index: 4;
+        
+        &::after {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(27, 27, 27, 0.85); // Default dark overlay
+            top: 0;
+            left: 0;
+            z-index: 2;
+            pointer-events: none;
+        }
+    }
+
+    // Styling for custom height/overflow wrapper
+    .v-navigation-drawer__content {
+        height: calc(100vh - 75px);
+        width: $sidebar-default-width;
+        z-index: 4;
+
+        .v-list {
+            background-color: transparent !important;
+            padding: 0;
+            margin-top: 15px;
+            
+            // Nested list styling (if required for dropdowns)
+            .v-list-group .v-list {
+                padding-top: 15px;
+                margin: 0;
+            }
+        }
+    }
+
+    // Logo area (using Vuetify's prepend slot)
+    .v-navigation-drawer__prepend {
+        padding: 15px 0px;
+        position: relative;
+        z-index: 4;
+
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 15px;
+            height: 1px;
+            width: calc(100% - 30px);
+            background-color: rgba(180, 180, 180, .3);
+        }
+
+        .logo-mini {
+            opacity: 1;
+            float: left;
+            width: 34px;
+            text-align: center;
+            margin-left: 23px;
+            margin-right: 13px;
+            position: relative;
+            top: -3px;
+            @extend .animation-transition-general;
+        }
+
+        .logo-normal {
+            display: block;
+            opacity: 1;
+            @include transform-translate-x(0px);
+            @extend .animation-transition-general;
+
+            .simple-text {
+                // Placeholder styling, adapt colors based on drawer data-background-color
+                color: #FFFFFF !important;
+            }
+        }
+    }
+
+    // User Info area
+    .sidebar-user { // Custom class for user section
+        padding-bottom: 20px;
+        margin: 20px auto 0;
+        position: relative;
+
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 15px;
+            height: 1px;
+            width: calc(100% - 30px);
+            background-color: rgba(180, 180, 180, .3);
+        }
+    }
+}
+
+// --- 5. MINI-VARIANT (RAIL) LOGIC FOR DESKTOP ---
+@media (min-width: 991px) {
+
+    // Main panel adjustment for rail mode
+    .v-application--has-navigation-drawer.v-navigation-drawer--rail + .v-main .v-main-container {
+        width: calc(100% - $sidebar-mini-width-limit);
+        // Note: Vuetify usually handles the position of v-main, so we focus on the main-container width
+    }
+
+    // Target the rail state
+    .v-navigation-drawer--rail {
+        width: $sidebar-mini-width-limit !important; // Enforce mini width
+
+        // Hide full logo
+        .v-navigation-drawer__prepend .logo-normal {
+            opacity: 0;
+            @include transform-translate-x(-25px);
+        }
+
+        // Hide list item text and user info text (titles are in v-list-item__title)
+        .v-list-item__title,
+        .sidebar-user .user-info > a > span {
+            @include transform-translate-x(-25px);
+            opacity: 0;
+            transition: transform $general-transition-time $transition-linear, opacity $general-transition-time $transition-linear;
+        }
+
+        // --- HOVER EFFECT FOR RAIL ---
+        // Vuetify adds this class when the rail prop is true and expand-on-hover is enabled
+        &.v-navigation-drawer--is-hovering {
+            width: $sidebar-default-width !important; // Restore default width on hover
+
+            // Show full logo
+            .v-navigation-drawer__prepend .logo-normal {
+                opacity: 1;
+                @include transform-translate-x(0px);
+            }
+
+            // Show text elements
+            .v-list-item__title,
+            .sidebar-user .user-info > a > span {
+                @include transform-translate-x(0px);
+                opacity: 1;
+            }
+        }
+    }
+}
+
+// --- 6. UTILITY/VISIBILITY CLASSES ---
+
+.visible-on-sidebar-regular { display: inline-block !important; }
+.visible-on-sidebar-mini { display: none !important; }
+
+@media (min-width: 991px) {
+    .v-navigation-drawer--rail {
+        .visible-on-sidebar-regular { display: none !important; }
+        .visible-on-sidebar-mini { display: inline-block !important; }
+    }
+}

@@ -1,0 +1,87 @@
+// =================================================================
+// ADAPTACIÓN DE FILE INPUT A VUETIFY V3 (v-btn y input[type="file"] custom)
+// =================================================================
+
+// 1. Contenedor principal para la funcionalidad de entrada de archivo
+// Esta clase envuelve el v-btn y el input[type="file"]
+.file-input-wrapper {
+    display: inline-block;
+    position: relative; // Necesario para posicionar el input[type="file"] absoluto.
+
+    // Estilos para el input de archivo (Reemplaza .md-fileinput [type="file"])
+    // El input nativo se posiciona absolutamente sobre el botón y se hace invisible.
+    input[type="file"] {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        font-size: 23px; // Usado para asegurar la cobertura táctil
+        cursor: pointer;
+        opacity: 0;
+        z-index: 10; // Asegura que esté por encima del v-btn
+    }
+
+    // Ajuste para el contenido del botón de Vuetify si fuera necesario (Vuetify ya usa position: relative/static)
+    // Reemplaza .md-fileinput .md-button-content
+    .v-btn .v-btn__content {
+        position: unset;
+    }
+
+    // Estilo para el contenedor del botón de carga circular
+    &.img-circle {
+        max-width: 150px;
+    }
+}
+
+// 2. Contenedor de botones (Reemplaza .button-container)
+.button-container {
+    display: flex;
+    justify-content: center;
+
+    // Ajuste de márgenes entre botones (Reemplaza .md-button + .md-button)
+    .v-btn + .v-btn {
+        margin-left: 5px;
+    }
+    
+    // Si el contenedor es circular, los botones se apilan (Reemplaza .img-circle .button-container)
+    .file-input-wrapper.img-circle & {
+        flex-direction: column;
+    }
+}
+
+
+// 3. Contenedor de previsualización de imagen (Reemplaza .image-container)
+.image-preview-container {
+    max-width: 250px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    overflow: hidden; // Asegura que la imagen se recorte
+
+    // Sombra personalizada de Material Dashboard
+    box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.42), 0 4px 25px 0 rgba(0, 0, 0, 0.12), 0 8px 10px -5px rgba(0, 0, 0, 0.2);
+
+    // Estilos para la imagen dentro del contenedor
+    img {
+        display: block; // Asegura que la imagen no tenga espacio extra
+        width: 100%;
+        height: auto;
+        border-radius: 4px; // Mantiene el redondeo
+    }
+}
+
+
+// 4. Variante para imágenes circulares
+// Se recomienda añadir una clase como `img-circle-preview` al contenedor si se usa solo para el preview,
+// o usar la clase global .file-input-wrapper.img-circle
+.file-input-wrapper.img-circle {
+    .image-preview-container {
+        border-radius: 50%;
+        max-width: 100px;
+        overflow: hidden;
+        margin: 0 auto 10px; // Centrado horizontal
+        
+        // No es necesario definir la imagen interna, ya que el overflow: hidden lo gestiona.
+    }
+}

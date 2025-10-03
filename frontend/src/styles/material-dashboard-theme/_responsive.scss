@@ -1,0 +1,199 @@
+// =================================================================
+// ADAPTACIÓN DE CLASES RESPONSIVAS DE LAYOUT A VUETIFY V3
+//
+// Esta hoja de estilos se enfoca en replicar el comportamiento del
+// Off-Canvas Sidebar (md-collapse) y ajustes específicos de componentes
+// en diferentes breakpoints.
+//
+// Clases clave para el sidebar:
+// 1. .v-md-nav-open: Clase que se aplica al <body> o <v-app> cuando el menú móvil está abierto.
+// 2. .v-md-main-panel: Clase que debe aplicarse al componente <v-main>.
+// 3. .v-md-off-canvas-sidebar: Clase que debe aplicarse al <v-navigation-drawer> móvil.
+// =================================================================
+
+// NOTA: Se asume que las variables como `$white-color`, `$brand-primary`, 
+// y las funciones/mixins de transición, sombra y transformación (`shadow-big`, 
+// `transform-translate-x`, etc.) están definidas o se usa CSS nativo.
+
+$transition-time: 0.33s;
+$sidebar-width: 260px;
+$transition-cubic: cubic-bezier(0.685, 0.0473, 0.346, 1);
+
+// Helpers de Transformación (asumiendo que los mixins originales no están disponibles)
+@mixin transform-translate-x($value) {
+    -webkit-transform: translate3d($value, 0, 0);
+    -moz-transform: translate3d($value, 0, 0);
+    -o-transform: translate3d($value, 0, 0);
+    -ms-transform: translate3d($value, 0, 0);
+    transform: translate3d($value, 0, 0);
+}
+
+// ----------------------------------------------------------------
+// 1. Desktop (min-width: 992px) - Ocultar y ajustar elementos móviles/formularios
+// ----------------------------------------------------------------
+@media (min-width: 992px) {
+    
+    // 1.1. Navbar/Toolbar adjustments (Vuetify's default breakpoints usually handle this)
+    // .navbar-form -> ajustando márgenes del formulario de búsqueda en el toolbar
+    .v-toolbar .v-toolbar__content .v-form {
+        margin-top: 21px;
+        margin-bottom: 21px;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    // 1.2. Ocultar el botón de toggle móvil en desktop
+    .v-app-bar .v-app-bar-nav-icon, 
+    .v-toolbar-toggle { // .md-toolbar-toggle
+        display: none !important;
+    }
+
+    // 1.3. Ajuste de padding en formularios dentro de Card
+    .v-card form {
+        .v-col { // Reemplaza [class*="col-"]
+            padding: 6px;
+        }
+        .v-col:first-child {
+            padding-left: 15px;
+        }
+        .v-col:last-child {
+            padding-right: 15px;
+        }
+    }
+    
+    // 1.4. Ocultar elementos móviles en el sidebar principal (v-navigation-drawer)
+    .v-navigation-drawer .v-form,
+    .v-navigation-drawer .nav-mobile-menu {
+        display: none !important;
+    }
+
+    // 1.5. Ajuste de tablas
+    .v-table {
+        overflow: visible; // Revierte el scroll en desktop para tablas simples
+    }
+}
+
+// ----------------------------------------------------------------
+// 2. Mobile / Tablet (max-width: 991px) - Lógica del Off-Canvas Sidebar
+// ----------------------------------------------------------------
+@media (max-width: 991px) {
+    
+    // 2.1. Ocultar la navegación de escritorio
+    .v-app-bar .v-toolbar__content > .v-toolbar-items,
+    .v-app-bar .v-toolbar__content > .v-toolbar-title ~ * { // Simula .md-collapse
+        display: none !important;
+    }
+
+    // 2.2. Configuración del Sidebar Móvil (Off-Canvas / v-navigation-drawer)
+    .v-md-off-canvas-sidebar {
+        position: fixed;
+        top: 0;
+        height: 100vh;
+        width: $sidebar-width;
+        right: 0; // Sidebar en la derecha (default)
+        left: auto;
+        z-index: 1032;
+        visibility: visible;
+        
+        // Transformación inicial (oculto fuera de la pantalla)
+        @include transform-translate-x($sidebar-width);
+        transition: transform $transition-time $transition-cubic;
+
+        .v-navigation-drawer__content {
+             // Asegura que el contenido tenga scroll si es necesario
+             overflow-y: scroll;
+        }
+        
+        // Estilos para el Dropdown (simulando `.dropdown-menu`)
+        .v-list-item--active .v-list { // Simula .dropdown.open .dropdown-menu
+            display: block; 
+            // Esto es solo un ejemplo, la lógica de dropdown móvil en Vuetify es diferente.
+        }
+    }
+
+    // 2.3. Lógica de Apertura (Sidebar Abierto)
+    .v-md-nav-open {
+        // Mueve el contenido principal (Main Panel)
+        .v-md-main-panel,
+        .wrapper-full-page, // Para layouts full-page si se usa
+        .v-app-bar { // Mueve el toolbar junto al main panel
+            transition: transform $transition-time $transition-cubic;
+            @include transform-translate-x(-$sidebar-width); // Se mueve a la izquierda
+        }
+
+        // Muestra el Sidebar (lo regresa a la posición 0)
+        .v-md-off-canvas-sidebar {
+            @include transform-translate-x(0);
+            box-shadow: 0 16px 38px -12px rgba(0, 0, 0, 0.56), 0 4px 25px 0px rgba(0, 0, 0, 0.12), 0 8px 10px -5px rgba(0, 0, 0, 0.2); // Simula @include shadow-big()
+        }
+    }
+
+    // 2.4. Lógica de Menú en la Izquierda (`.menu-on-left`)
+    body.menu-on-left, .v-app.menu-on-left {
+        .v-md-off-canvas-sidebar {
+            right: auto;
+            left: 0;
+            @include transform-translate-x(-$sidebar-width); // Oculto a la izquierda
+        }
+        .v-md-nav-open {
+            .v-md-main-panel,
+            .wrapper-full-page,
+            .v-app-bar {
+                @include transform-translate-x($sidebar-width); // Se mueve a la derecha
+            }
+            .v-md-off-canvas-sidebar {
+                @include transform-translate-x(0); // Se muestra
+            }
+        }
+    }
+    
+    // 2.5. Ajustes de Navbar/Toolbar en móvil
+    .v-app-bar.v-app-bar--transparent { // Simula .navbar-transparent
+        padding-top: 15px;
+        background-color: rgba(0, 0, 0, 0.45);
+    }
+    .v-toolbar .v-btn.v-btn--icon {
+        margin-right: 0; // Evita el margen extra que a veces añade Vuetify a los íconos
+    }
+}
+
+// ----------------------------------------------------------------
+// 3. Pequeños Ajustes (max-width: 768px - Breakpoint 'sm')
+// ----------------------------------------------------------------
+@media (max-width: 768px) {
+    // 3.1. Footer (adaptando nav y copyright)
+    .v-footer {
+        flex-direction: column;
+        
+        .v-footer__content { // O el contenedor de la navegación
+            display: block;
+        }
+
+        .v-footer__copyright { // O el elemento que contiene el copyright
+            float: right;
+        }
+    }
+
+    // 3.2. Contenido de Tabs (md-tabs-content)
+    .v-window { // Contenedor de las pestañas
+        height: 250px !important;
+        overflow: auto;
+    }
+    
+    // 3.3. Ocultar elementos según el tamaño
+    .hidden-sm {
+        display: none !important;
+    }
+}
+
+// ----------------------------------------------------------------
+// 4. Extra Small (max-width: 480px)
+// ----------------------------------------------------------------
+@media (max-width: 480px) {
+    // Ajuste de ancho de formulario de búsqueda dentro del navbar
+    .v-app-bar .v-form {
+        .v-input { // Simula .form-control
+            width: 83% !important;
+        }
+    }
+}

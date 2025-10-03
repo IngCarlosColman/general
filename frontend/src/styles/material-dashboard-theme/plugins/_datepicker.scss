@@ -1,0 +1,69 @@
+// ========================================================================
+// PLUGIN: _datepicker-vuetify.scss (Refactorizado para Vuetify 3 / Material Design)
+// Este archivo contiene overrides y estilos personalizados para el componente
+// nativo <v-date-picker> de Vuetify 3, siguiendo la estética Material.
+//
+// NOTA: En la mayoría de los casos, Vuetify maneja el 100% del estilo,
+// por lo que este archivo queda mayormente vacío, listo para la personalización.
+// ========================================================================
+
+// Importación opcional de variables de Vuetify si es necesario
+// @use 'vuetify/settings';
+
+// Ejemplo de personalización avanzada para un look específico.
+// Esto sobrescribe el color del día seleccionado para usar el acento
+// y no el color primario por defecto de Vuetify, si se desea.
+.v-date-picker {
+
+  // Sobrescribe el color del encabezado del mes y año si no usa 'primary'
+  .v-date-picker-header {
+    background-color: rgb(var(--v-theme-primary)); // Asegura el color primario en el encabezado
+    color: white; // El texto del encabezado debe ser claro
+
+    // Flechas de navegación (izquierda/derecha)
+    .v-btn {
+      color: white !important;
+      opacity: 0.8;
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
+
+  // Estilo para el día actualmente seleccionado (círculo)
+  .v-date-picker-month {
+    .v-btn--active {
+      // Uso de color primario de Vuetify para el día seleccionado
+      background-color: rgb(var(--v-theme-primary)) !important;
+      color: white !important;
+      font-weight: 500;
+
+      // Sombra sutil de Material para el día seleccionado
+      box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    // Estilo para el día actual si no está seleccionado
+    .v-btn--variant-text {
+      &.v-btn--color-primary {
+        color: rgb(var(--v-theme-primary)) !important; // Hace que el día de hoy sea primary
+        border-color: rgb(var(--v-theme-primary));
+        font-weight: 500;
+      }
+    }
+  }
+
+  // Estilo para el botón de año/mes seleccionado en la vista de cabecera
+  .v-date-picker-controls__header {
+    .v-btn {
+      &--active {
+        color: white;
+        font-weight: 700;
+      }
+    }
+  }
+
+  // Estilo de los números de día
+  .v-date-picker-month .v-btn {
+    font-size: 0.875rem;
+  }
+}

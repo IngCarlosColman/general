@@ -1,4 +1,5 @@
 // vite.config.mjs
+
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import Fonts from 'unplugin-fonts/vite'
@@ -10,6 +11,10 @@ import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 
+// 1. Define las rutas a los archivos SCSS
+// Este archivo SCSS debe contener SOLO variables, mixins y funciones (lo que quieres usar en CADA componente).
+const injectScssPath = fileURLToPath(new URL('src/styles/material-dashboard-theme/master-inject.scss', import.meta.url));
+
 export default defineConfig({
   plugins: [
     VueRouter(),
@@ -20,6 +25,7 @@ export default defineConfig({
     Vuetify({
       autoImport: true,
       styles: {
+        // Esto es para las variables de Vuetify
         configFile: 'src/styles/settings.scss',
       },
     }),
@@ -80,6 +86,9 @@ export default defineConfig({
       },
       scss: {
         api: 'modern-compiler',
+        // 2. Inyecta solo las variables/mixins globalmente.
+        // Se utiliza .replace para asegurar que las rutas funcionen en Windows.
+        additionalData: `@import "${injectScssPath.replace(/\\/g, '/')}";`,
       },
     },
   },

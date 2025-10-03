@@ -1,0 +1,91 @@
+// =================================================================
+// ADAPTACIÓN DE MD-RADIO A VUETIFY V3 (v-radio)
+//
+// Clase principal a aplicar a <v-radio>: .v-md-radio
+// =================================================================
+
+// NOTA: Se asume que la variable `$brand-primary` está definida.
+
+.v-md-radio.v-selection-control { // Targeteamos el contenedor raíz v-radio/v-selection-control
+    
+    // --------------------------------------------------
+    // 1. Estilos del Label (.md-radio-label)
+    // --------------------------------------------------
+    .v-selection-control__label {
+        padding-left: 10px;
+        color: #aaa; // Color del texto del label
+        font-weight: 400;
+        opacity: 1; // Aseguramos que el label no herede la opacidad por defecto
+    }
+
+    // --------------------------------------------------
+    // 2. Estilos del Contenedor Base (Círculo Exterior)
+    // --------------------------------------------------
+    .v-selection-control__input {
+        // Redefinir tamaño a 15px
+        width: 15px !important;
+        height: 15px !important;
+        min-width: 15px !important;
+        border-radius: 50% !important;
+
+        // Eliminar el fondo y el color de ícono por defecto
+        background: transparent !important;
+        color: transparent !important; 
+        
+        transition: all .2s !important;
+
+        // 2a. Estilo del borde para el estado NO checked (gris)
+        border: 1px solid rgba(0,0,0,.54) !important; 
+        
+        // 2b. Ocultar el ícono de outline/dot por defecto de Vuetify
+        // Esto nos permite controlar la apariencia con el borde manual y el color del ícono.
+        .v-icon {
+            opacity: 0; 
+            transition: all .2s;
+        }
+    }
+    
+    // --------------------------------------------------
+    // 3. Estado Checked (.md-checked -> .v-selection-control--dirty)
+    // --------------------------------------------------
+    &.v-selection-control--dirty {
+        .v-selection-control__input {
+            // 3a. Borde Checked (color primario)
+            border-color: $brand-primary !important; 
+
+            // 3b. Mostrar y colorear el Dot Interno (v-icon)
+            .v-icon {
+                opacity: 1;
+                color: $brand-primary !important;
+                // Ajuste de escala para simular el dot interior
+                transform: scale(0.6); 
+            }
+        }
+    }
+    
+    // --------------------------------------------------
+    // 4. Estado Deshabilitado (Unchecked)
+    // --------------------------------------------------
+    &.v-selection-control--disabled {
+        opacity: .26 !important;
+        
+        // Aseguramos que el borde del unchecked disabled sea el gris oscuro
+        .v-selection-control__input:not(.v-selection-control--dirty) {
+            border-color: rgba(0, 0, 0, .54) !important;
+        }
+    }
+    
+    // --------------------------------------------------
+    // 5. Checked + Disabled State
+    // --------------------------------------------------
+    &.v-selection-control--disabled.v-selection-control--dirty {
+        .v-selection-control__input {
+            // Borde y dot deben ser el gris oscuro para el estado disabled/checked
+            border-color: rgba(0, 0, 0, .54) !important;
+            
+            .v-icon {
+                color: rgba(0, 0, 0, .54) !important; 
+            }
+        }
+    }
+}

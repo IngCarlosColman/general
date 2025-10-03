@@ -13,12 +13,10 @@
           Visualiza y edita los perfiles y roles de todos los usuarios del sistema.
         </p>
 
-        <!-- Mensaje de Error/Éxito -->
         <v-alert v-if="errorMessage" type="error" class="mb-4" closable>
           {{ errorMessage }}
         </v-alert>
 
-        <!-- Tabla de Usuarios -->
         <v-data-table
           :headers="headers"
           :items="users"
@@ -30,6 +28,20 @@
         >
           <template v-slot:item.full_name="{ item }">
             {{ item.first_name }} {{ item.last_name }}
+          </template>
+
+          <template v-slot:item.suscripcion_vence="{ item }">
+            <span v-if="!item.suscripcion_vence || item.rol === 'PENDIENTE_PAGO'">
+              N/A
+            </span>
+            <v-chip
+              v-else
+              :color="getSubscriptionStatus(item).color"
+              size="small"
+              label
+            >
+              {{ getSubscriptionStatus(item).text }}
+            </v-chip>
           </template>
 
           <template v-slot:item.actions="{ item }">
@@ -49,7 +61,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- Modal de Edición de Usuario (Administrador) -->
     <v-dialog v-model="isModalOpen" max-width="600px" persistent>
       <v-card>
         <v-card-title class="d-flex justify-space-between align-center">
@@ -92,7 +103,6 @@
               class="mb-4"
             ></v-text-field>
 
-            <!-- Campo de Edición de Rol (Solo Admin) -->
             <v-select
               v-model="selectedUser.rol"
               :items="allowedRoles"
@@ -125,7 +135,7 @@
 import { ref, onMounted } from 'vue';
 import api from '@/api/axiosClient';
 import { useSnackbar } from '@/composables/useSnackbar';
-import { useAuthStore } from '@/stores/auth'; // Necesario para comprobar si somos admin
+import { useAuthStore } from '@/stores/auth';
 
 const { showSnackbar } = useSnackbar();
 const authStore = useAuthStore();
@@ -148,14 +158,59 @@ const selectedUser = ref({
   telefono: '',
   direccion: '',
   rol: '',
+  suscripcion_vence: null, // Agregado para consistencia
 });
 
+// 🎯 CAMBIO CLAVE: Se agregaron las nuevas columnas a la tabla
 const headers = [
   { title: 'Nombre Completo', key: 'full_name' },
   { title: 'Email', key: 'email' },
+  { title: 'Teléfono', key: 'telefono' }, // ⬅️ AGREGADO
+  { title: 'Vence', key: 'suscripcion_vence' }, // ⬅️ AGREGADO
   { title: 'Rol', key: 'rol' },
   { title: 'Acciones', key: 'actions', sortable: false },
 ];
+
+/**
+ * Lógica para determinar el estado de la suscripción y darle formato
+ * @param {Object} user - Objeto del usuario
+ */
+const getSubscriptionStatus = (user) => {
+  const expirationDate = user.suscripcion_vence ? new Date(user.suscripcion_vence) : null;
+  const now = new Date();
+  
+  // Si el rol es PENDIENTE, no hay vencimiento activo
+  if (user.rol.includes('PENDIENTE')) {
+    return { text: 'Pendiente', color: 'orange' };
+  }
+
+  // Si no hay fecha o la fecha es inválida, pero no es rol pendiente
+  if (!expirationDate || isNaN(expirationDate.getTime())) {
+    return { text: user.rol, color: 'blue-grey' };
+  }
+  
+  // Formato de fecha
+  const formattedDate = expirationDate.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  // Si ya venció
+  if (expirationDate < now) {
+    return { text: `Vencido (${formattedDate})`, color: 'error' };
+  }
+
+  // Si vence en menos de 7 días (aviso)
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+  if (expirationDate.getTime() - now.getTime() < oneWeek) {
+    return { text: `Expira pronto (${formattedDate})`, color: 'warning' };
+  }
+
+  // Si está activo
+  return { text: `Activo hasta ${formattedDate}`, color: 'success' };
+};
+
 
 /**
  * Función para obtener la lista completa de usuarios (solo accesible para Admin)
@@ -163,7 +218,6 @@ const headers = [
 const fetchUsers = async () => {
   isLoading.value = true;
   errorMessage.value = '';
-  // Verificar si el usuario actual es administrador (doble chequeo de seguridad)
   if (!authStore.isAdmin) {
     errorMessage.value = 'No tienes permisos para ver esta sección.';
     isLoading.value = false;
@@ -171,7 +225,6 @@ const fetchUsers = async () => {
   }
 
   try {
-    // 🔑 NOTA: Deberás crear este endpoint en tu backend: GET /api/admin/users
     const response = await api.get('/admin/users');
     users.value = response.data.users;
     showSnackbar('Lista de usuarios actualizada.', 'success');
@@ -211,7 +264,6 @@ const updateUser = async () => {
   errorMessage.value = '';
 
   try {
-    // 🔑 NOTA: Deberás crear este endpoint en tu backend: PUT /api/admin/users/:id
     const response = await api.put(`/admin/users/${selectedUser.value.id}`, {
       first_name: selectedUser.value.first_name,
       last_name: selectedUser.value.last_name,
@@ -223,6 +275,7 @@ const updateUser = async () => {
     // Actualizar el usuario en la lista local para reflejar el cambio en la tabla
     const index = users.value.findIndex(u => u.id === selectedUser.value.id);
     if (index !== -1) {
+      // ⚠️ Aseguramos que la fecha de vencimiento se mantenga actualizada si fue retornada
       users.value[index] = { ...response.data.user };
     }
 

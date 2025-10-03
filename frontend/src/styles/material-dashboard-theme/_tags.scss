@@ -1,0 +1,101 @@
+//
+// Refactoring of legacy .md-chip SCSS to modern Vuetify 3 (V3) standards.
+// Targets v-chip and v-chip-group components.
+//
+
+// --- Placeholder Variables (Adjust these to match your project's variables) ---
+$gray-color: #999;
+$white-color: #fff;
+$brand-primary: #9c27b0; // Purple
+$brand-info: #00bcd4;    // Blue
+$brand-warning: #ffb300; // Amber/Orange
+$brand-rose: #e91e63;    // Rose/Pink (Added placeholder for $brand-rose)
+$brand-danger: #f44336;  // Red
+$brand-success: #4caf50; // Green
+
+// --- Core V-Chip Styling (Replaces .md-chip) ---
+.v-chip {
+  // Overriding V3 defaults for compact look
+  height: 21px !important;
+  margin-top: 7px;
+  border-radius: 3px;
+
+  // Default color setting (Replaces .md-chip base color)
+  background-color: $gray-color !important;
+  color: $white-color !important;
+
+  // --- Content and Text Styling (Replaces .md-ripple) ---
+  .v-chip__content {
+    height: 21px; // Ensure content matches chip height for vertical alignment
+    line-height: 21px;
+    font-weight: 500;
+    text-transform: uppercase !important;
+    font-size: 0.8em !important; // Replaces .80em
+    padding: 0 12px !important; // Default horizontal padding
+
+    // Transition for content padding change on hover
+    transition: padding 150ms ease 0s;
+  }
+
+  // Remove pseudo-elements often used in legacy frameworks (Replaces .md-chips:before, .md-chips:after)
+  &::before, &::after {
+    display: none !important;
+  }
+
+  // --- Close Button Styling (Replaces .md-input-action) ---
+  .v-chip__close {
+    // Ensuring transparent background and no shadow
+    background-color: transparent !important;
+    box-shadow: none !important;
+    margin-inline-start: 0; // Reset default margin
+    opacity: 1; // Keep button visible but control icon opacity
+
+    // Icon/SVG inside the close button
+    .v-icon {
+      fill: $white-color !important;
+      opacity: 0; // Hidden by default (legacy requirement)
+      transition: opacity 150ms ease 0s;
+      font-size: 16px; // Ensure visible size when active
+    }
+  }
+
+  // --- Hover States ---
+  &:hover {
+    // Content padding change on hover (For space when the icon appears)
+    .v-chip__content {
+      padding-right: 21px !important; // Increase right padding to accommodate icon
+    }
+
+    // Show the close icon on hover
+    .v-chip__close .v-icon {
+      opacity: 1;
+    }
+
+    // Ensure close button itself remains transparent/no shadow
+    .v-chip__close {
+      background-color: transparent !important;
+      box-shadow: none !important;
+    }
+  }
+}
+
+// --- Chip Color Modifiers (Replaces .md-chips.md-color .md-chip) ---
+// These custom classes should be applied directly to the V-Chip component in your HTML.
+.v-chip.chip-primary {
+  background-color: $brand-primary !important;
+}
+.v-chip.chip-info {
+  background-color: $brand-info !important;
+}
+.v-chip.chip-warning {
+  background-color: $brand-warning !important;
+}
+.v-chip.chip-rose {
+  background-color: $brand-rose !important;
+}
+.v-chip.chip-danger {
+  background-color: $brand-danger !important;
+}
+.v-chip.chip-success {
+  background-color: $brand-success !important;
+}

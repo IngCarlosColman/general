@@ -1,0 +1,66 @@
+
+
+//variables and mixins
+@import "variables";
+@import "mixins";
+@import "shadows";
+
+// Core CSS
+@import "typography";
+@import "sidebar-and-main-panel";
+@import "buttons";
+@import "badges";
+@import "misc";
+@import "inputs";
+@import "forms";
+@import "alerts";
+@import "tables";
+@import "collapse";
+@import "layout";
+@import "checkboxes";
+@import "fixed-plugin";
+@import "radios";
+@import "autocomplete";
+@import "rtl";
+@import "togglebutton";
+@import "pagination";
+@import "pills";
+@import "pages";
+@import "select";
+@import "fileinput";
+@import "fixed-plugin";
+@import "progress";
+@import "tags";
+@import "dialogs";
+@import "timeline";
+@import "info-areas";
+@import "headers";
+@import "navbars";
+@import "popups";
+@import "footers";
+
+// Fancy Stuff
+@import "dropdown";
+@import "tabs";
+@import "chartist";
+@import "responsive";
+
+@import "cards";
+@import "cards/card-product";
+@import "cards/card-pricing";
+@import "cards/card-login";
+@import "cards/card-profile";
+@import "cards/card-testimonials";
+@import "cards/card-global-sales";
+@import "cards/card-signup";
+@import "cards/card-tabs";
+
+//plugin css
+@import "plugins/perfect-scrollbar";
+@import "plugins/plugin-jquery.jvectormap";
+@import "plugins/plugin-nouislider";
+@import "plugins/sweetalert2";
+@import "plugins/fullcalendar";
+@import "plugins/wizard-card";
+@import "plugins/md-datepicker";
+@import "plugins/animate";

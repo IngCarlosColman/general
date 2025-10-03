@@ -1,0 +1,125 @@
+// ========================================================================
+// REGLAS ESPECÍFICAS DE COMPONENTE: _card-testimonials.scss
+// Combina y adapta %common-card-testimonial y .md-card-testimonial 
+// al componente V3: <v-card class="v-card-testimonial">
+// ========================================================================
+
+// La clase principal .v-card-testimonial contendrá los estilos comunes 
+// y los específicos para el testimonio.
+.v-card-testimonial {
+    margin-top: 30px;
+    text-align: center;
+    position: relative; // Necesario para posicionar el avatar
+
+    // ------------------------------------
+    // Avatar / Imagen
+    // Mapeo: .avatar y .md-card-avatar -> .v-card-testimonial-avatar
+    // ------------------------------------
+    .v-card-testimonial-avatar { 
+        max-width: 100px; // Específico para el tamaño de testimonio
+        max-height: 100px;
+        margin: -50px auto 0;
+        border-radius: 50%;
+        overflow: hidden;
+        padding: 0;
+        z-index: 3; // Asegura que se vea
+
+        // NOTA: Asume que @include shadow-big() está definido en mixins/_shadows.scss
+        // @include shadow-big(); 
+
+        // Posicionamiento del avatar dentro de .md-card-actions
+        // Este es un patrón inusual, se mapea al v-card-actions si el avatar 
+        // se coloca allí en el marcado HTML.
+        .v-card-actions & { 
+            margin-top: 10px;
+            margin-bottom: -60px;
+        }
+
+        & + .v-card-text { // Mapeo de & + .md-card-content
+            margin-top: 15px;
+        }
+        
+        img {
+            width: 100%;
+            height: auto;
+        }
+    }
+
+    // ------------------------------------
+    // Estilos de Contenido
+    // ------------------------------------
+    .v-card-text { // Mapeo de .md-card-content
+        .description {
+            margin-top: 0;
+        }
+    }
+    
+    // Descripción/Cita
+    .description {
+        font-style: italic;
+        
+        // Mapeo de .description + .title
+        & + .title { 
+            margin-top: 30px;
+        }
+    }
+    
+    // Título (e.g., Nombre de la persona)
+    .title {
+        font-weight: 500;
+        color: var(--v-theme-on-surface);
+    }
+    
+    // ------------------------------------
+    // Icono de Cita o Comilla
+    // ------------------------------------
+    .icon {
+        margin-top: 30px;
+        line-height: 2.95;
+
+        .v-icon { // Mapeo de .md-icon
+            font-size: 40px !important;
+            color: inherit;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+        }
+    }
+    
+    // ------------------------------------
+    // Acciones de la Tarjeta
+    // ------------------------------------
+    .v-card-actions { // Mapeo de .md-card-actions
+        display: block; // Cambia el flujo a bloque para la presentación
+        border: 0;
+        margin-top: 0;
+        
+        .v-card-text + & { // Mapeo de .md-card-content + .md-card-actions
+            flex-direction: inherit;
+        }
+
+        // Botones de acción (ej. iconos sociales)
+        .v-btn {
+            &.v-btn--icon { // Mapeo de .btn.btn-just-icon
+                font-size: 20px;
+                padding: 12px 12px;
+                line-height: 1em;
+            }
+        }
+
+        .category {
+            margin-top: 10px;
+            margin-bottom: .5rem;
+            color: rgba(var(--v-theme-on-surface-rgb), 0.7);
+        }
+    }
+    
+    // ------------------------------------
+    // Tarjeta Plana
+    // ------------------------------------
+    &.v-card--plain { // Mapeo de &.md-card-plain
+        .v-card-testimonial-avatar {
+            margin-top: 0; // Deshace el desplazamiento hacia arriba
+        }
+    }
+}

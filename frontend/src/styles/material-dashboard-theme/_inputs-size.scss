@@ -1,0 +1,137 @@
+// =================================================================
+// ADAPTACIÓN DE FORM SIZING A VUETIFY V3
+// NOTA: Se asume que variables como $mdb-input-line-height-computed,
+// $mdb-input-font-size-base, $mdb-input-height-base, y otras de sizing
+// y $screen-sm-min están definidas.
+// =================================================================
+
+// 1. Elementos Nativos (Mantienen su estructura HTML)
+legend {
+    margin-bottom: $mdb-input-line-height-computed;
+    font-size: ($mdb-input-font-size-base * 1.5);
+}
+
+output {
+    padding-top: ($mdb-input-padding-base-vertical + 1);
+    font-size: $mdb-input-font-size-base;
+    line-height: $mdb-input-line-height-base;
+}
+
+// 2. Estilos Base de Input (Reemplaza .form-control)
+.v-input {
+    // Estilos aplicados al input real dentro del control de Vuetify
+    &.v-input--density-default .v-input__control .v-field__input {
+        // Altura y relleno base de MDB
+        min-height: $mdb-input-height-base;
+        padding: $mdb-input-padding-base-vertical $mdb-input-padding-base-horizontal;
+        font-size: $mdb-input-font-size-base;
+        line-height: $mdb-input-line-height-base;
+    }
+    
+    // Ajuste para selectores (que deben tener una altura fija)
+    &.v-select, &.v-autocomplete {
+        .v-input__control .v-field__input {
+            line-height: $mdb-input-line-height-base; 
+        }
+    }
+    
+    // Ajuste para textareas (que deben tener altura automática)
+    &.v-textarea {
+        .v-input__control .v-field__input {
+            min-height: auto;
+        }
+    }
+}
+
+// 3. Estilos de Sizing (Compact y Comfortable)
+// Esto reemplaza .input-sm, .input-lg y .form-group-*
+.v-input--density-compact { // Reemplaza .input-sm / .form-group-sm
+    .v-input__control .v-field__input {
+        min-height: $mdb-input-height-small;
+        padding: $mdb-input-padding-small-vertical $mdb-input-padding-small-horizontal;
+        font-size: $mdb-input-font-size-small;
+        line-height: $mdb-input-line-height-small;
+    }
+}
+
+.v-input--density-comfortable { // Reemplaza .input-lg / .form-group-lg
+    .v-input__control .v-field__input {
+        min-height: $mdb-input-height-large;
+        padding: $mdb-input-padding-large-vertical $mdb-input-padding-large-horizontal;
+        font-size: $mdb-input-font-size-large;
+        line-height: $mdb-input-line-height-large;
+    }
+}
+
+// 4. Radios y Checkboxes (v-radio, v-checkbox)
+.v-radio-group,
+.v-checkbox {
+    .v-label {
+        min-height: $mdb-input-line-height-computed; // Asegura que la etiqueta no se mueva
+    }
+}
+
+// 5. Texto de Control Estático (Reemplaza .form-control-static)
+.form-control-static {
+    padding-top: ($mdb-input-padding-base-vertical + 1);
+    padding-bottom: ($mdb-input-padding-base-vertical + 1);
+    min-height: ($mdb-input-line-height-computed + $mdb-input-font-size-base);
+    font-size: $mdb-input-font-size-base;
+    line-height: $mdb-input-line-height-base;
+}
+
+// 6. Alineación Horizontal (Requiere usar v-row y v-col)
+.form-horizontal-mdb {
+    
+    // Alineación vertical de radios y checkboxes
+    .v-radio-group,
+    .v-checkbox {
+        padding-top: ($mdb-input-padding-base-vertical + 1) !important;
+        min-height: ($mdb-input-line-height-computed + ($mdb-input-padding-base-vertical + 1));
+    }
+    
+    // Estilos de la etiqueta de control solo en vista de escritorio
+    @media (min-width: $screen-sm-min) {
+        .v-col .control-label {
+            padding-top: ($mdb-input-padding-base-vertical + 1);
+        }
+        
+        // Alineación para tamaño GRANDE
+        .form-group-lg {
+            .v-col .control-label {
+                 // Mantiene la compleja fórmula para la alineación del label con el input grande
+                 padding-top: (($mdb-input-padding-large-vertical * $mdb-input-line-height-large) + 1);
+                 font-size: $mdb-input-font-size-large;
+            }
+        }
+        
+        // Alineación para tamaño PEQUEÑO
+        .form-group-sm {
+            .v-col .control-label {
+                padding-top: ($mdb-input-padding-small-vertical + 1);
+                font-size: $mdb-input-font-size-small;
+            }
+        }
+    }
+}
+
+// 7. Hack de iOS para inputs temporales (Opcional, Vuetify suele manejarlo)
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    .v-input__control .v-field__input {
+        // Fuerza la altura de línea base
+        line-height: $mdb-input-height-base !important; 
+    }
+    
+    .v-input--density-compact & {
+      line-height: $mdb-input-height-small !important;
+    }
+
+    .v-input--density-comfortable & {
+      line-height: $mdb-input-height-large !important;
+    }
+  }
+}

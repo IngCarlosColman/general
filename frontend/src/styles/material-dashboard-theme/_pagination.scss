@@ -1,0 +1,122 @@
+// =================================================================
+// ADAPTACIÓN DE PAGINACIÓN A VUETIFY V3 (v-pagination)
+// =================================================================
+
+.v-pagination {
+    display: flex;
+    padding-left: 0;
+    list-style: none;
+    border-radius: .25rem; // Mantener el radio del contenedor principal
+
+    // Los elementos de paginación en Vuetify V3 son v-btn, que son los que llevan el estilo.
+    .v-btn {
+        // Estilos base para todos los botones (números, prev, next)
+        position: relative;
+        display: block;
+        
+        // Reemplaza .page-link padding/margin
+        padding: 0;
+        margin: 0 3px;
+        
+        line-height: 1.25;
+        background-color: transparent !important;
+        border: 0 solid #dee2e6;
+        
+        // Estilo circular y tamaño
+        border-radius: 30px !important;
+        transition: all .3s;
+        min-width: 30px !important; // MDB style min-width/height
+        height: 30px !important;
+        line-height: 30px;
+        
+        // Tipografía
+        color: $gray-color !important;
+        font-weight: $font-weight-default;
+        font-size: $mdb-btn-font-size-base;
+        text-transform: uppercase;
+        text-align: center;
+        cursor: pointer;
+        
+        // Eliminar sombra por defecto de v-btn
+        box-shadow: none !important;
+
+        // Estilo de hover/focus para botones no activos
+        &:hover:not(.v-btn--active),
+        &:focus:not(.v-btn--active) {
+            color: $gray-color !important;
+            background-color: transparent !important;
+        }
+
+        // Color azul por defecto de page-link (2196f3 - primary en Vuetify)
+        // Se anula aquí para usar $gray-color y luego se aplica en active
+        color: $gray-color !important;
+    }
+
+    // Estilo para el botón activo (v-btn--active)
+    .v-btn--active {
+        // Estilo activo predeterminado (Primary)
+        background-color: $brand-primary !important;
+        border-color: $brand-primary;
+        color: $white-color !important;
+
+        // Mantener la sombra y color en foco/hover
+        &,
+        &:focus,
+        &:hover {
+            background-color: $brand-primary !important;
+            border-color: $brand-primary;
+            color: $white-color !important;
+            @include shadow-4dp-color($brand-primary); // Aplicar sombra custom
+        }
+    }
+
+    // Clases de color para el estado activo (Vuetify V3 - targeteando la clase en la raíz)
+    &.v-pagination--info {
+        .v-btn--active {
+            background-color: $brand-info !important;
+            border-color: $brand-info;
+            @include shadow-4dp-color($brand-info);
+        }
+    }
+
+    &.v-pagination--success {
+        .v-btn--active {
+            background-color: $brand-success !important;
+            border-color: $brand-success;
+            @include shadow-4dp-color($brand-success);
+        }
+    }
+
+    &.v-pagination--rose {
+        .v-btn--active {
+            background-color: $brand-rose !important;
+            border-color: $brand-rose;
+            @include shadow-4dp-color($brand-rose);
+        }
+    }
+
+    &.v-pagination--warning {
+        .v-btn--active {
+            background-color: $brand-warning !important;
+            border-color: $brand-warning;
+            @include shadow-4dp-color($brand-warning);
+        }
+    }
+
+    &.v-pagination--danger {
+        .v-btn--active {
+            background-color: $brand-danger !important;
+            border-color: $brand-danger;
+            @include shadow-4dp-color($brand-danger);
+        }
+    }
+
+    // Ocultar flechas (Prev/Next)
+    // Se usa una clase custom en el componente para ocultar los botones de navegación
+    &.v-pagination--no-arrows { // Reemplaza .no-arrows
+        .v-pagination__prev,
+        .v-pagination__next {
+            display: none !important;
+        }
+    }
+}

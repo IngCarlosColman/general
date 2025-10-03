@@ -1,0 +1,66 @@
+// ========================================================================
+// PLUGIN: _custom-scrollbar.scss (Refactorizado para Vuetify 3 / Material Design)
+// Este archivo reemplaza a '_perfect-scrollbar.scss' y aplica estilos
+// Material a las barras de desplazamiento nativas del navegador (Chrome/Edge/Safari).
+// En Vuetify 3, se prefiere el desplazamiento nativo.
+// ========================================================================
+
+// ------------------------------------------------------------------------
+// ESTILOS DE SCROLLBAR NATIVO (webkit-scrollbar)
+//
+// NOTA: Esto solo funciona en navegadores basados en WebKit (Chrome, Edge, Safari).
+// Se usa para asegurar que las barras de desplazamiento nativas sigan el tema Material.
+// ------------------------------------------------------------------------
+
+::-webkit-scrollbar {
+  width: 8px;  // Ancho de la barra vertical
+  height: 8px; // Altura de la barra horizontal
+}
+
+// Fondo de la pista del scrollbar
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05); // Fondo muy sutil, como un separador de Material
+}
+
+// Estilo del "pulgar" o thumb (la parte que se mueve)
+::-webkit-scrollbar-thumb {
+  // Usamos el color de superficie/fondo de Material ligeramente más oscuro
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 4px; // Bordes redondeados de Material
+
+  &:hover {
+    // Al pasar el mouse, se oscurece para un efecto de elevación sutil
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+}
+
+// ------------------------------------------------------------------------
+// SOBRESCRITURA DE CLASES LEGADAS (Si las clases de perfect-scrollbar
+// se usan accidentalmente en el código Vue/Vuetify)
+// ------------------------------------------------------------------------
+
+.ps-container,
+.ps-scrollbar-x-rail,
+.ps-scrollbar-y-rail {
+  // Aseguramos que cualquier rastro de Perfect Scrollbar no rompa el diseño.
+  // Es mejor limpiar esto del código Vue, pero esto sirve como fallback.
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+// Si Perfect Scrollbar es absolutamente necesario para un componente
+// Vuetify específico, asegúrate de que use las variables de color del tema.
+.ps-container {
+  .ps-scrollbar-x-rail,
+  .ps-scrollbar-y-rail {
+    background-color: rgba(var(--v-theme-surface-variant), 0.1) !important;
+
+    .ps-scrollbar-x,
+    .ps-scrollbar-y {
+      background-color: rgba(var(--v-theme-on-surface), 0.3) !important;
+      border-radius: 4px;
+    }
+  }
+}

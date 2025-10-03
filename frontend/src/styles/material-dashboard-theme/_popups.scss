@@ -1,0 +1,95 @@
+// =================================================================
+// ADAPTACIÓN DE TOOLTIP (GLOBO DE AYUDA) A VUETIFY V3 (v-tooltip)
+//
+// Clase a usar con la propiedad `content-class` de v-tooltip: .v-md-tooltip-content
+// =================================================================
+
+// NOTA: Se asume que mixins como `shadow-8dp` y variables como 
+// `$border-radius-base`, `$white-color`, `$gray`, y `$tooltip-font-size` están definidos.
+
+.v-md-tooltip-content { // Reemplaza .md-tooltip (Clase aplicada al contenido del overlay)
+    
+    // --------------------------------------------------
+    // 1. Estilos Base (Overrides de Material Design)
+    // --------------------------------------------------
+    padding: 10px 15px;
+    min-width: 130px;
+    max-width: 200px;
+    height: auto;
+    text-align: center;
+    border-radius: $border-radius-base;
+    
+    // Forzamos los colores y fondo para sobrescribir los defaults de Vuetify
+    background-color: $white-color !important;
+    color: $gray !important;
+    
+    font-size: $tooltip-font-size;
+    font-weight: 400;
+    white-space: normal;
+    
+    @include shadow-8dp(); // Sombra personalizada
+
+    // Aseguramos que el tooltip sea completamente visible y no sufra transformaciones no deseadas
+    opacity: 1 !important; 
+    
+    // --------------------------------------------------
+    // 2. Implementación del Triángulo/Flecha (Pointer)
+    // --------------------------------------------------
+
+    // Usamos el pseudo-elemento :after para crear el triángulo con bordes CSS.
+    // La lógica de posicionamiento usa [data-x-placement], que es un atributo
+    // que suele estar presente en los contenedores de posicionamiento (Popper/Flip).
+    &:after {
+        position: absolute;
+        height: 0;
+        vertical-align: .255em;
+        content: "";
+        
+        // Posicionamiento horizontal por defecto (centrado)
+        left: 0;
+        right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        width: 5px; 
+    }
+
+    // Flecha Arriba (Tooltip colocado en 'top')
+    &[data-x-placement="top"]:after { // Reemplaza [x-placement="top"]:after
+        bottom: -5px;
+        border-top: 5px solid $white-color;
+        border-right: 5px solid transparent;
+        border-bottom: 0;
+        border-left: 5px solid transparent;
+    }
+    
+    // Flecha Abajo (Tooltip colocado en 'bottom')
+    &[data-x-placement="bottom"]:after { // Reemplaza [x-placement="bottom"]:after
+        top: -5px;
+        border-top: 0;
+        border-right: 5px solid transparent;
+        border-bottom: 5px solid $white-color;
+        border-left: 5px solid transparent;
+    }
+    
+    // Flecha Izquierda (Tooltip colocado en 'left')
+    &[data-x-placement="left"]:after { // Reemplaza [x-placement="left"]:after
+        margin-right: 0;
+        right: -5px;
+        top: 16px; // Ajuste vertical
+        
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+        border-left: 5px solid $white-color;
+    }
+    
+    // Flecha Derecha (Tooltip colocado en 'right')
+    &[data-x-placement="right"]:after { // Reemplaza [x-placement="right"]:after
+        margin-left: 0;
+        left: -5px;
+        top: 16px; // Ajuste vertical
+        
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+        border-right: 5px solid $white-color;
+    }
+}

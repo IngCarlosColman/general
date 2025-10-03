@@ -1,0 +1,107 @@
+// =================================================================
+// ADAPTACIÓN DE FOOTER A VUETIFY V3 (v-footer / v-container / v-row)
+// NOTA: Se asume que variables como $padding-base, $font-weight-bold,
+// $mdb-btn-font-size-base, y $border-radius-base están definidas.
+// =================================================================
+
+// 1. Estilos del componente principal (v-footer)
+.v-footer {
+    // Reemplaza el padding general del tag <footer>
+    padding: $padding-base 0 !important;
+
+    // Asegura que el footer use su propio tema de color si es necesario
+    // background: #fff; // Añadir si se requiere un color de fondo explícito
+}
+
+// 2. Estilos del contenedor y layout
+// El .container se adapta al v-container con sus clases de Vuetify
+.v-container.footer-content { // Usamos una clase auxiliar para aplicar padding custom
+    // Reemplaza .container padding
+    padding-right: 30px !important;
+    padding-left: 30px !important;
+    max-width: none; // Permite que el contenedor se estire si es necesario, o definir un max-width.
+}
+
+// Estilos para la distribución de elementos (nav y copyright)
+.v-footer {
+    .v-row {
+        // Asegura que la navegación y el copyright se muestren en línea horizontal
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin: 0;
+    }
+}
+
+// Estilo específico para full-page (si aplica a v-container)
+.full-page {
+    .v-container.footer-content {
+        padding-right: 15px !important;
+        padding-left: 15px !important;
+    }
+}
+
+
+// 3. Estilos de la Navegación (nav ul)
+// Se recomienda envolver la lista de enlaces en <nav>
+.v-footer nav {
+    display: inline-block;
+    
+    // Lista sin estilos por defecto
+    ul { // Reemplaza footer ul
+        padding: 0;
+        margin: 0;
+        list-style: none;
+        display: flex; // Para alinear los <li>
+
+        li { // Reemplaza footer ul li
+            display: inline-block;
+
+            // Enlaces
+            a { // Reemplaza footer ul li a
+                color: inherit !important;
+                padding: $padding-base;
+                font-weight: $font-weight-bold;
+                font-size: $mdb-btn-font-size-base;
+                text-transform: uppercase;
+                border-radius: $border-radius-base;
+                text-decoration: none;
+                position: relative;
+                display: block; // Para que el padding funcione correctamente
+                
+                // Efecto hover (Vuetify maneja el ripple, pero si queremos solo text-decoration: none)
+                &:hover {
+                    text-decoration: none;
+                }
+            }
+
+            // Primer elemento (Reemplaza &:first-child a)
+            &:first-child a {
+                margin-left: -15px;
+            }
+        }
+    }
+}
+
+// 4. Estilos del Copyright
+.v-footer .copyright { // Reemplaza footer .copyright
+    display: inline-block;
+    padding: 15px 0;
+    margin: 0;
+    
+    // Estilos de iconos
+    .v-icon { // Reemplaza .material-icons
+        font-size: 18px;
+        position: relative;
+        top: 3px;
+    }
+}
+
+// 5. Botones dentro del Footer
+.v-footer {
+    .v-btn { // Reemplaza .btn
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+}
